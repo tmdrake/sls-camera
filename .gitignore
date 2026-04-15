@@ -6,3 +6,8 @@ obj/
 .vs/
 .idea/
 __pycache__/
+
+*.suo
+.vs/
+bin/
+obj/
