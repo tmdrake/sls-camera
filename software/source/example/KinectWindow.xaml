@@ -136,9 +136,8 @@
                     <Border Background="#FF111111" Padding="20" Margin="0 0 0 8">
                         <TextBlock x:Name="OvilusWord" FontSize="32" FontWeight="Bold" HorizontalAlignment="Center" Text="SPIRIT" Foreground="#FFAA0000"/>
                     </Border>
-                    <Button Content="GENERATE" Click="Ovilus_Generate" Height="36" Background="{StaticResource DarkNeutralBrush}"/>
                     <TextBlock Text="History" Margin="0 12 0 4" FontSize="12"/>
-                    <ListBox x:Name="OvilusHistory" Height="120" Background="#FF111111" Foreground="#FFCCCCCC"/>
+                    <ListBox x:Name="OvilusHistory" Height="140" Background="#FF111111" Foreground="#FFCCCCCC"/>
                 </StackPanel>
             </Border>
 

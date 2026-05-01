@@ -82,11 +82,6 @@
             depthFrom.Children.Insert(0, this.ColorVis);
         }
 
-        private void Ovilus_Generate(object sender, RoutedEventArgs e)
-        {
-            Ovilus_GenerateInternal();
-        }
-
         private void Ovilus_GenerateInternal()
         {
             string word = this.ovilusWords[this.random.Next(this.ovilusWords.Count)];

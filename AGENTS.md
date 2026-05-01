@@ -14,7 +14,7 @@ Modernized legacy Kinect Xbox 360 SLS camera application with Ovilus-style word 
 
 ## Features
 - Real-time Color, Depth, and Skeleton viewing (audio panel removed, color image un-mirrored for standing behind camera) from modified Xbox 360 Kinect.
-- **Ovilus Word Generator**: Auto-generates ghost-hunting words every 8 seconds or on button press. Displays large text + history log. Integrated into right sidebar.
+- **Ovilus Word Generator**: Auto-generates ghost-hunting words every 8 seconds (no manual button). Displays large text + history log. Integrated into right sidebar.
 - Dark paranormal UI theme.
 - Sensor management, tilt control, stream swapping. Skeleton stream enabled by default.
 
