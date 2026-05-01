@@ -1,12 +1,9 @@
-﻿//------------------------------------------------------------------------------
-// <copyright file="KinectWindow.xaml.cs" company="Microsoft">
-//     Copyright (c) Microsoft Corporation.  All rights reserved.
-// </copyright>
-//------------------------------------------------------------------------------
-
-namespace Microsoft.Samples.Kinect.KinectExplorer
+﻿namespace Microsoft.Samples.Kinect.KinectExplorer
 {
+    using System;
+    using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
+    using System.Timers;
     using System.Windows;
     using System.Windows.Controls;
     using System.Windows.Data;
@@ -14,9 +11,6 @@ namespace Microsoft.Samples.Kinect.KinectExplorer
     using Microsoft.Kinect;
     using Microsoft.Samples.Kinect.WpfViewers;
 
-    /// <summary>
-    /// Interaction logic for KinectWindow.xaml.
-    /// </summary>
     public partial class KinectWindow : Window
     {
         public static readonly DependencyProperty KinectSensorProperty =
@@ -32,25 +26,27 @@ namespace Microsoft.Samples.Kinect.KinectExplorer
         /// Initializes a new instance of the KinectWindow class, which provides access to many KinectSensor settings
         /// and output visualization.
         /// </summary>
+        private readonly List<string> ovilusWords = new List<string> { "SPIRIT", "GHOST", "SHADOW", "CHILD", "WOMAN", "MAN", "DEMON", "ANGEL", "LEAVE", "STAY", "HELP", "HERE", "COLD", "ENERGY", "YES", "NO", "DARK", "LIGHT", "FOLLOW", "GO" };
+        private readonly Timer ovilusTimer;
+        private readonly Random random = new Random();
+
         public KinectWindow()
         {
             this.viewModel = new KinectWindowViewModel();
-
-            // The KinectSensorManager class is a wrapper for a KinectSensor that adds
-            // state logic and property change/binding/etc support, and is the data model
-            // for KinectDiagnosticViewer.
             this.viewModel.KinectSensorManager = new KinectSensorManager();
 
             Binding sensorBinding = new Binding("KinectSensor");
             sensorBinding.Source = this;
             BindingOperations.SetBinding(this.viewModel.KinectSensorManager, KinectSensorManager.KinectSensorProperty, sensorBinding);
 
-            // Attempt to turn on Skeleton Tracking for each Kinect Sensor
             this.viewModel.KinectSensorManager.SkeletonStreamEnabled = true;
 
             this.DataContext = this.viewModel;
-            
             InitializeComponent();
+
+            this.ovilusTimer = new Timer(8000);
+            this.ovilusTimer.Elapsed += (s, e) => this.Dispatcher.Invoke(Ovilus_GenerateInternal);
+            this.ovilusTimer.Start();
         }
 
         public KinectSensor KinectSensor
@@ -85,11 +81,21 @@ namespace Microsoft.Samples.Kinect.KinectExplorer
             colorFrom.Children.Insert(0, this.DepthVis);
             depthFrom.Children.Insert(0, this.ColorVis);
         }
+
+        private void Ovilus_Generate(object sender, RoutedEventArgs e)
+        {
+            Ovilus_GenerateInternal();
+        }
+
+        private void Ovilus_GenerateInternal()
+        {
+            string word = this.ovilusWords[this.random.Next(this.ovilusWords.Count)];
+            this.OvilusWord.Text = word;
+            this.OvilusHistory.Items.Insert(0, DateTime.Now.ToString("HH:mm:ss") + " - " + word);
+            if (this.OvilusHistory.Items.Count > 12) this.OvilusHistory.Items.RemoveAt(this.OvilusHistory.Items.Count - 1);
+        }
     }
 
-    /// <summary>
-    /// A ViewModel for a KinectWindow.
-    /// </summary>
     public class KinectWindowViewModel : DependencyObject
     {
         public static readonly DependencyProperty KinectSensorManagerProperty =
