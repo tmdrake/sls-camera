@@ -44,7 +44,7 @@
             this.DataContext = this.viewModel;
             InitializeComponent();
 
-            this.ovilusTimer = new Timer(8000);
+            this.ovilusTimer = new Timer(900000);
             this.ovilusTimer.Elapsed += (s, e) => this.Dispatcher.Invoke(Ovilus_GenerateInternal);
             this.ovilusTimer.Start();
         }
@@ -88,6 +88,9 @@
             this.OvilusWord.Text = word;
             this.OvilusHistory.Items.Insert(0, DateTime.Now.ToString("HH:mm:ss") + " - " + word);
             if (this.OvilusHistory.Items.Count > 12) this.OvilusHistory.Items.RemoveAt(this.OvilusHistory.Items.Count - 1);
+
+            this.ovilusTimer.Interval = 900000 + this.random.Next(900000);
+            this.ovilusTimer.Start();
         }
     }
 
