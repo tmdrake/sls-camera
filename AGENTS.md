@@ -10,13 +10,13 @@ Modernized legacy Kinect Xbox 360 SLS camera application with Ovilus-style word 
    cd software\source\example
    "%SystemRoot%\Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe" "SLS Explorer.sln" /p:Configuration=Debug
    ```
-3. Run `software\source\example\bin\Debug\KinectExplorer-WPF.exe`
+3. Run `software\source\example\bin\Debug\slscam.exe`
 
 ## Features
-- Real-time Color, Depth, and Skeleton viewing from modified Xbox 360 Kinect.
+- Real-time Color, Depth, and Skeleton viewing (audio panel removed, color image un-mirrored for standing behind camera) from modified Xbox 360 Kinect.
 - **Ovilus Word Generator**: Auto-generates ghost-hunting words every 8 seconds or on button press. Displays large text + history log. Integrated into right sidebar.
 - Dark paranormal UI theme.
-- Sensor management, tilt control, stream swapping.
+- Sensor management, tilt control, stream swapping. Skeleton stream enabled by default.
 
 ## Next Steps
 - Tie Ovilus triggers to depth/skeleton changes for context-aware "spirit communication".

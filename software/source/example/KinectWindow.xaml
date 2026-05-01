@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Microsoft.Samples.Kinect.KinectExplorer"
         xmlns:kt="clr-namespace:Microsoft.Samples.Kinect.WpfViewers;assembly=Microsoft.Samples.Kinect.WpfViewers"
-        Title="SLS Explorer" Width="812" Height="768" Topmost="True" WindowState="Maximized" WindowStyle="None" Background="#FF070707">
+        Title="SLS Cam" Width="812" Height="768" Topmost="True" WindowState="Maximized" WindowStyle="None" Background="#FF070707">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -21,17 +21,11 @@
 
     <Grid Name="layoutGrid" Margin="10 0 10 0" TextBlock.FontFamily="{StaticResource KinectFont}">        
         <Grid.RowDefinitions>
-            <!-- The title bar -->
             <RowDefinition Height="Auto"/>
-            <!-- The main viewer -->
             <RowDefinition Height="*" MinHeight="300"/>
-            <!-- The audio panel -->
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <!-- The main viewer -->
             <ColumnDefinition Width="*" MinWidth="400"/>
-            <!-- The side panels -->
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
         <DockPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="10 0 10 20"></DockPanel>
@@ -41,8 +35,10 @@
             <Grid Name="MainViewerHost">
                 <Grid Name="ColorVis" Background="{StaticResource DarkNeutralBrush}">
                     <Viewbox HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform">
-                        <!-- Make the colorViewer and skeletonViewer overlap entirely. -->
-                        <Grid>
+                        <Grid RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <ScaleTransform ScaleX="-1" />
+                            </Grid.RenderTransform>
                             <kt:KinectColorViewer x:Name="ColorViewer" KinectSensorManager="{Binding KinectSensorManager}" CollectFrameRate="True" RetainImageOnSensorChange="True" />
                             <Canvas>
                                 <kt:KinectSkeletonViewer 
@@ -69,24 +65,11 @@
             </Grid>
         </Grid>
 
-        <!-- The Audio panel -->
-        <Grid Grid.Row="2" Grid.Column="0"
-              Margin="10 10 10 20"
-              VerticalAlignment="Top">
-            <kt:KinectAudioViewer 
-                x:Name="kinectAudioViewer" 
-                HorizontalAlignment="Stretch" 
-                VerticalAlignment="Stretch"
-                SnapsToDevicePixels="True"
-                KinectSensorManager="{Binding KinectSensorManager}"/>
-        </Grid>
-        
         <!-- The side panels-->
         <StackPanel 
             Orientation="Vertical" 
             Grid.Column="1" 
             Grid.Row="1" 
-            Grid.RowSpan="2" 
             Margin="10"
             HorizontalAlignment="Left">
             <Grid Name="SideViewerHost" Width="240" Height="180">
