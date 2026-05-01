@@ -10,6 +10,9 @@
                 <ResourceDictionary Source="pack://application:,,,/Microsoft.Samples.Kinect.WpfViewers;component/KinectControlResources.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <local:KinectWindowsViewerSwapCommand x:Key="SwapCommand"/>
+            <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <local:DoubleScalerConverter x:Key="DoubleScalerConverter"/>
+            <local:BoolToInverseBoolConverter x:Key="BoolToInverseBoolConverter"/>
         </ResourceDictionary>
     </Window.Resources>
     <Window.CommandBindings>
@@ -23,6 +26,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*" MinHeight="300"/>
+            <RowDefinition Height="180"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" MinWidth="400"/>
@@ -30,9 +34,50 @@
         </Grid.ColumnDefinitions>
         <DockPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="10 0 10 20"></DockPanel>
 
-        <!-- The main viewer -->
-        <Grid Grid.Column="0" Grid.Row="1" Margin="10" >
+        <!-- Main viewer defaults to Depth with skeleton on top (un-mirrored) -->
+        <Grid Grid.Column="0" Grid.Row="1" Margin="10">
             <Grid Name="MainViewerHost">
+                <Grid Name="DepthVis" Background="{StaticResource DarkNeutralBrush}">
+                    <Viewbox Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Grid RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <ScaleTransform ScaleX="-1" />
+                            </Grid.RenderTransform>
+                            <kt:KinectDepthViewer 
+                                x:Name="DepthViewer"
+                                KinectSensorManager="{Binding KinectSensorManager}"
+                                DepthTreatment="{Binding DepthTreatment}"
+                                CollectFrameRate="True" 
+                                RetainImageOnSensorChange="True"/>
+                            <Canvas>
+                                <kt:KinectSkeletonViewer 
+                                    KinectSensorManager="{Binding KinectSensorManager}"
+                                    Visibility="{Binding KinectSensorManager.DepthStreamEnabled, Converter={StaticResource BoolToVisibilityConverter}}"
+                                    Width="{Binding ElementName=DepthViewer, Path=ActualWidth}"
+                                    Height="{Binding ElementName=DepthViewer, Path=ActualHeight}"
+                                    ShowBones="true" ShowJoints="true" ShowCenter="true" ImageType="Depth" />
+                            </Canvas>
+                        </Grid>
+                    </Viewbox>
+                    <Border TextBlock.Foreground="{StaticResource LabelForegroundBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" Background="{StaticResource MediumNeutralBrush}" Width="50" Height="50">
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock FontSize="{StaticResource HeaderFontSize}" Text="{Binding ElementName=DepthViewer, Path=FrameRate}" HorizontalAlignment="Center" Margin="-2"/>
+                            <TextBlock FontSize="{StaticResource FPSFontSize}" HorizontalAlignment="Center" Margin="-2">FPS</TextBlock>
+                        </StackPanel>
+                    </Border>
+                    <Rectangle Fill="#7777" Visibility="{Binding KinectSensorManager.DepthStreamEnabled, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=True}" SnapsToDevicePixels="True"/>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- Spectrum Analyser below main screen -->
+        <Border Grid.Row="2" Grid.ColumnSpan="2" Margin="10 0 10 10" Background="#FF111111" Padding="8">
+            <TextBlock Text="SPECTRUM ANALYSER (real-time audio visualization - to be fully implemented)" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFAA0000" FontSize="14" FontWeight="Bold"/>
+        </Border>
+
+        <!-- Side panels (Color feed, un-mirrored) -->
+        <StackPanel Orientation="Vertical" Grid.Column="1" Grid.Row="1" Margin="10" HorizontalAlignment="Left">
+            <Grid Name="SideViewerHost" Width="240" Height="180">
                 <Grid Name="ColorVis" Background="{StaticResource DarkNeutralBrush}">
                     <Viewbox HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform">
                         <Grid RenderTransformOrigin="0.5,0.5">
@@ -50,60 +95,13 @@
                             </Canvas>
                         </Grid>
                     </Viewbox>
-                    <Border 
-                        TextBlock.Foreground="{StaticResource LabelForegroundBrush}" 
-                        HorizontalAlignment="Right" VerticalAlignment="Top" 
-                        Background="{StaticResource MediumNeutralBrush}"
-                        Width="50" Height="50">
-                        <StackPanel Orientation="Vertical" >
+                    <Border TextBlock.Foreground="{StaticResource LabelForegroundBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" Background="{StaticResource MediumNeutralBrush}" Width="50" Height="50">
+                        <StackPanel Orientation="Vertical">
                             <TextBlock FontSize="{StaticResource HeaderFontSize}" Text="{Binding ElementName=ColorViewer, Path=FrameRate}" HorizontalAlignment="Center" Margin="-2"/>
                             <TextBlock FontSize="{StaticResource FPSFontSize}" HorizontalAlignment="Center" Margin="-2">FPS</TextBlock>
                         </StackPanel>
-                    </Border>                   
-                    <Rectangle Fill="#7777" Visibility="{Binding KinectSensorManager.ColorStreamEnabled, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=True}" SnapsToDevicePixels="True"/>
-                </Grid>
-            </Grid>
-        </Grid>
-
-        <!-- The side panels-->
-        <StackPanel 
-            Orientation="Vertical" 
-            Grid.Column="1" 
-            Grid.Row="1" 
-            Margin="10"
-            HorizontalAlignment="Left">
-            <Grid Name="SideViewerHost" Width="240" Height="180">
-                <Grid Name="DepthVis" Background="{StaticResource DarkNeutralBrush}">
-                    <Viewbox Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <!-- Make the depthViewer and skeletonViewer overlap entirely. -->
-                        <Grid>
-                            <kt:KinectDepthViewer 
-                            x:Name="DepthViewer"
-                            KinectSensorManager="{Binding KinectSensorManager}"
-                            DepthTreatment="{Binding DepthTreatment}"
-                            CollectFrameRate="True" 
-                            RetainImageOnSensorChange="True"/>
-                            <Canvas>
-                                <kt:KinectSkeletonViewer 
-                                KinectSensorManager="{Binding KinectSensorManager}"
-                                Visibility="{Binding KinectSensorManager.DepthStreamEnabled, Converter={StaticResource BoolToVisibilityConverter}}"
-                                Width="{Binding ElementName=DepthViewer, Path=ActualWidth}"
-                                Height="{Binding ElementName=DepthViewer, Path=ActualHeight}"
-                                ShowBones="true" ShowJoints="true" ShowCenter="true" ImageType="Depth" />
-                            </Canvas>
-                        </Grid>
-                    </Viewbox>
-                    <Border 
-                        TextBlock.Foreground="{StaticResource LabelForegroundBrush}" 
-                        HorizontalAlignment="Right" VerticalAlignment="Top" 
-                        Background="{StaticResource MediumNeutralBrush}"
-                        Width="50" Height="50">
-                        <StackPanel Orientation="Vertical" >                            
-                            <TextBlock FontSize="{StaticResource HeaderFontSize}" Text="{Binding ElementName=DepthViewer, Path=FrameRate}" HorizontalAlignment="Center" Margin="-2"/>
-                            <TextBlock FontSize="{StaticResource FPSFontSize}" HorizontalAlignment="Center" Margin="-2">FPS</TextBlock>
-                        </StackPanel>
                     </Border>
-                    <Rectangle Fill="#7777" Visibility="{Binding KinectSensorManager.DepthStreamEnabled, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=True}" SnapsToDevicePixels="True"/>
+                    <Rectangle Fill="#7777" Visibility="{Binding KinectSensorManager.ColorStreamEnabled, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=True}" SnapsToDevicePixels="True"/>
                 </Grid>
                 <Button HorizontalAlignment="Left" VerticalAlignment="Top" Command="{StaticResource SwapCommand}">
                     <Button.Template>
@@ -125,7 +123,7 @@
                             </Border>
                         </ControlTemplate>
                     </Button.Template>
-                </Button>                
+                </Button>
             </Grid>
 
             <kt:KinectSettings KinectSensorManager="{Binding KinectSensorManager}" DepthTreatment="{Binding DepthTreatment, Mode=TwoWay}" Margin="0 20 0 0" SnapsToDevicePixels="True"/>
@@ -140,8 +138,6 @@
                     <ListBox x:Name="OvilusHistory" Height="140" Background="#FF111111" Foreground="#FFCCCCCC"/>
                 </StackPanel>
             </Border>
-
         </StackPanel>
-
     </Grid> 
 </Window>

@@ -3,10 +3,7 @@
                     xmlns:kt="clr-namespace:Microsoft.Samples.Kinect.WpfViewers;assembly=Microsoft.Samples.Kinect.WpfViewers"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
-    <kt:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-    <kt:DoubleScalerConverter x:Key="DoubleScalerConverter" />
-    <kt:BoolToInverseBoolConverter x:Key="BoolToInverseBoolConverter"/>
-    <kt:BoolToToggleStateConverter x:Key="BoolToToggleStateConverter"/>
+    <!-- Converters moved to main project resources to avoid build issues -->
 
     <Color x:Key="NormalBrandColor">#52318F</Color>
     <Color x:Key="HoverBrandColor">#322350</Color>
