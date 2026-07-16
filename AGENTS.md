@@ -3,6 +3,8 @@
 ## Overview
 Modern SDK-style .NET 8 WPF application for modified Xbox 360 Kinect SLS camera. Features depth-first view with skeleton overlay, spectrum analyser below main screen, Ovilus random word generator (15-30min), un-mirrored camera, and optimized MVVM code.
 
+**Cross-platform product goal:** the main operator view is always **depth + SLS skeleton stick figures**, whether on Windows (this app + Kinect SDK) or Linux (`software/linux/` + freenect + pose engine + **web kiosk**). Longer term: flashable tablet image, Ovilus panel, extra sensors (Arduino-class). See `software/linux/docs/LINUX-SLS-PLAN.md` and `docs/PRODUCT-VISION.md`.
+
 ## Dev-Phase Install Instructions
 **Prerequisites**:
 - Windows 10/11 (64-bit recommended).
@@ -46,4 +48,14 @@ Defaults to Depth feed with skeleton on top. Spectrum analyser below main viewer
 ## Hardware
 Requires attached Xbox 360 Kinect (SLS structured light camera).
 
-Report issues at https://github.com/anomalyco/opencode/issues
+## Linux path
+Ubuntu / freenect work lives under `software/linux/`. **Same UI goal** as this Windows app (depth main + skeleton overlay); different stack (no Kinect SDK skeleton — use freenect + MediaPipe-class pose).
+
+- Parity plan: `software/linux/docs/LINUX-SLS-PLAN.md`
+- Product vision (tablet image / Ovilus / sensors): `docs/PRODUCT-VISION.md`
+- Setup: `software/linux/docs/UBUNTU-SETUP.md`
+- **M0 complete** (2026-07-16): live `freenect-glview` — `software/linux/notes/BRINGUP-FREENECT.md`
+- **UI decision:** web kiosk + Python backend (Lubuntu/tablet-friendly)
+- Next: M1 backend depth stream → M2 SLS sticks → kiosk image → Ovilus/sensors
+
+Report issues on this repo: https://github.com/tmdrake/sls-camera/issues

@@ -6,8 +6,17 @@ obj/
 .vs/
 .idea/
 __pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
 
 *.suo
 .vs/
 bin/
 obj/
+
+# Local captures / field dumps (keep tracked assets under **/Images/)
+/captures/
+software/linux/viewer/.venv/
