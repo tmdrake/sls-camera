@@ -20,3 +20,7 @@ obj/
 # Local captures / field dumps (keep tracked assets under **/Images/)
 /captures/
 software/linux/viewer/.venv/
+software/linux/viewer/**/__pycache__/
+# large model — run.sh downloads if missing
+software/linux/viewer/models/*.task
+screen.jpg

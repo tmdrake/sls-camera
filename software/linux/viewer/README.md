@@ -1,50 +1,74 @@
-# SLS Linux viewer (backend + kiosk web UI)
+# SLS Linux viewer
 
-**Product goal:** same as Windows SLS Explorer main screen — **depth-first view with skeleton stick-figure overlay** — shippable as a **tablet Linux appliance** later.
+Fullscreen web app: **large colorized depth + skeleton**, **smaller IR + skeleton**.  
+Operator is expected **behind the camera** (mirror **off** by default).
 
-Plan: [../docs/LINUX-SLS-PLAN.md](../docs/LINUX-SLS-PLAN.md) · Vision: [../../../docs/PRODUCT-VISION.md](../../../docs/PRODUCT-VISION.md).
+## Layout
 
-## UI decision
+| Pane | Content |
+|------|---------|
+| **Main (large)** | Colorized depth + SLS stick figures |
+| **Side (small)** | Infrared camera + same stick figures |
 
-- **Field UI:** web page in **kiosk browser** (touch-friendly, Lubuntu/tablet)  
-- **Processing:** Python **backend service** (freenect + pose + overlay + stream)  
-- OpenCV window: optional **dev spike only**, not the product chrome  
+Kinect 360 (libfreenect) cannot stream **RGB and IR at the same time**. This app runs **depth + IR** and runs MediaPipe pose on the **IR** image so both panes stay live.
 
-## Status
+## Quick start
 
-Scaffold only. Host freenect path is proven (`freenect-glview`, M0). Next: M1 backend depth stream → M2 sticks → M3/M4 kiosk image → M5 Ovilus/sensors.
+```bash
+# one-time: unload kernel webcam driver if needed
+sudo modprobe -r gspca_kinect
+# or: ../scripts/fix-kinect-access.sh
 
-## Planned layout
+cd software/linux/viewer
+./run.sh
+```
+
+Open **http://127.0.0.1:8765/** — tap once for fullscreen if the browser blocks auto-fullscreen.
+
+Options:
+
+```bash
+./run.sh --demo          # synthetic frames if Kinect unavailable
+./run.sh --mirror        # selfie-style flip (default off)
+./run.sh --port 8765
+```
+
+## Stack
+
+- `libfreenect` (system) via ctypes sync API  
+- OpenCV — colorize, draw, JPEG  
+- MediaPipe Tasks Pose Landmarker (`models/pose_landmarker_lite.task`)  
+- Flask — MJPEG stream + minimal API  
+- Web kiosk page — fullscreen, large touch buttons  
+
+## Files
 
 ```text
 viewer/
-  README.md
+  run.sh
   requirements.txt
-  run.sh                 # dev: backend + browser
+  models/pose_landmarker_lite.task   # auto-downloaded by run.sh
   sls_viewer/
-    __init__.py
-    main.py              # service entry
-    depth.py
+    main.py          # Flask entry
+    pipeline.py      # capture → pose → composite
+    freenect_io.py   # ctypes freenect
+    colorize.py
     pose.py
     skeleton.py
-    stream.py            # local HTTP / MJPEG / WebSocket
     config.py
   web/
-    index.html           # SLS main view
-    app.js
+    index.html
     style.css
+    app.js
 ```
 
-## UX targets
+## Troubleshooting
 
-- Depth-first main view + skeleton overlay  
-- Un-mirrored default (operator behind camera)  
-- Dark theme, large touch targets  
-- Later: Ovilus panel, extra sensor tiles (Arduino bridge)  
+| Symptom | Fix |
+|---------|-----|
+| “gspca_kinect loaded” | `sudo modprobe -r gspca_kinect` + blacklist |
+| open camera -3 | `../scripts/fix-kinect-access.sh` |
+| No skeleton | Stand in IR/depth FOV ~1.5–3 m; room can be dark (IR illuminator) |
+| Low FPS | `./run.sh` and set higher `pose_every_n_frames` in `config.py` |
 
-## Dependencies (expected)
-
-- System: `libfreenect`, Python 3, browser for kiosk  
-- Python: OpenCV (compose), MediaPipe (or lighter pose), freenect bindings, small web stack  
-
-Do not add large binary blobs or Windows SDK installers here.
+Firmware / tablet image packaging is separate — see `docs/PRODUCT-VISION.md`.

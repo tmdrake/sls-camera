@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>SLS Camera</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div id="app">
+    <img id="stream" src="/stream.mjpg" alt="SLS stream" />
+    <div id="hud">
+      <div id="title">SLS CAMERA</div>
+      <div id="status">starting…</div>
+      <div id="controls">
+        <button type="button" id="btn-fs" title="Fullscreen">Fullscreen</button>
+        <button type="button" id="btn-mirror" title="Toggle mirror">Mirror: OFF</button>
+      </div>
+      <div id="hint">Big: colorized depth + skeleton · Small: IR + skeleton · Operator behind camera</div>
+    </div>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -7,9 +7,8 @@ Ubuntu / freenect path for the same Xbox 360 Kinect (NUI) hardware used by the W
 | Milestone | Status |
 |-----------|--------|
 | **M0** — freenect install + live `freenect-glview` | **Done** (2026-07-16, OptiPlex + Kinect 360) |
-| **M1** — custom depth main window | Not started |
-| **M2** — SLS skeleton overlay on depth (**Windows parity core**) | Not started |
-| **M3** — touch web kiosk chrome | Not started |
+| **M1+M2 app** — web viewer: big depth+skel, small IR+skel | **Implemented** under `viewer/` (needs Kinect free of gspca) |
+| **M3** — touch web kiosk chrome polish | Partial (fullscreen + large buttons) |
 | **M4** — tablet appliance image | Not started |
 | **M5** — Ovilus + Arduino sensors | Not started |
 
