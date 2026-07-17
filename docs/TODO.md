@@ -2,16 +2,28 @@
 
 Living list of follow-ups for the SLS field app and appliance path.
 
+**Dev posture:** keep iterating features on a git checkout. Packaging today =
+user-local **install / uninstall** scripts (document what a field unit needs).
+**Tablets** are the eventual deploy target; firmware image, sensors, and power
+policy come later.
+
 ## Recording / capture
 
 - [x] **Mux audio into recordings** — Record writes MJPG video + parallel mic WAV, then muxes into a single AVI (PCM audio) via system `ffmpeg` or `imageio-ffmpeg`. Prefers Kinect USB Audio; shares spectrum stream to avoid exclusive-open conflicts. Fallback: video AVI + sidecar WAV if mux fails.
   - Related: `software/linux/viewer/sls_viewer/session_io.py`, `spectrum.py`, `audio_device.py`
 
-## Field / appliance
+## Field / packaging (dev → tablet)
 
-- [ ] Tablet image / autostart (Lubuntu-class)
-- [ ] gspca/udev install packaging for one-shot bring-up
-- [ ] Hardware BOM photos / wiring in `hardware/`
+- [x] **Install / uninstall scripts (dev packaging)** — user launcher + optional login autostart; documents host needs without a firmware image.
+  - `software/linux/scripts/install-field-app.sh`
+  - `software/linux/scripts/uninstall-field-app.sh`
+  - Docs: `software/linux/docs/FIELD-INSTALL.md`
+- [ ] **Clean the desktop before a firmware package install** — strip / replace stock Lubuntu (or similar) session chrome so a tablet does not ship a cluttered desktop; only then layer a firmware/image package.
+- [ ] **Tablet firmware / image package** — repeatable flash or offline install for field tablets (beyond `~/.local` scripts).
+- [ ] **gspca/udev one-shot** — fold or harden `fix-kinect-access.sh` into install path for true zero-touch bring-up.
+- [ ] **Hardware BOM photos / wiring** in `hardware/` (Kinect + tablet + external power).
+- [ ] **Power management** — stable SLS on **external power** with tablet: suspend/sleep policy, USB power, avoid brownouts when Kinect + display are both on.
+- [ ] **Sensor inputs** — Arduino/MCU bridge into the app (see product features).
 
 ## Product features (later)
 
@@ -30,3 +42,4 @@ Living list of follow-ups for the SLS field app and appliance path.
 - [x] Kinect video reconnect screen + infinite retry
 - [x] Spectrum / mic auto-retry when device drops
 - [x] Ovilus word panel (Windows word list + 15–30 min timer)
+- [x] Dev install/uninstall scripts + FIELD-INSTALL.md

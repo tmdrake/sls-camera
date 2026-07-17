@@ -59,6 +59,8 @@ Ubuntu / freenect work lives under `software/linux/`. **Same UI goal** as this W
 - Setup: `software/linux/docs/UBUNTU-SETUP.md` (freenect + `kinect-audio-setup`)  
 - M0 bring-up notes: `software/linux/notes/BRINGUP-FREENECT.md`  
 - **UI:** Qt fullscreen always-on-top (optional `--ui web`)  
-- Backlog: [docs/TODO.md](docs/TODO.md) — tablet image → Ovilus / sensors  
+- Dev packaging: `software/linux/scripts/install-field-app.sh` / `uninstall-field-app.sh`  
+  ([FIELD-INSTALL.md](software/linux/docs/FIELD-INSTALL.md))  
+- Backlog: [docs/TODO.md](docs/TODO.md) — clean desktop → tablet firmware → sensors / power  
 
 Report issues on this repo: https://github.com/tmdrake/sls-camera/issues

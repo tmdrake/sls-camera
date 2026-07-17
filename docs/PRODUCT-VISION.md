@@ -63,10 +63,12 @@ Detail: `software/linux/docs/LINUX-SLS-PLAN.md` · app: `software/linux/viewer/`
 2. **Session tools** — Snap / Record (AVI + mic) / detect auto-snap — **done on Linux**  
 3. **Spectrum** — mic FFT strip (Kinect UAC after `kinect-audio-setup`) — **done on Linux**  
 4. **Field resilience** — Kinect reconnect UI + mic retry — **done on Linux**  
-5. **Appliance hardening** — auto-start kiosk, freenect udev, no gspca fights, watchdog restart  
-6. **Image build** — documented image or scripted install for “load onto tablet”  
-7. **Ovilus interface** — word/phrase display — **timer done on Linux**; sensor-triggered / MCU inputs later  
-8. **Additional sensors** — EMF, temp, IMU, etc. on Arduino (or similar); bridge into the same UI  
+5. **Dev packaging** — install/uninstall scripts for launcher + optional autostart — **done** (`software/linux/scripts/install-field-app.sh`)  
+6. **Appliance hardening** — freenect udev, no gspca fights, watchdog restart; **clean desktop before firmware package**  
+7. **Image / firmware package** — tablet-oriented install (not just `~/.local` wrappers)  
+8. **Ovilus interface** — word/phrase display — **timer done on Linux**; sensor-triggered / MCU inputs later  
+9. **Additional sensors** — EMF, temp, IMU, etc. on Arduino (or similar); bridge into the same UI  
+10. **Power management** — stable SLS on **external power** + tablet (sleep/USB policy so investigations stay up)  
 
 Spelling note: product/docs use **Ovilus** (spirit box–style word UI already referenced in Windows `AGENTS.md`).
 

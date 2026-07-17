@@ -11,9 +11,11 @@ Ubuntu / freenect path for the same Xbox 360 Kinect (NUI) hardware used by the W
 | **Spectrum** — mic FFT strip | **Done** (Kinect USB Audio preferred after firmware) |
 | **Session** — Snap / Record + mic in AVI | **Done** (main bar + Settings) |
 | **Reconnect** — video + mic retry | **Done** (RECONNECTING UI; spectrum mic retry) |
-| **Tablet appliance image** | Not started |
+| **Dev install / uninstall scripts** | **Done** (`scripts/install-field-app.sh`) |
+| **Tablet firmware image** | Not started (clean desktop first — see TODO) |
 | **Ovilus** word panel (15–30 min) | **Done** |
 | **Arduino sensors + Ovilus triggers** | Not started |
+| **External power policy** | Not started |
 
 - Bring-up: [notes/BRINGUP-FREENECT.md](notes/BRINGUP-FREENECT.md)  
 - Parity plan: [docs/LINUX-SLS-PLAN.md](docs/LINUX-SLS-PLAN.md)  
@@ -47,6 +49,10 @@ software/linux/
     check-kinect.sh         # USB, freenect, ALSA Kinect mic
     install-freenect.sh
     fix-kinect-access.sh
+    install-field-app.sh    # dev packaging: launcher + optional autostart
+    uninstall-field-app.sh
+  docs/
+    FIELD-INSTALL.md        # what install does / tablet roadmap
   viewer/                   # Qt SLS application
     run.sh
     README.md

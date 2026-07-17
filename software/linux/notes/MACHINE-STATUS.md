@@ -31,7 +31,8 @@ Last updated: **2026-07-16** (AVI+audio mux + reconnect verified).
 | IR sensor gain | Fixed 50 (not in UI) |
 | Mic gain | OS/Pulse default (app does not set ALSA level) |
 | Kinect ALSA mic | Confirmed (`arecord -l` card “Kinect USB Audio”) |
-| Tablet image | Not started |
+| Dev install scripts | Present (`install-field-app.sh` / uninstall) |
+| Tablet firmware image | Not started (clean desktop first) |
 
 ## Notes
 
