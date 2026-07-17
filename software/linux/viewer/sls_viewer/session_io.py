@@ -25,6 +25,7 @@ class SessionRecorder:
         self._path: Optional[Path] = None
         self._recording = False
         self._fps = 15.0
+        self._record_started: float = 0.0
         self._last_detected = 0
         self._session_log: Optional[Path] = None
         self._flash = ""
@@ -37,6 +38,20 @@ class SessionRecorder:
     @property
     def path(self) -> Optional[Path]:
         return self._path
+
+    def recording_elapsed_s(self) -> float:
+        if not self._recording or self._record_started <= 0:
+            return 0.0
+        return max(0.0, time.time() - self._record_started)
+
+    def recording_elapsed_str(self) -> str:
+        """Wall-clock elapsed as M:SS or H:MM:SS."""
+        sec = int(self.recording_elapsed_s())
+        h, rem = divmod(sec, 3600)
+        m, s = divmod(rem, 60)
+        if h > 0:
+            return f"{h}:{m:02d}:{s:02d}"
+        return f"{m}:{s:02d}"
 
     def flash_message(self) -> str:
         if time.time() < self._flash_until:
@@ -88,6 +103,7 @@ class SessionRecorder:
             self._path = path
             self._recording = True
             self._fps = float(fps)
+            self._record_started = time.time()
         self._set_flash(f"recording {path.name}")
         self._log_event("record_start", {"file": path.name})
         return path
@@ -106,6 +122,7 @@ class SessionRecorder:
 
     def stop_record(self) -> Optional[Path]:
         path = self._path
+        elapsed = self.recording_elapsed_str() if self._recording else "0:00"
         with self._lock:
             if self._writer is not None:
                 try:
@@ -114,9 +131,12 @@ class SessionRecorder:
                     pass
             self._writer = None
             self._recording = False
+            self._record_started = 0.0
         if path:
-            self._set_flash(f"saved {path.name}")
-            self._log_event("record_stop", {"file": path.name})
+            self._set_flash(f"saved {path.name} ({elapsed})")
+            self._log_event(
+                "record_stop", {"file": path.name, "elapsed": elapsed}
+            )
         return path
 
     def _log_path(self) -> Path:

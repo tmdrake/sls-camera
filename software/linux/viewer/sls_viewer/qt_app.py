@@ -166,7 +166,7 @@ class SettingsDialog(QDialog):
 
         root.addLayout(grid)
 
-        # Defaults (MediaPipe recommended) + session actions
+        # Defaults only here — Snapshot/Record live on main bar next to Settings
         act = QHBoxLayout()
         self.btn_defaults = QPushButton("Defaults")
         self.btn_defaults.setObjectName("wide")
@@ -174,15 +174,7 @@ class SettingsDialog(QDialog):
             "Reset Max people=1 and Confidence=0.5 (MediaPipe official defaults)"
         )
         self.btn_defaults.clicked.connect(self._reset_defaults)
-        self.btn_snap = QPushButton("Snapshot")
-        self.btn_snap.setObjectName("wide")
-        self.btn_snap.clicked.connect(self._snapshot)
-        self.btn_record = QPushButton("Record")
-        self.btn_record.setObjectName("wide")
-        self.btn_record.clicked.connect(self._toggle_record)
         act.addWidget(self.btn_defaults)
-        act.addWidget(self.btn_snap)
-        act.addWidget(self.btn_record)
         act.addStretch(1)
         root.addLayout(act)
 
@@ -215,9 +207,6 @@ class SettingsDialog(QDialog):
         )
         self.btn_autosnap.setText(
             "ON" if self.pipeline.s.auto_snap_on_detect else "OFF"
-        )
-        self.btn_record.setText(
-            "Stop rec" if self.session.recording else "Record"
         )
         mic = self.spectrum.device_name or "(no mic)"
         err = self.spectrum.error
@@ -256,19 +245,6 @@ class SettingsDialog(QDialog):
     def _reset_defaults(self) -> None:
         """Confidence 0.5 + Max people 1 (MediaPipe PoseLandmarker defaults)."""
         self.pipeline.reset_pose_defaults()
-        self._refresh()
-
-    def _snapshot(self) -> None:
-        frame = self.pipeline.get_bgr()
-        self.session.snapshot(frame)
-        self._refresh()
-
-    def _toggle_record(self) -> None:
-        if self.session.recording:
-            self.session.stop_record()
-        else:
-            frame = self.pipeline.get_bgr()
-            self.session.start_record(frame, fps=self.pipeline.s.record_fps)
         self._refresh()
 
     def showEvent(self, event) -> None:
@@ -337,6 +313,14 @@ class SlsMainWindow(QMainWindow):
         self.btn_settings = QPushButton("Settings")
         self.btn_settings.setObjectName("wide")
         self.btn_settings.clicked.connect(self._open_settings)
+        self.btn_snap = QPushButton("Snap")
+        self.btn_snap.setObjectName("wide")
+        self.btn_snap.setToolTip("Save current frame (JPEG with timestamp)")
+        self.btn_snap.clicked.connect(self._snapshot)
+        self.btn_record = QPushButton("Record")
+        self.btn_record.setObjectName("wide")
+        self.btn_record.setToolTip("Start/stop video recording (timestamped file)")
+        self.btn_record.clicked.connect(self._toggle_record)
         self.btn_quit = QPushButton("Quit")
         self.btn_quit.setObjectName("wide")
         self.btn_quit.clicked.connect(self.close)
@@ -344,6 +328,8 @@ class SlsMainWindow(QMainWindow):
         bar_layout.addWidget(self.title)
         bar_layout.addWidget(self.status, stretch=1)
         bar_layout.addWidget(self.btn_settings)
+        bar_layout.addWidget(self.btn_snap)
+        bar_layout.addWidget(self.btn_record)
         bar_layout.addWidget(self.btn_quit)
         layout.addWidget(bar)
 

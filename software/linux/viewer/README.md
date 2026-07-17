@@ -61,13 +61,15 @@ On open the app will:
 - Needs system package: `sudo apt install libportaudio2` (for Python `sounddevice`).  
 - Settings: **Spectrum** on/off.  
 
-## Session tools (Settings)
+## Session tools (main bar)
 
 | Action | Behavior |
 |--------|----------|
-| **Snapshot** | Save current composite JPEG under `viewer/captures/` |
-| **Record** | Start/stop MJPG AVI of the composite view |
-| **Auto-snap on detect** | Optional snap when `Detected` goes 0→≥1 |
+| **Snap** | Save current composite JPEG under `viewer/captures/` (`sls_YYYYMMDD_HHMMSS.jpg`) |
+| **Record** | Start/stop MJPG AVI; button + status show elapsed time (`REC 0:12`); file is timestamped |
+| **Auto-snap on detect** | Settings: optional snap when `Detected` goes 0→≥1 |
+
+Keys: **C** snap · **R** record toggle.
 
 ## Skeletons / Settings
 
@@ -82,9 +84,9 @@ On open the app will:
 
 Sources: [PoseLandmarkerOptions](https://ai.google.dev/edge/api/mediapipe/python/mp/tasks/vision/PoseLandmarkerOptions) — `num_poses=1`, `min_pose_detection_confidence=0.5`, `min_pose_presence_confidence=0.5`, `min_tracking_confidence=0.5`.
 
-Bottom bar: **Settings** · **Quit**. Spectrum strip sits above the bar when enabled.
+Bottom bar: **Settings** · **Snap** · **Record** · **Quit**. Spectrum strip sits above the bar.
 
-Keys: `S` settings · `[` `]` conf · `,` `.` max people · `M` mirror · `Esc` closes Settings then quits · `F` fullscreen · `Q` quit.
+Keys: `S` settings · `C` snap · `R` record · `[` `]` conf · `,` `.` max · `M` mirror · `Esc` closes Settings then quits · `F` fullscreen · `Q` quit.
 
 ```bash
 ./run.sh --demo            # synthetic UI test (no Kinect)
