@@ -254,11 +254,13 @@ def paint_drakevox_bgr(
     x1, y1 = x0 + box_w, y0 + box_h
 
     overlay = bgr.copy()
-    color_bg = (28, 12, 48) if flash else (14, 14, 18)
+    # SLS green (BGR) — easier to read than red on depth
+    green = (0, 255, 180)
+    color_bg = (10, 28, 20) if flash else (10, 16, 14)
     cv2.rectangle(overlay, (x0, y0), (x1, y1), color_bg, -1)
-    border = (0, 0, 220) if flash else (60, 40, 40)
+    border = green if flash else (40, 80, 60)
     cv2.rectangle(overlay, (x0, y0), (x1, y1), border, 1)
-    cv2.line(overlay, (x0, y0), (x1, y0), (0, 255, 180), 1)
+    cv2.line(overlay, (x0, y0), (x1, y0), green, 1)
     alpha = 0.78 if flash else 0.62
     cv2.addWeighted(overlay, alpha, bgr, 1.0 - alpha, 0, bgr)
 
@@ -268,7 +270,7 @@ def paint_drakevox_bgr(
         (x0 + 8, y0 + 16),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.42,
-        (0, 90, 220),
+        green,
         1,
         cv2.LINE_AA,
     )
@@ -281,7 +283,7 @@ def paint_drakevox_bgr(
             (x0 + 8, text_y + 4),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.55,
-            (120, 120, 120),
+            (100, 140, 120),
             1,
             cv2.LINE_AA,
         )
@@ -292,12 +294,12 @@ def paint_drakevox_bgr(
         label = f"{ev.time_str()} {ev.word}"
         if is_latest:
             scale = 0.58 if flash else 0.52
-            color = (0, 0, 220)
+            color = green
             thick = 2
         else:
             scale = 0.45
             fade = max(70, 160 - i * 22)
-            color = (fade, fade, fade)
+            color = (int(fade * 0.6), int(fade * 0.9), int(fade * 0.7))
             thick = 1
         max_chars = max(8, box_w // 8)
         if len(label) > max_chars:

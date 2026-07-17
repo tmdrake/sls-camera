@@ -325,10 +325,9 @@ class FramePipeline:
 
         clock = datetime.now().strftime("%H:%M:%S")
         n = int(self._poses_count)
-        person_label = f"Person:{n}" if n == 1 else f"Persons:{n}"
         cv2.putText(
             canvas,
-            f"{clock}  {person_label}",
+            f"{clock}  Person:{n}",
             (16, H - 16),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.55,
