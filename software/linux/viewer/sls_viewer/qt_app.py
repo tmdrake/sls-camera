@@ -263,7 +263,7 @@ class SettingsDialog(QDialog):
         root.addWidget(self.mic_label)
 
         self.drakevox_label = QLabel("")
-        self.drakevox_label.setStyleSheet("color: #aa4444; font-size: 12px;")
+        self.drakevox_label.setStyleSheet("color: #00ffb4; font-size: 12px;")
         self.drakevox_label.setWordWrap(True)
         root.addWidget(self.drakevox_label)
 

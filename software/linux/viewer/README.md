@@ -145,7 +145,7 @@ Spirit-box style word generator (not “Ovilus”). Default bank is the Digital 
 |------|--------|
 | **Words** | `data/drakevox_words_digitaldowsing.txt` (~2035); fallback 20 classic words if missing |
 | **Timer** | Random **300–900 s** (5–15 min) between words |
-| **UI** | Panel **under the IR PiP**; last **5** as `HH:MM:SS WORD` |
+| **UI** | Panel **under the IR PiP** (green text); last **5** as `HH:MM:SS WORD` |
 | **TTS** | `libespeak-ng` / espeak / spd-say fallback |
 | **Manual** | **DrakeVox now** or key **`O`** |
 | **Auto-snap** | If **DrakeVox on auto-snap** + **Auto-snap on detect**: generate word + TTS and burn into JPEG |

@@ -320,9 +320,15 @@ class FramePipeline:
         cv2.rectangle(canvas, (x0 - 1, y0 - 1), (x1 + 1, y1 + 1), (0, 255, 180), 1)
         canvas[y0:y1, x0:x1] = pip
 
+        # Local clock + person count (replaces FPS HUD)
+        from datetime import datetime
+
+        clock = datetime.now().strftime("%H:%M:%S")
+        n = int(self._poses_count)
+        person_label = f"Person:{n}" if n == 1 else f"Persons:{n}"
         cv2.putText(
             canvas,
-            f"{self._fps:.1f} FPS  poses:{self._poses_count}",
+            f"{clock}  {person_label}",
             (16, H - 16),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.55,
