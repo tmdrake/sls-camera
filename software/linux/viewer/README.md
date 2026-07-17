@@ -10,15 +10,16 @@
 | **PiP** | Small **IR + skeleton** (top-right) |
 | **Pose** | MediaPipe on **colorized depth** only |
 | **Spectrum** | FFT strip under video; prefers **Kinect USB Audio**; **retries** if mic drops |
-| **Snap** | JPEG (current DrakeVox panel if visible); LED **red→green** |
-| **Auto-snap + DrakeVox** | Settings: **DrakeVox on auto-snap** (default ON) fires word+TTS into the JPEG on detect |
-| **Record** | AVI + mic + TTS; Kinect LED **red** while REC, green/off when stopped |
-| **Reconnect** | Splash **Reconnecting to SLS Camera**; infinite retry until device returns |
-| **Battery** | Status `BAT n%` / `⚡` when a system battery exists (hidden on desktop) |
+| **Snap** | JPEG (current DrakeVox panel if visible); Kinect LED **red → green** (or red if still REC) |
+| **Auto-snap** | Optional on pose appear; **DrakeVox on auto-snap** (default ON) adds word+TTS into that JPEG |
+| **Record** | AVI + mic + TTS; Kinect LED solid **red** while REC; green/off when stopped |
+| **Reconnect** | Splash **Starting / Reconnecting to SLS Camera**; infinite retry |
+| **Battery** | Status `BAT n%` / `⚡` when a battery exists (hidden on desktop) |
+| **Brightness** | Settings ±10% (sysfs / brightnessctl / xrandr) |
 | **Quit** | Confirms before exit (stops recording cleanly) |
-| **DrakeVox** | Random word every **5–15 min** (timestamped + **TTS**); under IR PiP last 5; key **O** |
-| **Settings** | Max people, confidence, mirror, spectrum, auto-snap, DrakeVox, Defaults |
-| **On open** | LED green, tilt auto-level 0°, IR sensor gain **50** (fixed, not in UI) |
+| **DrakeVox** | 5–15 min timer + TTS; ~2k-word list; under IR PiP; key **O** |
+| **Settings** | Pose, mirror, spectrum, auto-snap, DrakeVox, brightness, Defaults/Clear (confirm) |
+| **On open** | LED green, tilt auto-level 0°, IR sensor gain **50** (fixed) |
 
 Browser UI is optional (`--ui web`).
 

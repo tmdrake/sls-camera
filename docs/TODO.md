@@ -41,9 +41,13 @@ policy come later.
 - [x] Live depth + IR PiP + skeletons (MediaPipe on colorized depth)
 - [x] Qt Settings; Snap/Record on main bar; REC elapsed time
 - [x] Spectrum strip (Kinect USB Audio after kinect-audio-setup)
-- [x] MediaPipe Defaults button (conf 0.5, max poses 1)
+- [x] MediaPipe Defaults button (conf 0.5, max poses 1) with confirm
+- [x] Clear captures (confirm); blocked while recording
 - [x] AVI recordings with muxed mic audio (Kinect preferred)
-- [x] Kinect video reconnect screen + infinite retry
+- [x] Kinect LED: red while REC; red flash on snap then green
+- [x] Kinect video reconnect + SLS splash; stale-frame USB death detect
 - [x] Spectrum / mic auto-retry when device drops
-- [x] DrakeVox word panel (Windows word list + 5–15 min timer, timestamped)
+- [x] DrakeVox (~2k word list, 5–15 min, TTS, AVI burn-in)
+- [x] DrakeVox on auto-snap setting (default ON; not manual Snap)
+- [x] Battery status + Quit confirm + display brightness
 - [x] Dev install/uninstall scripts + FIELD-INSTALL.md

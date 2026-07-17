@@ -53,7 +53,8 @@ Ubuntu / freenect work lives under `software/linux/`. **Same UI goal** as this W
 
 - **Field app (working):** `software/linux/viewer/` — `./run.sh`  
   Depth + IR PiP, skeletons, spectrum (Kinect USB Audio), Snap/Record **AVI+mic**,  
-  reconnect UI, DrakeVox (5–15 min, TTS, in AVI), Settings (MediaPipe Defaults)  
+  reconnect splash, DrakeVox (5–15 min, TTS, auto-snap option), LED cues (REC red),  
+  battery/brightness/Quit confirm, Settings (Defaults/Clear confirm)  
 - Parity plan: `software/linux/docs/LINUX-SLS-PLAN.md`  
 - Product vision: `docs/PRODUCT-VISION.md`  
 - Setup: `software/linux/docs/UBUNTU-SETUP.md` (freenect + `kinect-audio-setup`)  
