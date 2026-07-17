@@ -14,8 +14,7 @@
     }
   }
 
-  // Default: go fullscreen as soon as the user interacts (browsers block auto-FS).
-  // Also try on load — works in some kiosk/flags configurations.
+  // Mirror defaults ON in backend; label updates from /api/status
   window.addEventListener("load", () => {
     enterFullscreen();
   });

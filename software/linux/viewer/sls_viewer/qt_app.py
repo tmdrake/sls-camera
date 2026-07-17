@@ -80,7 +80,9 @@ class SlsMainWindow(QMainWindow):
         self.title.setObjectName("title")
         self.status = QLabel("starting…")
         self.status.setObjectName("status")
-        self.btn_mirror = QPushButton("Mirror: OFF")
+        self.btn_mirror = QPushButton(
+            "Mirror: ON" if pipeline.mirror else "Mirror: OFF"
+        )
         self.btn_mirror.clicked.connect(self._toggle_mirror)
         self.btn_quit = QPushButton("Quit")
         self.btn_quit.clicked.connect(self.close)

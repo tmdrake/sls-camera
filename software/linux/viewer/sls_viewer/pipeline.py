@@ -128,17 +128,12 @@ class FramePipeline:
             )
 
     def _compose(self, depth_bgr: np.ndarray, ir_bgr: np.ndarray) -> np.ndarray:
-        """Big depth (left) + small IR (right), both with labels."""
+        """Full-bleed depth + skeleton; IR + skeleton as small top-corner PiP."""
         W, H = self.s.frame_width, self.s.frame_height
-        ir_w = self.s.ir_panel_width
-        main_w = W - ir_w
+        canvas = cv2.resize(depth_bgr, (W, H), interpolation=cv2.INTER_AREA)
 
-        main = cv2.resize(depth_bgr, (main_w, H), interpolation=cv2.INTER_AREA)
-        side = cv2.resize(ir_bgr, (ir_w, H), interpolation=cv2.INTER_AREA)
-
-        # labels
         cv2.putText(
-            main,
+            canvas,
             "DEPTH + SLS",
             (16, 36),
             cv2.FONT_HERSHEY_SIMPLEX,
@@ -147,31 +142,46 @@ class FramePipeline:
             2,
             cv2.LINE_AA,
         )
+
+        # IR picture-in-picture (top corner, scaled)
+        pip_w = max(80, int(self.s.ir_pip_width))
+        pip_h = max(60, int(self.s.ir_pip_height))
+        margin = max(0, int(self.s.ir_pip_margin))
+        pip = cv2.resize(ir_bgr, (pip_w, pip_h), interpolation=cv2.INTER_AREA)
         cv2.putText(
-            side,
+            pip,
             "IR + SLS",
-            (12, 32),
+            (8, 22),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (200, 200, 200),
-            2,
+            0.55,
+            (220, 220, 220),
+            1,
             cv2.LINE_AA,
         )
+
+        if self.s.ir_pip_corner == "top-left":
+            x0, y0 = margin, margin
+        else:
+            # default top-right
+            x0 = W - pip_w - margin
+            y0 = margin
+
+        # Border / shadow so PiP reads clearly over depth
+        x1, y1 = x0 + pip_w, y0 + pip_h
+        cv2.rectangle(canvas, (x0 - 2, y0 - 2), (x1 + 2, y1 + 2), (0, 0, 0), 2)
+        cv2.rectangle(canvas, (x0 - 1, y0 - 1), (x1 + 1, y1 + 1), (0, 255, 180), 1)
+        canvas[y0:y1, x0:x1] = pip
+
         cv2.putText(
-            side,
+            canvas,
             f"{self._fps:.1f} FPS  poses:{self._poses_count}",
-            (12, H - 16),
+            (16, H - 16),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
+            0.55,
             (180, 180, 180),
             1,
             cv2.LINE_AA,
         )
-        # vertical divider
-        canvas = np.zeros((H, W, 3), dtype=np.uint8)
-        canvas[:, :main_w] = main
-        canvas[:, main_w:] = side
-        cv2.line(canvas, (main_w, 0), (main_w, H), (40, 40, 40), 2)
         return canvas
 
     def _loop(self) -> None:

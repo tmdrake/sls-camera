@@ -19,9 +19,9 @@ class Settings:
     # Kinect index (first device)
     device_index: int = 0
 
-    # Operator stands behind the camera → unmirrored (no selfie flip).
-    # Set True only if you want a bathroom-mirror style image.
-    mirror: bool = False
+    # Mirror ON by default (operator behind camera sees familiar left/right).
+    # Use --no-mirror or UI toggle to turn off.
+    mirror: bool = True
 
     # Pose runs on IR (Kinect cannot stream RGB + IR at once with freenect).
     # IR illuminator lights people well enough for MediaPipe in dark rooms.
@@ -38,10 +38,14 @@ class Settings:
     bone_thickness: int = 3
     joint_radius: int = 5
 
-    # Composite layout (pixels of streamed frame)
+    # Composite layout: full-bleed depth; IR is a small top-corner PiP
     frame_width: int = 1280
     frame_height: int = 720
-    ir_panel_width: int = 360
+    # IR picture-in-picture (top-right by default)
+    ir_pip_width: int = 280
+    ir_pip_height: int = 210
+    ir_pip_margin: int = 12
+    ir_pip_corner: str = "top-right"  # top-right | top-left
 
     jpeg_quality: int = 80
     target_fps: float = 20.0

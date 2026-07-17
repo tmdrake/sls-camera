@@ -1,9 +1,12 @@
 # SLS Linux viewer
 
-**Fullscreen native Qt app** (always on top): large **colorized depth + skeleton**, smaller **IR + skeleton**.  
-Operator **behind the camera** — mirror **off** by default.
+**Fullscreen native Qt app** (always on top):
 
-Browser kiosk is **optional** (`--ui web`), not the field UI.
+- **Main:** full-screen **colorized depth + skeleton**
+- **PiP:** small **IR + skeleton** in the **top corner** (scaled)
+- **Mirror ON by default** (toggle in UI or `--no-mirror`)
+
+Browser UI is **optional** (`--ui web`).
 
 ## Why Qt (not browser kiosk)
 
@@ -20,8 +23,8 @@ For a bulletproof “this is the app” experience: **Qt fullscreen always-on-to
 
 | Pane | Content |
 |------|---------|
-| **Main (large)** | Colorized depth + SLS stick figures |
-| **Side (small)** | Infrared + same stick figures |
+| **Full frame** | Colorized depth + SLS stick figures |
+| **Top-corner PiP** | Infrared + same stick figures (small, scaled) |
 
 Kinect streams **depth + IR** (not RGB+IR at once). Pose runs on **IR**.
 
@@ -38,7 +41,7 @@ Touch: **Mirror** / **Quit** buttons on the bottom bar.
 
 ```bash
 ./run.sh --demo           # no Kinect (UI test)
-./run.sh --mirror         # selfie flip
+./run.sh --no-mirror      # turn default mirror off
 ./run.sh --ui web         # optional browser UI on :8765
 ```
 
