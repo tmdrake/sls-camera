@@ -1,8 +1,7 @@
-"""Ovilus random-word panel — Windows parity (15–30 min timer).
+"""Ovilus random-word panel.
 
-Windows reference: software/source/example/KinectWindow.xaml.cs
-  - word list, Timer 900000 ms then 900000 + rand(900000)
-  - history capped at 12
+Word list from Windows SLS Explorer; timer is field-tuned to 5–15 min
+(Windows was 15–30). Each generation is timestamped for overlay + history.
 """
 
 from __future__ import annotations
@@ -38,9 +37,9 @@ DEFAULT_WORDS: Tuple[str, ...] = (
     "GO",
 )
 
-# Windows: 15 min base, +0..15 min random → 15–30 min between words
-MIN_INTERVAL_S = 15 * 60
-MAX_INTERVAL_S = 30 * 60
+# Field interval: random 5–15 minutes between words
+MIN_INTERVAL_S = 5 * 60
+MAX_INTERVAL_S = 15 * 60
 HISTORY_MAX = 12
 
 
@@ -49,9 +48,11 @@ class OvilusEvent:
     ts: float
     word: str
 
+    def time_str(self) -> str:
+        return datetime.fromtimestamp(self.ts).strftime("%H:%M:%S")
+
     def label(self) -> str:
-        t = datetime.fromtimestamp(self.ts).strftime("%H:%M:%S")
-        return f"{t} — {self.word}"
+        return f"{self.time_str()} — {self.word}"
 
 
 class OvilusEngine:
@@ -98,25 +99,6 @@ class OvilusEngine:
     def last_fire_at(self) -> float:
         with self._lock:
             return self._last_fire_at
-
-    def seconds_until_next(self) -> float:
-        with self._lock:
-            if not self._enabled:
-                return float("inf")
-            return max(0.0, self._next_at - time.time())
-
-    def next_eta_str(self) -> str:
-        sec = self.seconds_until_next()
-        if not self.enabled:
-            return "off"
-        if sec == float("inf"):
-            return "—"
-        m = int(sec // 60)
-        s = int(sec % 60)
-        if m >= 60:
-            h, m = divmod(m, 60)
-            return f"{h}h{m:02d}m"
-        return f"{m}:{s:02d}"
 
     def history(self) -> List[OvilusEvent]:
         with self._lock:
@@ -178,19 +160,17 @@ OVERLAY_HISTORY_N = 5
 
 def paint_ovilus_bgr(
     bgr,
-    word: str,
     *,
     enabled: bool,
     flash: bool = False,
-    eta: str = "",
-    history_words: Optional[Sequence[str]] = None,
+    history: Optional[Sequence[OvilusEvent]] = None,
     pip_w: int = 280,
     pip_h: int = 210,
     pip_margin: int = 12,
     pip_corner: str = "top-right",
     history_n: int = OVERLAY_HISTORY_N,
 ) -> None:
-    """Draw Ovilus panel under the IR PiP (taller list of last N words)."""
+    """Draw Ovilus panel under IR PiP: last N words with generation timestamps."""
     import cv2
 
     if bgr is None or bgr.size == 0:
@@ -200,20 +180,11 @@ def paint_ovilus_bgr(
         return
 
     n_show = max(1, int(history_n))
-    # Build newest-first word list (pad history with current if needed)
-    words: List[str] = []
-    if history_words:
-        for raw in history_words:
-            s = str(raw).strip().upper()
-            if s:
-                words.append(s)
-    if word and (not words or words[0] != word.strip().upper()):
-        words.insert(0, word.strip().upper())
-    words = words[:n_show]
+    events: List[OvilusEvent] = list(history or [])[:n_show]
 
     margin = max(0, int(pip_margin))
     box_w = max(80, min(int(pip_w), w - 2 * margin))
-    # Taller panel: title + N word rows
+    # Taller panel: title + N timestamped rows
     title_h = 22
     row_h = 26
     pad_y = 10
@@ -224,9 +195,7 @@ def paint_ovilus_bgr(
         x0 = margin
     else:
         x0 = w - box_w - margin
-    # Directly under IR PiP
     y0 = margin + max(60, int(pip_h)) + gap
-    # Keep on-screen if frame is short
     if y0 + box_h > h - 8:
         y0 = max(margin, h - box_h - 8)
     x1, y1 = x0 + box_w, y0 + box_h
@@ -234,22 +203,13 @@ def paint_ovilus_bgr(
     overlay = bgr.copy()
     color_bg = (28, 12, 48) if flash else (14, 14, 18)
     cv2.rectangle(overlay, (x0, y0), (x1, y1), color_bg, -1)
-    border = (0, 0, 220) if flash else (0, 180, 255)  # cyan-ish to match IR frame
-    if flash:
-        border = (0, 0, 220)
-    else:
-        border = (60, 40, 40)
+    border = (0, 0, 220) if flash else (60, 40, 40)
     cv2.rectangle(overlay, (x0, y0), (x1, y1), border, 1)
-    # Match IR green accent on top edge
     cv2.line(overlay, (x0, y0), (x1, y0), (0, 255, 180), 1)
     alpha = 0.78 if flash else 0.62
     cv2.addWeighted(overlay, alpha, bgr, 1.0 - alpha, 0, bgr)
 
     title = "OVILUS" if enabled else "OVILUS OFF"
-    if enabled and eta and not words:
-        title = f"OVILUS  next {eta}"
-    elif enabled and eta:
-        title = f"OVILUS  ~{eta}"
     cv2.putText(
         bgr,
         title,
@@ -265,10 +225,10 @@ def paint_ovilus_bgr(
         return
 
     text_y = y0 + title_h + pad_y
-    if not words:
+    if not events:
         cv2.putText(
             bgr,
-            f"next {eta}" if eta else "…",
+            "…",
             (x0 + 8, text_y + 4),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.55,
@@ -278,24 +238,22 @@ def paint_ovilus_bgr(
         )
         return
 
-    for i, wtxt in enumerate(words):
+    for i, ev in enumerate(events):
         is_latest = i == 0
-        # Newest large/red; older dimmer and slightly smaller
+        tstr = ev.time_str()
+        wtxt = ev.word
         if is_latest:
-            scale = 0.85 if flash else 0.75
-            color = (0, 0, 220)  # BGR red-ish (Windows #AA0000)
+            scale = 0.58 if flash else 0.52
+            color = (0, 0, 220)  # BGR red-ish
             thick = 2
-            prefix = "▸ " if flash else ""
+            label = f"{tstr} {wtxt}"
         else:
-            scale = 0.55
-            # Fade older rows
+            scale = 0.45
             fade = max(70, 160 - i * 22)
             color = (fade, fade, fade)
             thick = 1
-            prefix = "  "
-        label = f"{prefix}{wtxt}"
-        # Clip long labels to panel width (approx)
-        max_chars = max(6, box_w // (10 if is_latest else 8))
+            label = f"{tstr} {wtxt}"
+        max_chars = max(8, box_w // 8)
         if len(label) > max_chars:
             label = label[: max_chars - 1] + "…"
         cv2.putText(

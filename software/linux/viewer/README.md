@@ -13,7 +13,7 @@
 | **Snap** | Timestamped JPEG → `captures/sls_YYYYMMDD_HHMMSS.jpg` |
 | **Record** | Timestamped **AVI with mic audio** (MJPG + PCM); **elapsed** (`REC 0:12`); shares spectrum mic |
 | **Reconnect** | Kinect video loss → **RECONNECTING** frame; infinite retry until device returns |
-| **Ovilus** | Random word every **15–30 min** (Windows list); overlay + history; key **O** |
+| **Ovilus** | Random word every **5–15 min** (timestamped); under IR PiP last 5; key **O** |
 | **Settings** | Max people, confidence, mirror, spectrum, auto-snap, Ovilus, Defaults |
 | **On open** | LED green, tilt auto-level 0°, IR sensor gain **50** (fixed, not in UI) |
 
@@ -78,7 +78,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 | **Mirror** | Off by default |
 | **Spectrum** | On/off; strip height always reserved (no layout jump) |
 | **Auto-snap on detect** | Off by default |
-| **Ovilus** | On by default; random word every 15–30 min; **Ovilus now** forces a word |
+| **Ovilus** | On by default; random word every **5–15 min** (timestamped); **Ovilus now** forces a word |
 
 ## Captures
 
@@ -135,8 +135,8 @@ Windows parity (`KinectWindow.xaml.cs`):
 | Item | Detail |
 |------|--------|
 | **Words** | SPIRIT, GHOST, SHADOW, CHILD, WOMAN, MAN, DEMON, ANGEL, LEAVE, STAY, HELP, HERE, COLD, ENERGY, YES, NO, DARK, LIGHT, FOLLOW, GO |
-| **Timer** | Random **15–30 minutes** between words |
-| **UI** | Taller panel **under the IR PiP** (top-right); shows **last 5 words** (newest first) |
+| **Timer** | Random **5–15 minutes** between words |
+| **UI** | Taller panel **under the IR PiP**; **last 5** as `HH:MM:SS WORD` (newest first) |
 | **History** | Last 5 on overlay; last 12 in Settings; `session_*.jsonl` event `ovilus` |
 | **Manual** | Settings **Ovilus now** or key **`O`** |
 | **Recording** | Overlay is display-only (not burned into the AVI) |
@@ -174,7 +174,7 @@ viewer/
     skeleton.py
     spectrum.py           # FFT + mic retry + PCM sinks
     session_io.py         # Snap / Record + A/V mux
-    ovilus.py             # random word 15–30 min
+    ovilus.py             # random word 5–15 min, timestamped
     audio_device.py       # Kinect mic picker
     config.py
   web/                    # optional browser UI

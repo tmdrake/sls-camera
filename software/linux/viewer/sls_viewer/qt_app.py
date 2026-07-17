@@ -171,7 +171,7 @@ class SettingsDialog(QDialog):
         grid.addWidget(QLabel("Ovilus"), row, 0)
         self.btn_ovilus = QPushButton()
         self.btn_ovilus.setObjectName("wide")
-        self.btn_ovilus.setToolTip("Random word every 15–30 min (Windows parity)")
+        self.btn_ovilus.setToolTip("Random word every 5–15 min; each hit is timestamped")
         self.btn_ovilus.clicked.connect(self._toggle_ovilus)
         grid.addWidget(self.btn_ovilus, row, 1, 1, 3)
         row += 1
@@ -250,12 +250,14 @@ class SettingsDialog(QDialog):
             self.mic_label.setText(
                 "Mic: off — install kinect-audio-setup for Kinect array, or use system mic"
             )
-        cur = self.ovilus.current or "—"
-        self.ovilus_label.setText(
-            f"Ovilus: {cur}  ·  next ~{self.ovilus.next_eta_str()}"
-            if self.pipeline.s.ovilus_enabled
-            else "Ovilus: off"
-        )
+        if self.pipeline.s.ovilus_enabled:
+            hist0 = self.ovilus.history()
+            if hist0:
+                self.ovilus_label.setText(f"Ovilus: {hist0[0].label()}")
+            else:
+                self.ovilus_label.setText("Ovilus: (waiting for first word)")
+        else:
+            self.ovilus_label.setText("Ovilus: off")
         hist = self.ovilus.history_lines(8)
         self.ovilus_history.setText(
             "History:\n" + "\n".join(hist) if hist else "History: (none yet)"
@@ -557,7 +559,7 @@ class SlsMainWindow(QMainWindow):
         if self.pipeline.s.spectrum_enabled or self.session.recording:
             self.spectrum.ensure_running()
 
-        # Ovilus 15–30 min timer (Windows parity)
+        # Ovilus 5–15 min timer
         if self.pipeline.s.ovilus_enabled:
             fired = self.ovilus.tick()
             if fired:
@@ -595,14 +597,11 @@ class SlsMainWindow(QMainWindow):
             )
             display = frame.copy()
             s = self.pipeline.s
-            hist = [e.word for e in self.ovilus.history()[:5]]
             paint_ovilus_bgr(
                 display,
-                self.ovilus.current,
                 enabled=s.ovilus_enabled,
                 flash=self.ovilus.flash_active(),
-                eta=self.ovilus.next_eta_str(),
-                history_words=hist,
+                history=self.ovilus.history()[:5],
                 pip_w=s.ir_pip_width,
                 pip_h=s.ir_pip_height,
                 pip_margin=s.ir_pip_margin,

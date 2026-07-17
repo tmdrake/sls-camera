@@ -87,7 +87,7 @@ class Settings:
     auto_snap_on_detect: bool = False
     record_fps: float = 15.0
 
-    # Ovilus (Windows parity: random word every 15–30 min)
+    # Ovilus (random word every 5–15 min; each hit timestamped)
     ovilus_enabled: bool = True
 
     model_path: Path = field(default_factory=lambda: MODEL_PATH)
