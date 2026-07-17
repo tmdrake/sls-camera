@@ -12,7 +12,9 @@
 | **Spectrum** | FFT strip under video; prefers **Kinect USB Audio**; **retries** if mic drops |
 | **Snap** | Timestamped JPEG → `captures/sls_YYYYMMDD_HHMMSS.jpg` |
 | **Record** | Timestamped **AVI** (MJPG + mic PCM + DrakeVox TTS); overlay burned in; **elapsed** |
-| **Reconnect** | Kinect video loss → **RECONNECTING** frame; infinite retry until device returns |
+| **Reconnect** | Splash **Reconnecting to SLS Camera**; infinite retry until device returns |
+| **Battery** | Status `BAT n%` / `⚡` when a system battery exists (hidden on desktop) |
+| **Quit** | Confirms before exit (stops recording cleanly) |
 | **DrakeVox** | Random word every **5–15 min** (timestamped + **TTS**); under IR PiP last 5; key **O** |
 | **Settings** | Max people, confidence, mirror, spectrum, auto-snap, DrakeVox, Defaults |
 | **On open** | LED green, tilt auto-level 0°, IR sensor gain **50** (fixed, not in UI) |
@@ -68,7 +70,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 | `M` | Mirror |
 | `F` | Fullscreen |
 | `Esc` | Close Settings, then quit |
-| `Q` | Quit |
+| `Q` | Quit (with confirmation) |
 
 ## Settings details
 
@@ -159,6 +161,16 @@ If freenect loses the camera (unplug, BUSY, power brick), the main view shows **
 Startup and reconnect show a splash: **Starting SLS Camera** / **Reconnecting to SLS Camera** (not a blank screen).
 
 Power/USB loss often prints `USB camera marked dead` / iso transfer `-4` in the console; the app should switch to the reconnect splash within ~2 s.
+
+## Battery (tablet)
+
+When Linux exposes a battery under `/sys/class/power_supply` (or UPower), the status bar shows e.g. `BAT 64%` or `BAT 87% ⚡` (charging). **Hidden** on desktops with no battery.
+
+**Later (not yet):** Settings control for **display brightness** on tablets.
+
+## Quit
+
+**Quit** / **Q** / **Esc** (when Settings is closed) asks **Quit SLS Camera?** before exiting so a recording can stop cleanly.
 
 ## Stack
 

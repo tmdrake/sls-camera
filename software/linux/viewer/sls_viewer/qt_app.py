@@ -16,12 +16,14 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMessageBox,
     QPushButton,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
+from .battery import BatteryMonitor
 from .drakevox import DrakeVoxEngine, paint_drakevox_bgr
 from .session_io import AUDIO_SAMPLE_RATE, SessionRecorder
 from .spectrum import SpectrumAnalyzer
@@ -64,6 +66,19 @@ QPushButton#wide {
 QPushButton:pressed { background-color: rgba(0, 80, 60, 240); }
 QDialog {
     border: 1px solid #00ffb4;
+}
+QMessageBox {
+    background-color: #000000; color: #c8c8c8;
+}
+QMessageBox QLabel {
+    color: #c8c8c8; font-size: 14px;
+}
+QMessageBox QPushButton {
+    min-height: 40px; min-width: 88px;
+    background-color: rgba(0, 40, 30, 220);
+    color: #00ffb4; border: 1px solid #00ffb4;
+    border-radius: 8px; font-size: 14px; font-weight: 600;
+    padding: 6px 14px;
 }
 """
 
@@ -342,7 +357,9 @@ class SlsMainWindow(QMainWindow):
         self.tts = DrakeVoxTTS(sample_rate=AUDIO_SAMPLE_RATE)
         # Mix spoken words into AVI whenever recording
         self.tts.set_record_callback(self.session.inject_tts)
+        self.battery = BatteryMonitor(poll_s=5.0)
         self._settings_dlg: Optional[SettingsDialog] = None
+        self._quit_confirmed = False
         self.setWindowTitle("SLS Camera")
         self.setStyleSheet(_STYLE)
 
@@ -400,7 +417,7 @@ class SlsMainWindow(QMainWindow):
         self.btn_record.clicked.connect(self._toggle_record)
         self.btn_quit = QPushButton("Quit")
         self.btn_quit.setObjectName("wide")
-        self.btn_quit.clicked.connect(self.close)
+        self.btn_quit.clicked.connect(self._request_quit)
 
         bar_layout.addWidget(self.title)
         bar_layout.addWidget(self.status, stretch=1)
@@ -418,7 +435,7 @@ class SlsMainWindow(QMainWindow):
 
         step = pipeline.s.pose_conf_step
         QShortcut(QKeySequence("Escape"), self, activated=self._on_escape)
-        QShortcut(QKeySequence("Q"), self, activated=self.close)
+        QShortcut(QKeySequence("Q"), self, activated=self._request_quit)
         QShortcut(QKeySequence("F"), self, activated=self._force_fullscreen)
         QShortcut(QKeySequence("M"), self, activated=self._toggle_mirror)
         QShortcut(QKeySequence("S"), self, activated=self._open_settings)
@@ -527,7 +544,36 @@ class SlsMainWindow(QMainWindow):
         if self._settings_open():
             self._settings_dlg.reject()
             return
-        self.close()
+        self._request_quit()
+
+    def _request_quit(self) -> None:
+        """Quit button / Q / Esc (when Settings closed) — confirm first."""
+        if self._quit_confirmed:
+            self.close()
+            return
+        box = QMessageBox(self)
+        box.setWindowTitle("Quit SLS Camera")
+        box.setText("Quit SLS Camera?")
+        if self.session.recording:
+            box.setInformativeText("Recording will be stopped and saved.")
+        else:
+            box.setInformativeText("Camera and mic capture will stop.")
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setStandardButtons(
+            QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Yes
+        )
+        box.setDefaultButton(QMessageBox.StandardButton.Cancel)
+        yes = box.button(QMessageBox.StandardButton.Yes)
+        if yes is not None:
+            yes.setText("Quit")
+        box.setStyleSheet(_STYLE)
+        # Keep dialog above fullscreen field UI
+        box.setWindowFlags(
+            box.windowFlags() | Qt.WindowType.WindowStaysOnTopHint
+        )
+        if box.exec() == QMessageBox.StandardButton.Yes:
+            self._quit_confirmed = True
+            self.close()
 
     def _nudge_conf(self, delta: float) -> None:
         self.pipeline.adjust_pose_confidence(delta)
@@ -609,9 +655,11 @@ class SlsMainWindow(QMainWindow):
         dv = ""
         if self.pipeline.s.drakevox_enabled and self.drakevox.current:
             dv = f" · DRAKEVOX:{self.drakevox.current}"
+        bat = self.battery.status_token()
+        bat_s = f" · {bat}" if bat else ""
         base = (
             f"{self.pipeline.status}  ·  {self.pipeline.fps:.1f} fps  ·  "
-            f"Detected:{self.pipeline.poses_count}/{mx}{rec}{dv}"
+            f"Detected:{self.pipeline.poses_count}/{mx}{rec}{dv}{bat_s}"
         )
         self.status.setText(f"{flash}  ·  {base}" if flash else base)
 
@@ -652,6 +700,10 @@ class SlsMainWindow(QMainWindow):
         self._paint_spectrum_strip()
 
     def closeEvent(self, event) -> None:
+        if not self._quit_confirmed:
+            event.ignore()
+            self._request_quit()
+            return
         self._timer.stop()
         if self.session.recording:
             self.session.stop_record()
