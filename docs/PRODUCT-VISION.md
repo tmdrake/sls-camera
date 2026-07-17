@@ -60,12 +60,13 @@ Detail: `software/linux/docs/LINUX-SLS-PLAN.md` · app: `software/linux/viewer/`
 ## Feature roadmap (product)
 
 1. **SLS core** — depth main + skeleton overlay — **done on Linux** (`software/linux/viewer/`)  
-2. **Session tools** — Snap / Record / detect auto-snap — **done on Linux**  
+2. **Session tools** — Snap / Record (AVI + mic) / detect auto-snap — **done on Linux**  
 3. **Spectrum** — mic FFT strip (Kinect UAC after `kinect-audio-setup`) — **done on Linux**  
-4. **Appliance hardening** — auto-start kiosk, freenect udev, no gspca fights, watchdog restart  
-5. **Image build** — documented image or scripted install for “load onto tablet”  
-6. **Ovilus interface** — word/phrase display (timer and/or sensor-triggered); can share Kinect-derived events or MCU inputs  
-7. **Additional sensors** — EMF, temp, IMU, etc. on Arduino (or similar); bridge into the same UI  
+4. **Field resilience** — Kinect reconnect UI + mic retry — **done on Linux**  
+5. **Appliance hardening** — auto-start kiosk, freenect udev, no gspca fights, watchdog restart  
+6. **Image build** — documented image or scripted install for “load onto tablet”  
+7. **Ovilus interface** — word/phrase display (timer and/or sensor-triggered); can share Kinect-derived events or MCU inputs  
+8. **Additional sensors** — EMF, temp, IMU, etc. on Arduino (or similar); bridge into the same UI  
 
 Spelling note: product/docs use **Ovilus** (spirit box–style word UI already referenced in Windows `AGENTS.md`).
 

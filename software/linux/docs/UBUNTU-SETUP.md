@@ -75,7 +75,7 @@ arecord -l
 ./software/linux/scripts/check-kinect.sh
 ```
 
-After that, the SLS viewer spectrum strip **prefers** a Kinect/USB capture device, else falls back to the system default mic.
+After that, the SLS viewer **spectrum strip** and **Record audio** prefer a Kinect/USB capture device, else fall back to the system default mic. Recordings are muxed into an AVI with PCM audio (see `viewer/README.md`). The app does **not** change ALSA/Pulse capture gain — use system volume tools if levels are wrong.
 
 ### If install fails: `Invalid hash for file 'KinectSDK-…msi'`
 

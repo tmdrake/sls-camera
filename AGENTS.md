@@ -52,12 +52,13 @@ Requires attached Xbox 360 Kinect (SLS structured light camera).
 Ubuntu / freenect work lives under `software/linux/`. **Same UI goal** as this Windows app (depth main + skeleton overlay); different stack (no Kinect SDK skeleton — freenect + MediaPipe on colorized depth).
 
 - **Field app (working):** `software/linux/viewer/` — `./run.sh`  
-  Depth + IR PiP, skeletons, spectrum (Kinect USB Audio), Snap/Record, Settings  
+  Depth + IR PiP, skeletons, spectrum (Kinect USB Audio), Snap/Record **AVI+mic**,  
+  reconnect UI, Settings (MediaPipe Defaults)  
 - Parity plan: `software/linux/docs/LINUX-SLS-PLAN.md`  
 - Product vision: `docs/PRODUCT-VISION.md`  
 - Setup: `software/linux/docs/UBUNTU-SETUP.md` (freenect + `kinect-audio-setup`)  
 - M0 bring-up notes: `software/linux/notes/BRINGUP-FREENECT.md`  
 - **UI:** Qt fullscreen always-on-top (optional `--ui web`)  
-- Next: tablet autostart image → Ovilus / sensors  
+- Backlog: [docs/TODO.md](docs/TODO.md) — tablet image → Ovilus / sensors  
 
 Report issues on this repo: https://github.com/tmdrake/sls-camera/issues

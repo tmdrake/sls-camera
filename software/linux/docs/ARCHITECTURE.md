@@ -16,24 +16,25 @@ Shared look (from root `AGENTS.md`):
 - **Skeleton stick figures** over depth  
 - Optional secondary color view  
 - Un-mirrored option for operator behind camera  
-- Later: audio spectrum, Ovilus-style word cues, session recording  
+- Spectrum strip + session Snap/Record (AVI + mic) — **done on Linux**  
+- Later: Ovilus-style word cues, extra sensors  
 
 ## Layers
 
 ```text
 ┌─────────────────────────────────────────────┐
-│  Kiosk web UI (tablet / Lubuntu appliance)  │
-│    depth+sticks · HUD · later Ovilus/sensors│
+│  Qt field UI (fullscreen) · optional web UI │
+│    depth+sticks · spectrum · snap/record    │
+│    reconnect · later Ovilus / sensors       │
 ├─────────────────────────────────────────────┤
-│  Python backend (systemd)  stream + control │
+│  Python pipeline (thread) + session_io      │
+│    MediaPipe pose on colorized depth        │
+│    sounddevice mic · ffmpeg AVI mux         │
 ├─────────────────────────────────────────────┤
-│  body / skeleton tracker                     │
-│    primary: MediaPipe (or similar) on RGB    │
-│    optional later: OpenNI + NiTE             │
+│  libfreenect  (depth, IR, motor, LED)       │
+│  Kinect USB Audio (UAC after firmware)      │
 ├─────────────────────────────────────────────┤
-│  libfreenect  (depth, RGB, IR, motor, LED)   │
-├─────────────────────────────────────────────┤
-│  USB  — Kinect 360 · future Arduino sensors  │
+│  USB  — Kinect 360 · future Arduino sensors │
 └─────────────────────────────────────────────┘
 ```
 
@@ -67,7 +68,7 @@ libfreenect does **not** include Microsoft-style skeleton tracking. Overlay is a
 1. **M0** — freenect install + `freenect-glview` — **done**  
 2. **M1** — live colorized depth in app — **done**  
 3. **M2** — SLS stick figures on depth + IR PiP — **done**  
-4. **M3** — Qt Settings, spectrum, Snap/Record — **done**  
+4. **M3** — Qt Settings, spectrum, Snap/Record+audio, reconnect — **done**  
 5. **M4** — tablet appliance image — **not started**  
 6. **M5** — Ovilus + Arduino/MCU sensor bridge — **not started**  
 

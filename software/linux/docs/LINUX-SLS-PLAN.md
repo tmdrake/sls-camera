@@ -42,10 +42,11 @@ Nice-to-have for **v1.x** (Windows already notes these; not required for first u
 | Feature | Priority |
 |---------|----------|
 | Side / swap color view | Medium |
-| Motor tilt controls | Medium |
-| Spectrum analyser under main view | Later |
-| Ovilus random words (15–30 min) | Later |
-| Session record / anomaly highlight | Later |
+| Motor tilt controls | Done (auto-level only; no manual UI) |
+| Spectrum analyser under main view | **Done** |
+| Session record (AVI + mic) | **Done** |
+| Reconnect / mic retry | **Done** |
+| Ovilus random words (15–30 min) | Later (M5) |
 
 ---
 
@@ -127,7 +128,7 @@ If registration is imperfect at first, v1 can draw sticks on a dual layout (dept
 | **M0** | freenect on host | `freenect-glview` live video | **Done** |
 | **M1** | Depth main window | Live colorized depth, mirror, ~15+ FPS | **Done** (`viewer/`) |
 | **M2** | SLS skeleton overlay | Sticks on depth (+ IR PiP) | **Done** (MediaPipe on colorized depth) |
-| **M3** | Field UI polish | Qt Settings, spectrum, Snap/Record, HUD | **Done** (auto-level only; no manual tilt) |
+| **M3** | Field UI polish | Qt Settings, spectrum, Snap/Record+audio, reconnect | **Done** (auto-level only; no manual tilt) |
 | **M4** | Appliance image | Auto-start on Lubuntu-class tablet | Not started |
 | **M5** | Ovilus + sensors | Ovilus panel; Arduino/MCU bridge | Not started |
 
@@ -145,8 +146,9 @@ If registration is imperfect at first, v1 can draw sticks on a dual layout (dept
 | Skeleton bones/joints on depth | `pose` + `skeleton` | Done |
 | Un-mirrored for behind-camera | Settings mirror (default off) | Done |
 | IR secondary view | top-right PiP | Done |
-| Spectrum analyser | `spectrum.py` + Kinect USB Audio | Done |
-| Session capture | Snap / Record main bar | Done |
+| Spectrum analyser | `spectrum.py` + Kinect USB Audio + mic retry | Done |
+| Session capture | Snap / Record main bar; AVI + PCM mic | Done |
+| Device reconnect | RECONNECTING UI; infinite freenect retry | Done |
 | Tilt control | Auto-level on open only | Done (no manual UI by design) |
 | Ovilus 15–30 min | — | Later (M5) |
 | Color side / swap | — | Optional later |

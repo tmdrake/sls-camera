@@ -25,3 +25,6 @@ Living list of follow-ups for the SLS field app and appliance path.
 - [x] Qt Settings; Snap/Record on main bar; REC elapsed time
 - [x] Spectrum strip (Kinect USB Audio after kinect-audio-setup)
 - [x] MediaPipe Defaults button (conf 0.5, max poses 1)
+- [x] AVI recordings with muxed mic audio (Kinect preferred)
+- [x] Kinect video reconnect screen + infinite retry
+- [x] Spectrum / mic auto-retry when device drops
