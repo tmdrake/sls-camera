@@ -12,7 +12,7 @@
 | **Spectrum** | FFT strip under video; prefers **Kinect USB Audio**; **retries** if mic drops |
 | **Snap** | JPEG (current DrakeVox panel if visible); Kinect LED **red → green** (or red if still REC) |
 | **Auto-snap** | Optional on pose appear; **DrakeVox on auto-snap** (default ON) adds word+TTS into that JPEG |
-| **Record** | AVI + mic + TTS; Kinect LED solid **red** while REC; green/off when stopped |
+| **Record** | AVI + mic + TTS at **20 FPS** (matches live `target_fps`); LED solid **red** while REC |
 | **Reconnect** | Splash **Starting / Reconnecting to SLS Camera**; infinite retry |
 | **Battery** | Status `BAT n%` / `⚡` when a battery exists (hidden on desktop) |
 | **Brightness** | Settings ±10% (sysfs / brightnessctl / xrandr) |
