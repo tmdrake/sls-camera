@@ -62,7 +62,7 @@ The Xbox 360 Kinect has a **4-mic array** (USB **NUI Audio** `045e:02ad`). Out o
 ### One-time setup (recommended for field spectrum)
 
 ```bash
-sudo apt install -y kinect-audio-setup alsa-utils
+sudo apt install -y kinect-audio-setup alsa-utils libportaudio2
 # Package downloads non-redistributable UAC firmware from Microsoft
 # (debconf license prompts). See package description / MS Kinect SDK ToS.
 ```
@@ -77,11 +77,42 @@ arecord -l
 
 After that, the SLS viewer spectrum strip **prefers** a Kinect/USB capture device, else falls back to the system default mic.
 
-Also install PortAudio for the Python spectrum capture:
+### If install fails: `Invalid hash for file 'KinectSDK-…msi'`
+
+Microsoft re-hosted the Beta 2 MSI; its **MD5 no longer matches** the hard-coded checksum in `/usr/sbin/kinect_fetch_fw`. The download can succeed and still fail configure.
+
+**Manual recovery (accept MS SDK license yourself):**
 
 ```bash
-sudo apt install -y libportaudio2
+# 1) Finish/clear the broken package state after firmware is in place (see below)
+# 2) Fetch MSI and extract UAC firmware yourself
+TMP=$(mktemp -d) && cd "$TMP"
+URL="http://download.microsoft.com/download/F/9/9/F99791F2-D5BE-478A-B77A-830AD14950C3/KinectSDK-v1.0-beta2-x86.msi"
+wget -O KinectSDK-v1.0-beta2-x86.msi "$URL"
+md5sum KinectSDK-v1.0-beta2-x86.msi   # note actual hash
+sudo apt install -y 7zip wget   # provides 7z
+7z e -y -r KinectSDK-v1.0-beta2-x86.msi "UACFirmware.*"
+
+# 3) Install firmware where udev expects it
+sudo mkdir -p /lib/firmware/kinect
+# file name is often like UACFirmware.01 or similar — pick the extracted blob:
+sudo install -m 644 UACFirmware.* /lib/firmware/kinect/UACFirmware
+
+# 4) Patch the fetch script hash to the actual MD5 so dpkg can finish
+ACTUAL=$(md5sum KinectSDK-v1.0-beta2-x86.msi | awk '{print $1}')
+sudo sed -i "s/^SDK_MD5=.*/SDK_MD5=\"$ACTUAL\"/" /usr/sbin/kinect_fetch_fw
+sudo kinect_fetch_fw /lib/firmware/kinect
+sudo dpkg --configure -a
+
+# 5) Reload rules and replug Kinect
+sudo udevadm control --reload-rules
+# unplug / replug Kinect USB (power can stay on)
+arecord -l
 ```
+
+If `7z e` finds no `UACFirmware.*`, list archive contents: `7z l KinectSDK-v1.0-beta2-x86.msi | grep -i UAC`.
+
+**Workaround without Kinect mic:** spectrum still uses the **system default mic** when PortAudio works (`libportaudio2`). Depth/SLS does not need audio firmware.
 
 **Notes**
 
