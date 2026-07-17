@@ -226,16 +226,13 @@ viewer/
     skeleton.py
     spectrum.py           # FFT + mic retry + PCM sinks
     session_io.py         # Snap / Record + A/V mux + clear captures
-    drakevox.py
-    tts.py
+    drakevox.py           # 5–15 min timer, word bank, overlay
+    tts.py                # espeak TTS for DrakeVox + AVI mix
     battery.py
     backlight.py
-    audio_device.py
-    data/                 # DrakeVox word list (Digital Dowsing extract)
-    drakevox.py             # random word 5–15 min, timestamped overlay
-    tts.py                  # espeak TTS for DrakeVox + AVI mix
     audio_device.py       # Kinect mic picker
     config.py
+  data/                   # DrakeVox word list (Digital Dowsing extract)
   web/                    # optional browser UI
 ```
 
