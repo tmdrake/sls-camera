@@ -29,8 +29,13 @@ FREENECT_VIDEO_IR_8BIT = 2
 FREENECT_VIDEO_RGB = 0
 FREENECT_DEPTH_11BIT = 0
 
+# freenect_led_options (libfreenect.h)
 LED_OFF = 0
 LED_GREEN = 1
+LED_RED = 2
+LED_YELLOW = 3  # closest to “orange” for snap flash
+LED_BLINK_GREEN = 4
+LED_BLINK_RED_YELLOW = 6
 
 # IR sensor gain only (not projector power). freenect range 1–50.
 # App uses full gain 50 (no Settings UI); affects IR PiP display only.
@@ -358,6 +363,19 @@ class FreenectSync:
                 return
             time.sleep(0.05)
         raise FreenectError("timeout waiting for depth/video frames")
+
+    def set_led(self, state: int) -> bool:
+        """Set Kinect LED (OFF/GREEN/RED/YELLOW/…). False if device unavailable."""
+        if not self._dev or self.is_dead() or not self._prepared:
+            return False
+        try:
+            rc = int(self._lib.freenect_set_led(self._dev, int(state)))
+            if rc == 0:
+                self.led = int(state)
+                return True
+        except Exception:
+            pass
+        return False
 
     def get_ir_brightness(self) -> int:
         if not self._dev or self.is_dead():

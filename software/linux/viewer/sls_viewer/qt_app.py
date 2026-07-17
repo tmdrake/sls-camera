@@ -218,7 +218,7 @@ class SettingsDialog(QDialog):
 
         root.addLayout(grid)
 
-        # Defaults + DrakeVox generate — Snapshot/Record on main bar
+        # Defaults / Clear captures / DrakeVox now — Snap/Record on main bar
         act = QHBoxLayout()
         self.btn_defaults = QPushButton("Defaults")
         self.btn_defaults.setObjectName("wide")
@@ -227,6 +227,13 @@ class SettingsDialog(QDialog):
         )
         self.btn_defaults.clicked.connect(self._reset_defaults)
         act.addWidget(self.btn_defaults)
+        self.btn_clear_captures = QPushButton("Clear captures")
+        self.btn_clear_captures.setObjectName("wide")
+        self.btn_clear_captures.setToolTip(
+            "Delete files in viewer/captures/ (snaps, recordings, session logs)"
+        )
+        self.btn_clear_captures.clicked.connect(self._clear_captures)
+        act.addWidget(self.btn_clear_captures)
         self.btn_drakevox_now = QPushButton("DrakeVox now")
         self.btn_drakevox_now.setObjectName("wide")
         self.btn_drakevox_now.setToolTip(
@@ -376,9 +383,38 @@ class SettingsDialog(QDialog):
             parent.drakevox_generate_now()
         self._refresh()
 
+    def _confirm(self, title: str, text: str, yes_label: str = "OK") -> bool:
+        box = QMessageBox(self)
+        box.setWindowTitle(title)
+        box.setText(text)
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setStandardButtons(
+            QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Yes
+        )
+        box.setDefaultButton(QMessageBox.StandardButton.Cancel)
+        yes = box.button(QMessageBox.StandardButton.Yes)
+        if yes is not None:
+            yes.setText(yes_label)
+        box.setStyleSheet(_STYLE)
+        box.setWindowFlags(box.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        return box.exec() == QMessageBox.StandardButton.Yes
+
     def _reset_defaults(self) -> None:
-        """Confidence 0.5 + Max people 1 (MediaPipe PoseLandmarker defaults)."""
+        """Confidence 0.5 + Max people 1 — confirm first."""
+        if not self._confirm(
+            "Reset defaults",
+            "Reset Max people and Confidence to MediaPipe defaults\n"
+            "(Max people = 1, Confidence = 0.5)?",
+            yes_label="Reset",
+        ):
+            return
         self.pipeline.reset_pose_defaults()
+        self._refresh()
+
+    def _clear_captures(self) -> None:
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "clear_captures"):
+            parent.clear_captures()
         self._refresh()
 
     def showEvent(self, event) -> None:
@@ -650,26 +686,63 @@ class SlsMainWindow(QMainWindow):
         if self._settings_open():
             self._settings_dlg._refresh()
 
+    def _restore_led_after_snap(self) -> None:
+        """After yellow snap flash: red if recording, else idle green/off."""
+        self.pipeline.set_recording_led(self.session.recording)
+
     def _snapshot(self) -> None:
         frame = self.pipeline.get_bgr()
-        self.session.snapshot(frame)
+        path = self.session.snapshot(frame)
+        if path is not None:
+            # Yellow flash on Kinect (closest to orange); restore after ~0.5s
+            self.pipeline.flash_snap_led()
+            QTimer.singleShot(500, self._restore_led_after_snap)
         if self._settings_open():
             self._settings_dlg._refresh()
 
     def _toggle_record(self) -> None:
         if self.session.recording:
             self.session.stop_record()
+            self.pipeline.set_recording_led(False)
         else:
             frame = self.pipeline.get_bgr()
             # Share spectrum mic stream when present (one open of Kinect USB Audio).
-            self.session.start_record(
+            path = self.session.start_record(
                 frame,
                 fps=self.pipeline.s.record_fps,
                 spectrum=self.spectrum,
             )
+            if path is not None:
+                self.pipeline.set_recording_led(True)
         self._refresh_record_button()
         if self._settings_open():
             self._settings_dlg._refresh()
+
+    def clear_captures(self) -> None:
+        """Settings: delete captures/ after confirm (blocked while recording)."""
+        if self.session.recording:
+            self.session._set_flash("stop recording before clearing captures")
+            return
+        box = QMessageBox(self)
+        box.setWindowTitle("Clear captures")
+        box.setText(
+            "Delete all files in captures/\n"
+            "(snapshots, recordings, session logs)?\n\n"
+            "This cannot be undone."
+        )
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setStandardButtons(
+            QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Yes
+        )
+        box.setDefaultButton(QMessageBox.StandardButton.Cancel)
+        yes = box.button(QMessageBox.StandardButton.Yes)
+        if yes is not None:
+            yes.setText("Delete")
+        box.setStyleSheet(_STYLE)
+        box.setWindowFlags(box.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        if box.exec() != QMessageBox.StandardButton.Yes:
+            return
+        self.session.clear_captures()
 
     def _refresh_record_button(self) -> None:
         if self.session.recording:
@@ -767,6 +840,7 @@ class SlsMainWindow(QMainWindow):
         self._timer.stop()
         if self.session.recording:
             self.session.stop_record()
+            self.pipeline.set_recording_led(False)
         self.spectrum.stop()
         if self._settings_dlg is not None:
             self._settings_dlg.close()

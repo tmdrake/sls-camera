@@ -103,6 +103,28 @@ class SessionRecorder:
     def _ts(self) -> str:
         return datetime.now().strftime("%Y%m%d_%H%M%S")
 
+    def clear_captures(self) -> int:
+        """Delete media/logs under captures dir. Returns number of files removed."""
+        d = self.ensure_dir()
+        n = 0
+        try:
+            for path in sorted(d.iterdir()):
+                if not path.is_file():
+                    continue
+                try:
+                    path.unlink()
+                    n += 1
+                except OSError:
+                    pass
+        except OSError:
+            pass
+        if n:
+            self._set_flash(f"cleared {n} capture file(s)")
+            self._log_event("clear_captures", {"count": n})
+        else:
+            self._set_flash("captures already empty")
+        return n
+
     def snapshot(self, bgr: np.ndarray) -> Optional[Path]:
         if bgr is None or bgr.size == 0:
             self._set_flash("snapshot failed: no frame")

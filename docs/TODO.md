@@ -22,6 +22,7 @@ policy come later.
 - [ ] **Tablet firmware / image package** — repeatable flash or offline install for field tablets (beyond `~/.local` scripts).
 - [ ] **gspca/udev one-shot** — fold or harden `fix-kinect-access.sh` into install path for true zero-touch bring-up.
 - [ ] **Hardware BOM photos / wiring** in `hardware/` (Kinect + tablet + external power).
+- [ ] **Permanent captures on appliance image** — firmware/locked rootfs may be read-only; store snaps/recordings on writable permanent media (`/data`, SD, data partition, USB), not only `viewer/captures` inside the image. Path via env/config for packaging.
 - [x] **Battery % + charge indicator** — status bar `BAT n%` / `⚡` when sysfs battery exists; hidden on desktop
 - [x] **Quit confirmation** — dialog before exit (stops REC cleanly)
 - [x] **Display brightness** (Settings) — sysfs backlight / brightnessctl / xrandr software fallback

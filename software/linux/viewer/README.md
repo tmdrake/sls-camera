@@ -10,8 +10,8 @@
 | **PiP** | Small **IR + skeleton** (top-right) |
 | **Pose** | MediaPipe on **colorized depth** only |
 | **Spectrum** | FFT strip under video; prefers **Kinect USB Audio**; **retries** if mic drops |
-| **Snap** | Timestamped JPEG → `captures/sls_YYYYMMDD_HHMMSS.jpg` |
-| **Record** | Timestamped **AVI** (MJPG + mic PCM + DrakeVox TTS); overlay burned in; **elapsed** |
+| **Snap** | Timestamped JPEG → `captures/`; Kinect LED **yellow** flash |
+| **Record** | AVI + mic + TTS; Kinect LED **red** while REC, green/off when stopped |
 | **Reconnect** | Splash **Reconnecting to SLS Camera**; infinite retry until device returns |
 | **Battery** | Status `BAT n%` / `⚡` when a system battery exists (hidden on desktop) |
 | **Quit** | Confirms before exit (stops recording cleanly) |
@@ -55,7 +55,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 |---------|--------|
 | **Snap** | Save current composite frame |
 | **Record** | Start/stop recording; button becomes `Stop M:SS` |
-| **Settings** | Max people, Conf, Mirror, Spectrum, Auto-snap, DrakeVox, Defaults |
+| **Settings** | Max people, Conf, Mirror, Spectrum, Auto-snap, DrakeVox, Brightness, Defaults (confirm), Clear captures (confirm) |
 
 ### Keyboard
 

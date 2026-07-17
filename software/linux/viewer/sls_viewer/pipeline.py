@@ -119,6 +119,30 @@ class FramePipeline:
             self._pose.close()
             self._pose = None
 
+    def idle_led(self) -> int:
+        """Default LED when not recording (green unless --led-off)."""
+        return freenect_io.LED_GREEN if self.s.led_green else freenect_io.LED_OFF
+
+    def set_led(self, state: int) -> bool:
+        """Set Kinect LED if freenect is open. Safe no-op when offline."""
+        k = self._kinect
+        if k is None:
+            return False
+        try:
+            return bool(k.set_led(int(state)))
+        except Exception:
+            return False
+
+    def set_recording_led(self, recording: bool) -> bool:
+        """Red while recording; idle green/off when stopped."""
+        if recording:
+            return self.set_led(freenect_io.LED_RED)
+        return self.set_led(self.idle_led())
+
+    def flash_snap_led(self) -> bool:
+        """Yellow flash for snapshot (caller restores after delay)."""
+        return self.set_led(freenect_io.LED_YELLOW)
+
     def _set_frame(self, bgr: np.ndarray) -> None:
         ok, buf = cv2.imencode(
             ".jpg",
