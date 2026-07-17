@@ -136,8 +136,8 @@ Windows parity (`KinectWindow.xaml.cs`):
 |------|--------|
 | **Words** | SPIRIT, GHOST, SHADOW, CHILD, WOMAN, MAN, DEMON, ANGEL, LEAVE, STAY, HELP, HERE, COLD, ENERGY, YES, NO, DARK, LIGHT, FOLLOW, GO |
 | **Timer** | Random **15–30 minutes** between words |
-| **UI** | Bottom-left overlay on the depth view; status bar shows `OVILUS:WORD` |
-| **History** | Last 12 in Settings; also `session_*.jsonl` event `ovilus` |
+| **UI** | Taller panel **under the IR PiP** (top-right); shows **last 5 words** (newest first) |
+| **History** | Last 5 on overlay; last 12 in Settings; `session_*.jsonl` event `ovilus` |
 | **Manual** | Settings **Ovilus now** or key **`O`** |
 | **Recording** | Overlay is display-only (not burned into the AVI) |
 

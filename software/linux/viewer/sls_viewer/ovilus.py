@@ -172,6 +172,10 @@ class OvilusEngine:
         return word
 
 
+# Overlay under IR PiP: show this many recent words (newest first)
+OVERLAY_HISTORY_N = 5
+
+
 def paint_ovilus_bgr(
     bgr,
     word: str,
@@ -179,10 +183,15 @@ def paint_ovilus_bgr(
     enabled: bool,
     flash: bool = False,
     eta: str = "",
+    history_words: Optional[Sequence[str]] = None,
+    pip_w: int = 280,
+    pip_h: int = 210,
+    pip_margin: int = 12,
+    pip_corner: str = "top-right",
+    history_n: int = OVERLAY_HISTORY_N,
 ) -> None:
-    """Draw Ovilus badge bottom-left (in-place). Empty word → quiet idle label."""
+    """Draw Ovilus panel under the IR PiP (taller list of last N words)."""
     import cv2
-    import numpy as np
 
     if bgr is None or bgr.size == 0:
         return
@@ -190,53 +199,112 @@ def paint_ovilus_bgr(
     if w < 80 or h < 40:
         return
 
-    # Banner geometry
-    pad = 10
-    box_h = 72 if flash else 56
-    box_w = min(w - 2 * pad, 360 if word else 200)
-    x0, y0 = pad, h - box_h - pad - 8
+    n_show = max(1, int(history_n))
+    # Build newest-first word list (pad history with current if needed)
+    words: List[str] = []
+    if history_words:
+        for raw in history_words:
+            s = str(raw).strip().upper()
+            if s:
+                words.append(s)
+    if word and (not words or words[0] != word.strip().upper()):
+        words.insert(0, word.strip().upper())
+    words = words[:n_show]
+
+    margin = max(0, int(pip_margin))
+    box_w = max(80, min(int(pip_w), w - 2 * margin))
+    # Taller panel: title + N word rows
+    title_h = 22
+    row_h = 26
+    pad_y = 10
+    box_h = title_h + pad_y + n_show * row_h + 12
+    gap = 6  # gap between IR bottom and Ovilus top
+
+    if str(pip_corner).lower() in ("top-left", "left"):
+        x0 = margin
+    else:
+        x0 = w - box_w - margin
+    # Directly under IR PiP
+    y0 = margin + max(60, int(pip_h)) + gap
+    # Keep on-screen if frame is short
+    if y0 + box_h > h - 8:
+        y0 = max(margin, h - box_h - 8)
     x1, y1 = x0 + box_w, y0 + box_h
 
     overlay = bgr.copy()
-    color_bg = (20, 10, 40) if flash else (16, 16, 16)
+    color_bg = (28, 12, 48) if flash else (14, 14, 18)
     cv2.rectangle(overlay, (x0, y0), (x1, y1), color_bg, -1)
-    border = (0, 0, 200) if flash else (80, 40, 40)
+    border = (0, 0, 220) if flash else (0, 180, 255)  # cyan-ish to match IR frame
+    if flash:
+        border = (0, 0, 220)
+    else:
+        border = (60, 40, 40)
     cv2.rectangle(overlay, (x0, y0), (x1, y1), border, 1)
-    alpha = 0.72 if flash else 0.55
+    # Match IR green accent on top edge
+    cv2.line(overlay, (x0, y0), (x1, y0), (0, 255, 180), 1)
+    alpha = 0.78 if flash else 0.62
     cv2.addWeighted(overlay, alpha, bgr, 1.0 - alpha, 0, bgr)
 
     title = "OVILUS" if enabled else "OVILUS OFF"
+    if enabled and eta and not words:
+        title = f"OVILUS  next {eta}"
+    elif enabled and eta:
+        title = f"OVILUS  ~{eta}"
     cv2.putText(
         bgr,
         title,
-        (x0 + 10, y0 + 18),
+        (x0 + 8, y0 + 16),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.45,
-        (0, 80, 200) if enabled else (90, 90, 90),
+        0.42,
+        (0, 90, 220) if enabled else (90, 90, 90),
         1,
         cv2.LINE_AA,
     )
-    if enabled and word:
-        scale = 1.15 if flash else 0.95
-        thickness = 2 if flash else 2
-        cv2.putText(
-            bgr,
-            word,
-            (x0 + 10, y0 + 48),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            scale,
-            (0, 0, 200),  # BGR red-ish like Windows #AA0000
-            thickness,
-            cv2.LINE_AA,
-        )
-    elif enabled:
+
+    if not enabled:
+        return
+
+    text_y = y0 + title_h + pad_y
+    if not words:
         cv2.putText(
             bgr,
             f"next {eta}" if eta else "…",
-            (x0 + 10, y0 + 46),
+            (x0 + 8, text_y + 4),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.55,
             (120, 120, 120),
             1,
+            cv2.LINE_AA,
+        )
+        return
+
+    for i, wtxt in enumerate(words):
+        is_latest = i == 0
+        # Newest large/red; older dimmer and slightly smaller
+        if is_latest:
+            scale = 0.85 if flash else 0.75
+            color = (0, 0, 220)  # BGR red-ish (Windows #AA0000)
+            thick = 2
+            prefix = "▸ " if flash else ""
+        else:
+            scale = 0.55
+            # Fade older rows
+            fade = max(70, 160 - i * 22)
+            color = (fade, fade, fade)
+            thick = 1
+            prefix = "  "
+        label = f"{prefix}{wtxt}"
+        # Clip long labels to panel width (approx)
+        max_chars = max(6, box_w // (10 if is_latest else 8))
+        if len(label) > max_chars:
+            label = label[: max_chars - 1] + "…"
+        cv2.putText(
+            bgr,
+            label,
+            (x0 + 8, text_y + i * row_h),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            scale,
+            color,
+            thick,
             cv2.LINE_AA,
         )

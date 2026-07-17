@@ -594,12 +594,20 @@ class SlsMainWindow(QMainWindow):
                 frame,
             )
             display = frame.copy()
+            s = self.pipeline.s
+            hist = [e.word for e in self.ovilus.history()[:5]]
             paint_ovilus_bgr(
                 display,
                 self.ovilus.current,
-                enabled=self.pipeline.s.ovilus_enabled,
+                enabled=s.ovilus_enabled,
                 flash=self.ovilus.flash_active(),
                 eta=self.ovilus.next_eta_str(),
+                history_words=hist,
+                pip_w=s.ir_pip_width,
+                pip_h=s.ir_pip_height,
+                pip_margin=s.ir_pip_margin,
+                pip_corner=s.ir_pip_corner,
+                history_n=5,
             )
             pix = bgr_to_qpixmap(display)
             target = self.video.size()
