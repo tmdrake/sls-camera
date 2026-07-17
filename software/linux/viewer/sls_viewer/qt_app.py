@@ -29,6 +29,7 @@ from .backlight import (
     nudge_brightness,
     apply_persisted_percent,
 )
+from . import freenect_io
 from .battery import BatteryMonitor
 from .drakevox import DrakeVoxEngine, paint_drakevox_bgr
 from .session_io import AUDIO_SAMPLE_RATE, SessionRecorder
@@ -687,16 +688,49 @@ class SlsMainWindow(QMainWindow):
             self._settings_dlg._refresh()
 
     def _restore_led_after_snap(self) -> None:
-        """After yellow snap flash: red if recording, else idle green/off."""
+        """After snap LED cue: red if recording, else idle green/off."""
         self.pipeline.set_recording_led(self.session.recording)
 
+    def _compose_drakevox(self, frame) -> "np.ndarray":
+        """Copy frame and paint DrakeVox overlay when enabled."""
+        display = frame.copy()
+        s = self.pipeline.s
+        if s.drakevox_enabled:
+            paint_drakevox_bgr(
+                display,
+                enabled=True,
+                flash=self.drakevox.flash_active(),
+                history=self.drakevox.history()[:5],
+                pip_w=s.ir_pip_width,
+                pip_h=s.ir_pip_height,
+                pip_margin=s.ir_pip_margin,
+                pip_corner=s.ir_pip_corner,
+                history_n=5,
+            )
+        return display
+
     def _snapshot(self) -> None:
+        """Snap JPEG with DrakeVox word (if ON) burned into the image; LED red→green."""
         frame = self.pipeline.get_bgr()
-        path = self.session.snapshot(frame)
+        if frame is None or getattr(frame, "size", 0) == 0:
+            self.session.snapshot(frame)  # flash error
+            return
+
+        # On capture: fire DrakeVox like key O (word + TTS + log)
+        if self.pipeline.s.drakevox_enabled:
+            word = self.drakevox.generate_now()
+            if word:
+                self._on_drakevox_word(word)
+
+        # Save composite so the new word is in the photo
+        display = self._compose_drakevox(frame)
+        path = self.session.snapshot(display)
         if path is not None:
-            # Yellow flash on Kinect (closest to orange); restore after ~0.5s
-            self.pipeline.flash_snap_led()
-            QTimer.singleShot(500, self._restore_led_after_snap)
+            # LED: red flash, then restore (green idle / red if still REC)
+            from . import freenect_io as _fn
+
+            self.pipeline.set_led(_fn.LED_RED)
+            QTimer.singleShot(400, self._restore_led_after_snap)
         if self._settings_open():
             self._settings_dlg._refresh()
 
@@ -798,26 +832,13 @@ class SlsMainWindow(QMainWindow):
 
         frame = self.pipeline.get_bgr()
         if frame is not None:
-            self.session.note_detection(
-                self.pipeline.poses_count,
-                self.pipeline.s.auto_snap_on_detect,
-                frame,
-            )
+            # Detect appear → optional auto-snap (same path as Snap: DrakeVox in JPEG)
+            det = self.session.note_detection(self.pipeline.poses_count)
+            if det == "appear" and self.pipeline.s.auto_snap_on_detect:
+                self._snapshot()
+
             # Composite DrakeVox overlay (hidden when OFF), then record + display
-            display = frame.copy()
-            s = self.pipeline.s
-            if s.drakevox_enabled:
-                paint_drakevox_bgr(
-                    display,
-                    enabled=True,
-                    flash=self.drakevox.flash_active(),
-                    history=self.drakevox.history()[:5],
-                    pip_w=s.ir_pip_width,
-                    pip_h=s.ir_pip_height,
-                    pip_margin=s.ir_pip_margin,
-                    pip_corner=s.ir_pip_corner,
-                    history_n=5,
-                )
+            display = self._compose_drakevox(frame)
             if self.session.recording:
                 self.session.write_frame(display)
             pix = bgr_to_qpixmap(display)

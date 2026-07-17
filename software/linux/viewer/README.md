@@ -10,7 +10,7 @@
 | **PiP** | Small **IR + skeleton** (top-right) |
 | **Pose** | MediaPipe on **colorized depth** only |
 | **Spectrum** | FFT strip under video; prefers **Kinect USB Audio**; **retries** if mic drops |
-| **Snap** | Timestamped JPEG → `captures/`; Kinect LED **yellow** flash |
+| **Snap** | JPEG with **DrakeVox word** (if ON) + TTS; LED **red→green**; auto-snap on detect same path |
 | **Record** | AVI + mic + TTS; Kinect LED **red** while REC, green/off when stopped |
 | **Reconnect** | Splash **Reconnecting to SLS Camera**; infinite retry until device returns |
 | **Battery** | Status `BAT n%` / `⚡` when a system battery exists (hidden on desktop) |

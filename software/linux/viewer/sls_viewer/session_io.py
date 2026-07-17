@@ -522,14 +522,24 @@ class SessionRecorder:
         self._set_flash(f"DRAKEVOX: {word}", seconds=4.0)
 
     def note_detection(
-        self, detected: int, auto_snap: bool, bgr: Optional[np.ndarray]
-    ) -> None:
+        self,
+        detected: int,
+        auto_snap: bool = False,
+        bgr: Optional[np.ndarray] = None,
+    ) -> Optional[str]:
+        """Track pose appear/disappear. Returns 'appear' | 'disappear' | None.
+
+        Auto-snap is handled by the UI so DrakeVox can be composited into the JPEG.
+        ``auto_snap`` / ``bgr`` kept for call-site compatibility (unused for save).
+        """
         prev = self._last_detected
         cur = int(detected)
+        event: Optional[str] = None
         if cur > 0 and prev == 0:
             self._log_event("detect_appear", {"detected": cur})
-            if auto_snap and bgr is not None:
-                self.snapshot(bgr)
+            event = "appear"
         elif cur == 0 and prev > 0:
             self._log_event("detect_disappear", {"detected": 0})
+            event = "disappear"
         self._last_detected = cur
+        return event
