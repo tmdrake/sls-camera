@@ -17,7 +17,7 @@ Shared look (from root `AGENTS.md`):
 - Optional secondary color view  
 - Un-mirrored option for operator behind camera  
 - Spectrum strip + session Snap/Record (AVI + mic) — **done on Linux**  
-- Ovilus random words (15–30 min) — **done on Linux**  
+- Ovilus random words (5–15 min, timestamped) — **done on Linux**  
 - Later: Ovilus external triggers, extra sensors  
 
 ## Layers

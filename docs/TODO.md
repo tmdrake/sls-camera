@@ -27,7 +27,7 @@ policy come later.
 
 ## Product features (later)
 
-- [x] Ovilus word panel (15–30 min timer; Settings + key `O`; session log)
+- [x] Ovilus word panel (5–15 min timer, timestamped; Settings + key `O`; session log)
 - [ ] Ovilus external triggers (detect / audio / MCU)
 - [ ] Arduino / MCU sensor bridge
 - [ ] Optional RGB view or color swap (Windows parity)
@@ -41,5 +41,5 @@ policy come later.
 - [x] AVI recordings with muxed mic audio (Kinect preferred)
 - [x] Kinect video reconnect screen + infinite retry
 - [x] Spectrum / mic auto-retry when device drops
-- [x] Ovilus word panel (Windows word list + 15–30 min timer)
+- [x] Ovilus word panel (Windows word list + 5–15 min timer, timestamped)
 - [x] Dev install/uninstall scripts + FIELD-INSTALL.md

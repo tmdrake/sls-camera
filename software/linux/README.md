@@ -13,7 +13,7 @@ Ubuntu / freenect path for the same Xbox 360 Kinect (NUI) hardware used by the W
 | **Reconnect** — video + mic retry | **Done** (RECONNECTING UI; spectrum mic retry) |
 | **Dev install / uninstall scripts** | **Done** (`scripts/install-field-app.sh`) |
 | **Tablet firmware image** | Not started (clean desktop first — see TODO) |
-| **Ovilus** word panel (15–30 min) | **Done** |
+| **Ovilus** word panel (5–15 min, timestamped) | **Done** |
 | **Arduino sensors + Ovilus triggers** | Not started |
 | **External power policy** | Not started |
 

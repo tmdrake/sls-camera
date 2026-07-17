@@ -48,7 +48,7 @@ Run: `cd software/linux/viewer && ./run.sh`
 - [x] Kinect audio ALSA path documented (firmware / hash recovery)  
 - [x] **Mux audio into Record** (Kinect/system mic → AVI with PCM)  
 - [x] Kinect video reconnect UI + infinite retry; spectrum mic retry  
-- [x] Ovilus word panel (15–30 min timer)  
+- [x] Ovilus word panel (5–15 min timer, timestamped)  
 - [x] Dev install/uninstall scripts (launcher + optional autostart)  
 - [ ] Clean desktop before tablet firmware package  
 - [ ] Tablet firmware / image package  

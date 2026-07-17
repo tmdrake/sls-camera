@@ -46,7 +46,7 @@ Nice-to-have for **v1.x** (Windows already notes these; not required for first u
 | Spectrum analyser under main view | **Done** |
 | Session record (AVI + mic) | **Done** |
 | Reconnect / mic retry | **Done** |
-| Ovilus random words (15–30 min) | **Done** (timer; external triggers later) |
+| Ovilus random words (5–15 min, timestamped) | **Done** (timer; external triggers later) |
 
 ---
 
