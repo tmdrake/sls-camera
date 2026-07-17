@@ -23,6 +23,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .backlight import (
+    DEFAULT_STEP as BRIGHTNESS_STEP,
+    get_brightness,
+    nudge_brightness,
+    apply_persisted_percent,
+)
 from .battery import BatteryMonitor
 from .drakevox import DrakeVoxEngine, paint_drakevox_bgr
 from .session_io import AUDIO_SAMPLE_RATE, SessionRecorder
@@ -194,6 +200,22 @@ class SettingsDialog(QDialog):
         grid.addWidget(self.btn_drakevox, row, 1, 1, 3)
         row += 1
 
+        # Display brightness (sysfs backlight / brightnessctl / xrandr)
+        grid.addWidget(QLabel("Brightness"), row, 0)
+        self.btn_bright_down = QPushButton("−")
+        self.btn_bright_down.setToolTip("Dimmer (−10%)")
+        self.btn_bright_down.clicked.connect(lambda: self._nudge_brightness(-BRIGHTNESS_STEP))
+        self.bright_label = QLabel()
+        self.bright_label.setObjectName("vallabel")
+        self.bright_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.btn_bright_up = QPushButton("+")
+        self.btn_bright_up.setToolTip("Brighter (+10%)")
+        self.btn_bright_up.clicked.connect(lambda: self._nudge_brightness(+BRIGHTNESS_STEP))
+        grid.addWidget(self.btn_bright_down, row, 1)
+        grid.addWidget(self.bright_label, row, 2)
+        grid.addWidget(self.btn_bright_up, row, 3)
+        row += 1
+
         root.addLayout(grid)
 
         # Defaults + DrakeVox generate — Snapshot/Record on main bar
@@ -262,6 +284,26 @@ class SettingsDialog(QDialog):
         on = bool(self.pipeline.s.drakevox_enabled)
         self.btn_drakevox.setText("ON" if on else "OFF")
         self.btn_drakevox_now.setEnabled(on)
+
+        bri = get_brightness()
+        if bri.available and bri.percent is not None:
+            self.bright_label.setText(f"{bri.percent}%")
+            can = bool(bri.writable)
+            self.btn_bright_down.setEnabled(can)
+            self.btn_bright_up.setEnabled(can)
+            tip = bri.backend
+            if bri.detail:
+                tip = f"{tip} — {bri.detail}"
+            self.bright_label.setToolTip(tip)
+            self.btn_bright_down.setToolTip(tip)
+            self.btn_bright_up.setToolTip(tip)
+        else:
+            self.bright_label.setText("n/a")
+            self.btn_bright_down.setEnabled(False)
+            self.btn_bright_up.setEnabled(False)
+            tip = bri.detail or "no brightness control on this display"
+            self.bright_label.setToolTip(tip)
+
         mic = self.spectrum.device_name or "(no mic)"
         err = self.spectrum.error
         if self.spectrum.active:
@@ -322,6 +364,12 @@ class SettingsDialog(QDialog):
             parent.set_drakevox_enabled(not self.pipeline.s.drakevox_enabled)
         self._refresh()
 
+    def _nudge_brightness(self, delta: int) -> None:
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "nudge_display_brightness"):
+            parent.nudge_display_brightness(delta)
+        self._refresh()
+
     def _drakevox_now(self) -> None:
         parent = self.parent()
         if parent is not None and hasattr(parent, "drakevox_generate_now"):
@@ -361,6 +409,9 @@ class SlsMainWindow(QMainWindow):
         self._settings_dlg: Optional[SettingsDialog] = None
         self._quit_confirmed = False
         self.setWindowTitle("SLS Camera")
+        # Apply saved brightness once (tablet backlight or xrandr software)
+        if pipeline.s.display_brightness is not None:
+            apply_persisted_percent(pipeline.s.display_brightness)
         self.setStyleSheet(_STYLE)
 
         central = QWidget()
@@ -476,6 +527,15 @@ class SlsMainWindow(QMainWindow):
         self.pipeline.s.drakevox_enabled = bool(enabled)
         self.pipeline.s.save_persisted()
         self.drakevox.enabled = bool(enabled)
+        if self._settings_open():
+            self._settings_dlg._refresh()
+
+    def nudge_display_brightness(self, delta: int) -> None:
+        """Adjust panel/software brightness; persist if change succeeded."""
+        info = nudge_brightness(int(delta))
+        if info.available and info.percent is not None and info.writable:
+            self.pipeline.s.display_brightness = int(info.percent)
+            self.pipeline.s.save_persisted()
         if self._settings_open():
             self._settings_dlg._refresh()
 

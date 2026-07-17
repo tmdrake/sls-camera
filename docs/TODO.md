@@ -24,7 +24,7 @@ policy come later.
 - [ ] **Hardware BOM photos / wiring** in `hardware/` (Kinect + tablet + external power).
 - [x] **Battery % + charge indicator** — status bar `BAT n%` / `⚡` when sysfs battery exists; hidden on desktop
 - [x] **Quit confirmation** — dialog before exit (stops REC cleanly)
-- [ ] **Display brightness** (Settings) — tablet backlight via `/sys/class/backlight` or `brightnessctl`
+- [x] **Display brightness** (Settings) — sysfs backlight / brightnessctl / xrandr software fallback
 - [ ] **Power management** — stable SLS on **external power** with tablet: suspend/sleep policy, USB power, avoid brownouts when Kinect + display are both on.
 - [ ] **Sensor inputs** — Arduino/MCU bridge into the app (see product features).
 

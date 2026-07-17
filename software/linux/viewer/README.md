@@ -166,7 +166,15 @@ Power/USB loss often prints `USB camera marked dead` / iso transfer `-4` in the 
 
 When Linux exposes a battery under `/sys/class/power_supply` (or UPower), the status bar shows e.g. `BAT 64%` or `BAT 87% ⚡` (charging). **Hidden** on desktops with no battery.
 
-**Later (not yet):** Settings control for **display brightness** on tablets.
+### Display brightness (Settings)
+
+| Backend | When |
+|---------|------|
+| **sysfs** `/sys/class/backlight` | Laptops/tablets with a real panel backlight |
+| **brightnessctl** | If installed and permitted |
+| **xrandr --brightness** | Desktop/HDMI software dim (works on many monitors) |
+
+Settings → **Brightness − / +** (±10%). Tooltip shows which backend is active. If nothing works, shows **n/a**. Value is saved in `user_settings.json` when changed.
 
 ## Quit
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 VIEWER_ROOT = Path(__file__).resolve().parent.parent
 MODEL_PATH = VIEWER_ROOT / "models" / "pose_landmarker_lite.task"
@@ -26,6 +26,7 @@ PERSIST_KEYS = (
     "spectrum_enabled",
     "auto_snap_on_detect",
     "drakevox_enabled",
+    "display_brightness",
 )
 
 
@@ -90,6 +91,9 @@ class Settings:
     # DrakeVox (random word every 5–15 min; timestamped + TTS)
     drakevox_enabled: bool = True
 
+    # Display brightness 5–100 (None = leave OS default / don't force at start)
+    display_brightness: Optional[int] = None
+
     model_path: Path = field(default_factory=lambda: MODEL_PATH)
     allow_demo_without_kinect: bool = False
 
@@ -112,6 +116,12 @@ class Settings:
         self.spectrum_enabled = bool(self.spectrum_enabled)
         self.auto_snap_on_detect = bool(self.auto_snap_on_detect)
         self.drakevox_enabled = bool(self.drakevox_enabled)
+        if self.display_brightness is not None:
+            try:
+                self.display_brightness = int(self.display_brightness)
+                self.display_brightness = max(5, min(100, self.display_brightness))
+            except (TypeError, ValueError):
+                self.display_brightness = None
         self.clamp_pose_confidence()
         self.clamp_max_poses()
         # IR gain is not user-persisted; always full sensor gain (50)
@@ -147,6 +157,11 @@ class Settings:
             "spectrum_enabled": bool(self.spectrum_enabled),
             "auto_snap_on_detect": bool(self.auto_snap_on_detect),
             "drakevox_enabled": bool(self.drakevox_enabled),
+            "display_brightness": (
+                int(self.display_brightness)
+                if self.display_brightness is not None
+                else None
+            ),
         }
         try:
             path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
