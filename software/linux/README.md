@@ -43,6 +43,7 @@ software/linux/
   README.md
   docs/
     UBUNTU-SETUP.md         # freenect, gspca, Kinect audio firmware
+    FIELD-INSTALL.md        # install/uninstall + tablet roadmap
     ARCHITECTURE.md
     LINUX-SLS-PLAN.md
   scripts/
@@ -51,8 +52,6 @@ software/linux/
     fix-kinect-access.sh
     install-field-app.sh    # dev packaging: launcher + optional autostart
     uninstall-field-app.sh
-  docs/
-    FIELD-INSTALL.md        # what install does / tablet roadmap
   viewer/                   # Qt SLS application
     run.sh
     README.md
@@ -74,7 +73,20 @@ cd software/linux/viewer
 ```
 
 Main bar: **Settings · Snap · Record · Quit**.  
-Keys: `S` settings · `C` snap · `R` record · `F` fullscreen · `Q` quit.
+Keys: `S` settings · `C` snap · `R` record · `O` ovilus · `F` fullscreen · `Q` quit.
+
+### Dev packaging (launcher / autostart)
+
+```bash
+# optional: menu launcher + login autostart (points at this clone)
+./software/linux/scripts/install-field-app.sh
+# daily dev without autostart:
+./software/linux/scripts/install-field-app.sh --no-autostart
+./software/linux/scripts/uninstall-field-app.sh
+
+# details + tablet / firmware TODO:
+#   software/linux/docs/FIELD-INSTALL.md
+```
 
 If freenect fails (`BUSY` / open -3):
 
