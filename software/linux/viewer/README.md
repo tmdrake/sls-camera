@@ -80,7 +80,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 | **Mirror** | Off by default |
 | **Spectrum** | On/off; strip height always reserved (no layout jump) |
 | **Auto-snap on detect** | Off by default |
-| **DrakeVox** | On by default; **5–15 min** + TTS; **DrakeVox now** / key **O**; in Record AVI |
+| **DrakeVox** | ON shows panel + timer/TTS; OFF hides panel and pauses; key **O** forces a word |
 
 ## Captures
 

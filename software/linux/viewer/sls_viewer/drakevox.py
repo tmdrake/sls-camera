@@ -155,9 +155,14 @@ def paint_drakevox_bgr(
     pip_corner: str = "top-right",
     history_n: int = OVERLAY_HISTORY_N,
 ) -> None:
-    """Draw DrakeVox panel under IR PiP: last N words with timestamps."""
+    """Draw DrakeVox panel under IR PiP: last N words with timestamps.
+
+    When enabled is False, draws nothing (Settings ON/OFF show/hide).
+    """
     import cv2
 
+    if not enabled:
+        return
     if bgr is None or bgr.size == 0:
         return
     h, w = bgr.shape[:2]

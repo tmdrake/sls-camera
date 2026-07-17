@@ -173,7 +173,7 @@ class SettingsDialog(QDialog):
         self.btn_drakevox = QPushButton()
         self.btn_drakevox.setObjectName("wide")
         self.btn_drakevox.setToolTip(
-            "DrakeVox: random word every 5–15 min; TTS spoken; burned into Record AVI"
+            "ON: show panel + timer/TTS · OFF: hide panel and pause DrakeVox"
         )
         self.btn_drakevox.clicked.connect(self._toggle_drakevox)
         grid.addWidget(self.btn_drakevox, row, 1, 1, 3)
