@@ -12,7 +12,8 @@ Ubuntu / freenect path for the same Xbox 360 Kinect (NUI) hardware used by the W
 | **Session** — Snap / Record + mic in AVI | **Done** (main bar + Settings) |
 | **Reconnect** — video + mic retry | **Done** (RECONNECTING UI; spectrum mic retry) |
 | **Tablet appliance image** | Not started |
-| **Ovilus + Arduino sensors** | Not started |
+| **Ovilus** word panel (15–30 min) | **Done** |
+| **Arduino sensors + Ovilus triggers** | Not started |
 
 - Bring-up: [notes/BRINGUP-FREENECT.md](notes/BRINGUP-FREENECT.md)  
 - Parity plan: [docs/LINUX-SLS-PLAN.md](docs/LINUX-SLS-PLAN.md)  

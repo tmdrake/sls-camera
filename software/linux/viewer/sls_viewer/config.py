@@ -25,6 +25,7 @@ PERSIST_KEYS = (
     "max_poses",
     "spectrum_enabled",
     "auto_snap_on_detect",
+    "ovilus_enabled",
 )
 
 
@@ -86,6 +87,9 @@ class Settings:
     auto_snap_on_detect: bool = False
     record_fps: float = 15.0
 
+    # Ovilus (Windows parity: random word every 15–30 min)
+    ovilus_enabled: bool = True
+
     model_path: Path = field(default_factory=lambda: MODEL_PATH)
     allow_demo_without_kinect: bool = False
 
@@ -104,6 +108,7 @@ class Settings:
         self.mirror = bool(self.mirror)
         self.spectrum_enabled = bool(self.spectrum_enabled)
         self.auto_snap_on_detect = bool(self.auto_snap_on_detect)
+        self.ovilus_enabled = bool(self.ovilus_enabled)
         self.clamp_pose_confidence()
         self.clamp_max_poses()
         # IR gain is not user-persisted; always full sensor gain (50)
@@ -138,6 +143,7 @@ class Settings:
             "max_poses": int(self.max_poses),
             "spectrum_enabled": bool(self.spectrum_enabled),
             "auto_snap_on_detect": bool(self.auto_snap_on_detect),
+            "ovilus_enabled": bool(self.ovilus_enabled),
         }
         try:
             path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")

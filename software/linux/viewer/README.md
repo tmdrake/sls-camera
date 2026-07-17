@@ -13,7 +13,8 @@
 | **Snap** | Timestamped JPEG → `captures/sls_YYYYMMDD_HHMMSS.jpg` |
 | **Record** | Timestamped **AVI with mic audio** (MJPG + PCM); **elapsed** (`REC 0:12`); shares spectrum mic |
 | **Reconnect** | Kinect video loss → **RECONNECTING** frame; infinite retry until device returns |
-| **Settings** | Max people, confidence, mirror, spectrum, auto-snap, Defaults |
+| **Ovilus** | Random word every **15–30 min** (Windows list); overlay + history; key **O** |
+| **Settings** | Max people, confidence, mirror, spectrum, auto-snap, Ovilus, Defaults |
 | **On open** | LED green, tilt auto-level 0°, IR sensor gain **50** (fixed, not in UI) |
 
 Browser UI is optional (`--ui web`).
@@ -50,7 +51,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 |---------|--------|
 | **Snap** | Save current composite frame |
 | **Record** | Start/stop recording; button becomes `Stop M:SS` |
-| **Settings** | Max people, Conf, Mirror, Spectrum, Auto-snap, Defaults |
+| **Settings** | Max people, Conf, Mirror, Spectrum, Auto-snap, Ovilus, Defaults |
 
 ### Keyboard
 
@@ -59,6 +60,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 | `S` | Settings |
 | `C` | Snap |
 | `R` | Record toggle |
+| `O` | Ovilus generate now |
 | `[` `]` | Confidence − / + |
 | `,` `.` | Max people − / + |
 | `M` | Mirror |
@@ -76,6 +78,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 | **Mirror** | Off by default |
 | **Spectrum** | On/off; strip height always reserved (no layout jump) |
 | **Auto-snap on detect** | Off by default |
+| **Ovilus** | On by default; random word every 15–30 min; **Ovilus now** forces a word |
 
 ## Captures
 
@@ -125,6 +128,19 @@ The app **does not set** ALSA or Pulse capture gain. Levels come from the OS/dev
 - **Retries** every ~2s if the mic drops (unplug / power cycle) — strip shows `mic retry…`  
 - Requires `libportaudio2` for Python `sounddevice`  
 
+## Ovilus
+
+Windows parity (`KinectWindow.xaml.cs`):
+
+| Item | Detail |
+|------|--------|
+| **Words** | SPIRIT, GHOST, SHADOW, CHILD, WOMAN, MAN, DEMON, ANGEL, LEAVE, STAY, HELP, HERE, COLD, ENERGY, YES, NO, DARK, LIGHT, FOLLOW, GO |
+| **Timer** | Random **15–30 minutes** between words |
+| **UI** | Bottom-left overlay on the depth view; status bar shows `OVILUS:WORD` |
+| **History** | Last 12 in Settings; also `session_*.jsonl` event `ovilus` |
+| **Manual** | Settings **Ovilus now** or key **`O`** |
+| **Recording** | Overlay is display-only (not burned into the AVI) |
+
 ## Kinect reconnect
 
 If freenect loses the camera (unplug, BUSY, power brick), the main view shows **RECONNECTING TO KINECT…** and retries forever until the device returns (LED green + auto-level on success).
@@ -158,6 +174,7 @@ viewer/
     skeleton.py
     spectrum.py           # FFT + mic retry + PCM sinks
     session_io.py         # Snap / Record + A/V mux
+    ovilus.py             # random word 15–30 min
     audio_device.py       # Kinect mic picker
     config.py
   web/                    # optional browser UI

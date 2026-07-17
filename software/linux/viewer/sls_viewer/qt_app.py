@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .ovilus import OvilusEngine, paint_ovilus_bgr
 from .session_io import SessionRecorder
 from .spectrum import SpectrumAnalyzer
 
@@ -82,12 +83,14 @@ class SettingsDialog(QDialog):
         pipeline: FramePipeline,
         spectrum: SpectrumAnalyzer,
         session: SessionRecorder,
+        ovilus: OvilusEngine,
         parent=None,
     ):
         super().__init__(parent)
         self.pipeline = pipeline
         self.spectrum = spectrum
         self.session = session
+        self.ovilus = ovilus
         self.setWindowTitle("Settings")
         self.setModal(False)
         self.setWindowFlags(
@@ -164,9 +167,18 @@ class SettingsDialog(QDialog):
         grid.addWidget(self.btn_autosnap, row, 1, 1, 3)
         row += 1
 
+        # Ovilus
+        grid.addWidget(QLabel("Ovilus"), row, 0)
+        self.btn_ovilus = QPushButton()
+        self.btn_ovilus.setObjectName("wide")
+        self.btn_ovilus.setToolTip("Random word every 15–30 min (Windows parity)")
+        self.btn_ovilus.clicked.connect(self._toggle_ovilus)
+        grid.addWidget(self.btn_ovilus, row, 1, 1, 3)
+        row += 1
+
         root.addLayout(grid)
 
-        # Defaults only here — Snapshot/Record live on main bar next to Settings
+        # Defaults + Ovilus generate — Snapshot/Record on main bar
         act = QHBoxLayout()
         self.btn_defaults = QPushButton("Defaults")
         self.btn_defaults.setObjectName("wide")
@@ -175,6 +187,11 @@ class SettingsDialog(QDialog):
         )
         self.btn_defaults.clicked.connect(self._reset_defaults)
         act.addWidget(self.btn_defaults)
+        self.btn_ovilus_now = QPushButton("Ovilus now")
+        self.btn_ovilus_now.setObjectName("wide")
+        self.btn_ovilus_now.setToolTip("Generate a word immediately (also reschedules timer)")
+        self.btn_ovilus_now.clicked.connect(self._ovilus_now)
+        act.addWidget(self.btn_ovilus_now)
         act.addStretch(1)
         root.addLayout(act)
 
@@ -183,7 +200,21 @@ class SettingsDialog(QDialog):
         self.mic_label.setWordWrap(True)
         root.addWidget(self.mic_label)
 
-        hint = QLabel("Keys: [ ] conf  , . max  M mirror  S settings  Esc close")
+        self.ovilus_label = QLabel("")
+        self.ovilus_label.setStyleSheet("color: #aa4444; font-size: 12px;")
+        self.ovilus_label.setWordWrap(True)
+        root.addWidget(self.ovilus_label)
+
+        self.ovilus_history = QLabel("")
+        self.ovilus_history.setStyleSheet(
+            "color: #888; font-size: 11px; font-family: monospace;"
+        )
+        self.ovilus_history.setWordWrap(True)
+        root.addWidget(self.ovilus_history)
+
+        hint = QLabel(
+            "Keys: [ ] conf  , . max  M mirror  O ovilus now  S settings  Esc close"
+        )
         hint.setStyleSheet("color: #666; font-size: 11px;")
         hint.setWordWrap(True)
         root.addWidget(hint)
@@ -208,6 +239,7 @@ class SettingsDialog(QDialog):
         self.btn_autosnap.setText(
             "ON" if self.pipeline.s.auto_snap_on_detect else "OFF"
         )
+        self.btn_ovilus.setText("ON" if self.pipeline.s.ovilus_enabled else "OFF")
         mic = self.spectrum.device_name or "(no mic)"
         err = self.spectrum.error
         if self.spectrum.active:
@@ -218,6 +250,16 @@ class SettingsDialog(QDialog):
             self.mic_label.setText(
                 "Mic: off — install kinect-audio-setup for Kinect array, or use system mic"
             )
+        cur = self.ovilus.current or "—"
+        self.ovilus_label.setText(
+            f"Ovilus: {cur}  ·  next ~{self.ovilus.next_eta_str()}"
+            if self.pipeline.s.ovilus_enabled
+            else "Ovilus: off"
+        )
+        hist = self.ovilus.history_lines(8)
+        self.ovilus_history.setText(
+            "History:\n" + "\n".join(hist) if hist else "History: (none yet)"
+        )
 
     def _nudge_conf(self, delta: float) -> None:
         self.pipeline.adjust_pose_confidence(delta)
@@ -240,6 +282,18 @@ class SettingsDialog(QDialog):
     def _toggle_autosnap(self) -> None:
         self.pipeline.s.auto_snap_on_detect = not self.pipeline.s.auto_snap_on_detect
         self.pipeline.s.save_persisted()
+        self._refresh()
+
+    def _toggle_ovilus(self) -> None:
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "set_ovilus_enabled"):
+            parent.set_ovilus_enabled(not self.pipeline.s.ovilus_enabled)
+        self._refresh()
+
+    def _ovilus_now(self) -> None:
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "ovilus_generate_now"):
+            parent.ovilus_generate_now()
         self._refresh()
 
     def _reset_defaults(self) -> None:
@@ -267,6 +321,7 @@ class SlsMainWindow(QMainWindow):
         self.pipeline = pipeline
         self.spectrum = SpectrumAnalyzer(n_bars=pipeline.s.spectrum_bars)
         self.session = SessionRecorder()
+        self.ovilus = OvilusEngine(enabled=pipeline.s.ovilus_enabled)
         self._settings_dlg: Optional[SettingsDialog] = None
         self.setWindowTitle("SLS Camera")
         self.setStyleSheet(_STYLE)
@@ -353,6 +408,7 @@ class SlsMainWindow(QMainWindow):
         QShortcut(QKeySequence("."), self, activated=lambda: self._nudge_max(+1))
         QShortcut(QKeySequence("R"), self, activated=self._toggle_record)
         QShortcut(QKeySequence("C"), self, activated=self._snapshot)
+        QShortcut(QKeySequence("O"), self, activated=self.ovilus_generate_now)
 
         self._timer = QTimer(self)
         self._timer.setInterval(33)
@@ -377,6 +433,19 @@ class SlsMainWindow(QMainWindow):
         self._paint_spectrum_strip()
         # Re-assert fullscreen in case the WM reacted to layout churn
         QTimer.singleShot(0, self._force_fullscreen)
+
+    def set_ovilus_enabled(self, enabled: bool) -> None:
+        self.pipeline.s.ovilus_enabled = bool(enabled)
+        self.pipeline.s.save_persisted()
+        self.ovilus.enabled = bool(enabled)
+
+    def ovilus_generate_now(self) -> None:
+        if not self.pipeline.s.ovilus_enabled:
+            self.set_ovilus_enabled(True)
+        word = self.ovilus.generate_now()
+        self.session.note_ovilus(word)
+        if self._settings_open():
+            self._settings_dlg._refresh()
 
     def _paint_spectrum_strip(self) -> None:
         """Always paint into the reserved strip (bars, retry, or idle)."""
@@ -406,7 +475,11 @@ class SlsMainWindow(QMainWindow):
     def _open_settings(self) -> None:
         if self._settings_dlg is None:
             self._settings_dlg = SettingsDialog(
-                self.pipeline, self.spectrum, self.session, self
+                self.pipeline,
+                self.spectrum,
+                self.session,
+                self.ovilus,
+                self,
             )
         if self._settings_dlg.isVisible():
             self._settings_dlg.raise_()
@@ -484,6 +557,14 @@ class SlsMainWindow(QMainWindow):
         if self.pipeline.s.spectrum_enabled or self.session.recording:
             self.spectrum.ensure_running()
 
+        # Ovilus 15–30 min timer (Windows parity)
+        if self.pipeline.s.ovilus_enabled:
+            fired = self.ovilus.tick()
+            if fired:
+                self.session.note_ovilus(fired)
+                if self._settings_open():
+                    self._settings_dlg._refresh()
+
         mx = self.pipeline.max_poses
         flash = self.session.flash_message()
         if self.session.recording:
@@ -493,22 +574,34 @@ class SlsMainWindow(QMainWindow):
             rec = ""
             if self.btn_record.text() != "Record":
                 self.btn_record.setText("Record")
+        ovi = ""
+        if self.pipeline.s.ovilus_enabled and self.ovilus.current:
+            ovi = f" · OVILUS:{self.ovilus.current}"
         base = (
             f"{self.pipeline.status}  ·  {self.pipeline.fps:.1f} fps  ·  "
-            f"Detected:{self.pipeline.poses_count}/{mx}{rec}"
+            f"Detected:{self.pipeline.poses_count}/{mx}{rec}{ovi}"
         )
         self.status.setText(f"{flash}  ·  {base}" if flash else base)
 
         frame = self.pipeline.get_bgr()
         if frame is not None:
             if self.session.recording:
+                # Record clean SLS frame (Ovilus is operator overlay only)
                 self.session.write_frame(frame)
             self.session.note_detection(
                 self.pipeline.poses_count,
                 self.pipeline.s.auto_snap_on_detect,
                 frame,
             )
-            pix = bgr_to_qpixmap(frame)
+            display = frame.copy()
+            paint_ovilus_bgr(
+                display,
+                self.ovilus.current,
+                enabled=self.pipeline.s.ovilus_enabled,
+                flash=self.ovilus.flash_active(),
+                eta=self.ovilus.next_eta_str(),
+            )
+            pix = bgr_to_qpixmap(display)
             target = self.video.size()
             if target.width() >= 2 and target.height() >= 2:
                 scaled = pix.scaled(

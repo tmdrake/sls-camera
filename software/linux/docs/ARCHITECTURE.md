@@ -17,7 +17,8 @@ Shared look (from root `AGENTS.md`):
 - Optional secondary color view  
 - Un-mirrored option for operator behind camera  
 - Spectrum strip + session Snap/Record (AVI + mic) — **done on Linux**  
-- Later: Ovilus-style word cues, extra sensors  
+- Ovilus random words (15–30 min) — **done on Linux**  
+- Later: Ovilus external triggers, extra sensors  
 
 ## Layers
 
@@ -70,6 +71,7 @@ libfreenect does **not** include Microsoft-style skeleton tracking. Overlay is a
 3. **M2** — SLS stick figures on depth + IR PiP — **done**  
 4. **M3** — Qt Settings, spectrum, Snap/Record+audio, reconnect — **done**  
 5. **M4** — tablet appliance image — **not started**  
-6. **M5** — Ovilus + Arduino/MCU sensor bridge — **not started**  
+6. **M5a** — Ovilus timer panel — **done**  
+7. **M5b** — Arduino/MCU + Ovilus triggers — **not started**  
 
 Field app: `software/linux/viewer/`. Details: [LINUX-SLS-PLAN.md](LINUX-SLS-PLAN.md).

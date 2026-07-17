@@ -50,7 +50,8 @@ Run: `cd software/linux/viewer && ./run.sh`
 - [x] Kinect video reconnect UI + infinite retry; spectrum mic retry  
 - [ ] Hardware photos / wiring notes in `hardware/`  
 - [ ] Tablet appliance image / autostart  
-- [ ] Ovilus + sensor bridge  
+- [x] Ovilus word panel (15–30 min timer)  
+- [ ] Ovilus triggers + sensor bridge  
 
 Backlog: [docs/TODO.md](TODO.md).  
 

@@ -53,7 +53,7 @@ Ubuntu / freenect work lives under `software/linux/`. **Same UI goal** as this W
 
 - **Field app (working):** `software/linux/viewer/` — `./run.sh`  
   Depth + IR PiP, skeletons, spectrum (Kinect USB Audio), Snap/Record **AVI+mic**,  
-  reconnect UI, Settings (MediaPipe Defaults)  
+  reconnect UI, Ovilus (15–30 min), Settings (MediaPipe Defaults)  
 - Parity plan: `software/linux/docs/LINUX-SLS-PLAN.md`  
 - Product vision: `docs/PRODUCT-VISION.md`  
 - Setup: `software/linux/docs/UBUNTU-SETUP.md` (freenect + `kinect-audio-setup`)  

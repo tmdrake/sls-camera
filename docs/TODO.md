@@ -15,7 +15,8 @@ Living list of follow-ups for the SLS field app and appliance path.
 
 ## Product features (later)
 
-- [ ] Ovilus word panel (timer / triggers)
+- [x] Ovilus word panel (15–30 min timer; Settings + key `O`; session log)
+- [ ] Ovilus external triggers (detect / audio / MCU)
 - [ ] Arduino / MCU sensor bridge
 - [ ] Optional RGB view or color swap (Windows parity)
 
@@ -28,3 +29,4 @@ Living list of follow-ups for the SLS field app and appliance path.
 - [x] AVI recordings with muxed mic audio (Kinect preferred)
 - [x] Kinect video reconnect screen + infinite retry
 - [x] Spectrum / mic auto-retry when device drops
+- [x] Ovilus word panel (Windows word list + 15–30 min timer)

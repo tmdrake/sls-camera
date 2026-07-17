@@ -46,7 +46,7 @@ Nice-to-have for **v1.x** (Windows already notes these; not required for first u
 | Spectrum analyser under main view | **Done** |
 | Session record (AVI + mic) | **Done** |
 | Reconnect / mic retry | **Done** |
-| Ovilus random words (15–30 min) | Later (M5) |
+| Ovilus random words (15–30 min) | **Done** (timer; external triggers later) |
 
 ---
 
@@ -130,7 +130,8 @@ If registration is imperfect at first, v1 can draw sticks on a dual layout (dept
 | **M2** | SLS skeleton overlay | Sticks on depth (+ IR PiP) | **Done** (MediaPipe on colorized depth) |
 | **M3** | Field UI polish | Qt Settings, spectrum, Snap/Record+audio, reconnect | **Done** (auto-level only; no manual tilt) |
 | **M4** | Appliance image | Auto-start on Lubuntu-class tablet | Not started |
-| **M5** | Ovilus + sensors | Ovilus panel; Arduino/MCU bridge | Not started |
+| **M5a** | Ovilus panel | 15–30 min words on Qt UI | **Done** (timer; triggers later) |
+| **M5b** | Sensors | Arduino/MCU bridge + Ovilus triggers | Not started |
 
 **Definition of “Linux SLS usable”:** M2 — **met** on OptiPlex + Kinect.
 
@@ -150,7 +151,7 @@ If registration is imperfect at first, v1 can draw sticks on a dual layout (dept
 | Session capture | Snap / Record main bar; AVI + PCM mic | Done |
 | Device reconnect | RECONNECTING UI; infinite freenect retry | Done |
 | Tilt control | Auto-level on open only | Done (no manual UI by design) |
-| Ovilus 15–30 min | — | Later (M5) |
+| Ovilus 15–30 min | `ovilus.py` + Settings / key O | Done (timer) |
 | Color side / swap | — | Optional later |
 
 ---

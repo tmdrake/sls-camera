@@ -65,7 +65,7 @@ Detail: `software/linux/docs/LINUX-SLS-PLAN.md` · app: `software/linux/viewer/`
 4. **Field resilience** — Kinect reconnect UI + mic retry — **done on Linux**  
 5. **Appliance hardening** — auto-start kiosk, freenect udev, no gspca fights, watchdog restart  
 6. **Image build** — documented image or scripted install for “load onto tablet”  
-7. **Ovilus interface** — word/phrase display (timer and/or sensor-triggered); can share Kinect-derived events or MCU inputs  
+7. **Ovilus interface** — word/phrase display — **timer done on Linux**; sensor-triggered / MCU inputs later  
 8. **Additional sensors** — EMF, temp, IMU, etc. on Arduino (or similar); bridge into the same UI  
 
 Spelling note: product/docs use **Ovilus** (spirit box–style word UI already referenced in Windows `AGENTS.md`).

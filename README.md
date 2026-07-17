@@ -64,7 +64,7 @@ cd software/linux/viewer && ./run.sh
 2. ~~Spectrum + session Snap/Record~~  
 3. ~~Mux audio into Record (AVI + mic)~~ · reconnect UI + mic retry  
 4. Field harden (autostart, packaging) when targeting tablets  
-5. Ovilus / sensor bridge (product vision)  
+5. ~~Ovilus timer panel~~ · remaining: external triggers / sensor bridge  
 6. Fill `hardware/` with portable-rig photos/wiring  
 7. Windows app polish (Ovilus, installer) as needed  
 

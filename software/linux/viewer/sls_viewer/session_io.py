@@ -421,6 +421,10 @@ class SessionRecorder:
         except OSError:
             pass
 
+    def note_ovilus(self, word: str) -> None:
+        self._log_event("ovilus", {"word": word})
+        self._set_flash(f"OVILUS: {word}", seconds=4.0)
+
     def note_detection(
         self, detected: int, auto_snap: bool, bgr: Optional[np.ndarray]
     ) -> None:
