@@ -24,9 +24,9 @@ class Settings:
     auto_level: bool = True  # tilt motor to 0° (level) on start
     tilt_degs: int = 0  # used only if auto_level is False
 
-    # Mirror ON by default (operator behind camera sees familiar left/right).
-    # Use --no-mirror or UI toggle to turn off.
-    mirror: bool = True
+    # Mirror OFF by default (operator behind camera / unmirrored room view).
+    # Use --mirror or UI toggle to turn on.
+    mirror: bool = False
 
     # Pose runs on IR (Kinect cannot stream RGB + IR at once with freenect).
     # IR illuminator lights people well enough for MediaPipe in dark rooms.

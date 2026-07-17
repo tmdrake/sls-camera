@@ -4,7 +4,7 @@
 
 - **Main:** full-screen **colorized depth + skeleton**
 - **PiP:** small **IR + skeleton** in the **top corner** (scaled)
-- **Mirror ON by default** (toggle in UI or `--no-mirror`)
+- **Mirror OFF by default** (toggle in UI or `--mirror`)
 
 Browser UI is **optional** (`--ui web`).
 
@@ -50,7 +50,7 @@ Keys: **Esc / Q** quit · **M** mirror · **F** re-assert fullscreen
 
 ```bash
 ./run.sh --demo            # synthetic UI test (no Kinect)
-./run.sh --no-mirror       # mirror off
+./run.sh --mirror          # horizontal mirror on
 ./run.sh --no-auto-level   # leave tilt where it is
 ./run.sh --led-off         # no green LED
 ./run.sh --ui web          # optional browser UI

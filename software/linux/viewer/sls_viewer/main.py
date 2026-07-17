@@ -23,9 +23,9 @@ def parse_args(argv=None):
     p.add_argument("--host", default=settings.host)
     p.add_argument("--port", type=int, default=settings.port)
     p.add_argument(
-        "--no-mirror",
+        "--mirror",
         action="store_true",
-        help="Disable horizontal mirror (default: mirror ON)",
+        help="Enable horizontal mirror (default: off)",
     )
     p.add_argument(
         "--demo",
@@ -131,7 +131,7 @@ def main(argv=None):
     args = parse_args(argv)
     settings.host = args.host
     settings.port = args.port
-    settings.mirror = not bool(args.no_mirror)
+    settings.mirror = bool(args.mirror)
     settings.device_index = args.device
     settings.allow_demo_without_kinect = bool(args.demo)
     settings.auto_level = not bool(args.no_auto_level)
