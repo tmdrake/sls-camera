@@ -1,4 +1,4 @@
-"""Capture → colorize → pose → composite frame (big depth, small IR)."""
+"""Capture → colorize → pose → composite; infinite Kinect reconnect."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import numpy as np
 from . import colorize, freenect_io
 from .config import Settings
 from .pose import PoseEstimator
-from .skeleton import draw_skeletons, scale_poses
+from .skeleton import draw_skeletons
 
 
 class FramePipeline:
@@ -30,6 +30,7 @@ class FramePipeline:
         self._pose: Optional[PoseEstimator] = None
         self._frame_i = 0
         self._last_poses = []
+        self._reconnect_attempt = 0
 
     @property
     def status(self) -> str:
@@ -57,12 +58,10 @@ class FramePipeline:
         return float(self.s.pose_min_confidence)
 
     def set_pose_confidence(self, value: float) -> float:
-        """UI confidence 0.25–0.99; rebuilds MediaPipe so the value actually applies."""
         self.s.pose_min_confidence = float(value)
         self.s.clamp_pose_confidence()
         self.s.save_persisted()
         if self._pose is not None:
-            # Rebuilds landmarker with new thresholds (was a no-op bug before)
             self._pose.set_min_confidence(self.s.pose_min_confidence)
         return self.s.pose_min_confidence
 
@@ -74,7 +73,6 @@ class FramePipeline:
         return int(self.s.max_poses)
 
     def set_max_poses(self, value: int) -> int:
-        """UI max people 1–6; rebuilds MediaPipe num_poses."""
         self.s.max_poses = int(value)
         self.s.clamp_max_poses()
         self.s.save_persisted()
@@ -86,7 +84,6 @@ class FramePipeline:
         return self.set_max_poses(self.max_poses + int(delta))
 
     def reset_pose_defaults(self) -> None:
-        """MediaPipe defaults: confidence 0.5, max poses 1."""
         self.s.reset_pose_defaults()
         if self._pose is not None:
             self._pose.set_min_confidence(self.s.pose_min_confidence)
@@ -97,7 +94,6 @@ class FramePipeline:
             return self._jpeg
 
     def get_bgr(self) -> Optional[np.ndarray]:
-        """Latest composite BGR frame (copy) for native Qt UI."""
         with self._lock:
             if self._bgr is None:
                 return None
@@ -107,7 +103,9 @@ class FramePipeline:
         if self._running:
             return
         self._running = True
-        self._thread = threading.Thread(target=self._loop, name="sls-pipeline", daemon=True)
+        self._thread = threading.Thread(
+            target=self._loop, name="sls-pipeline", daemon=True
+        )
         self._thread.start()
 
     def stop(self) -> None:
@@ -133,21 +131,62 @@ class FramePipeline:
                 self._jpeg = buf.tobytes()
 
     def _demo_frames(self) -> Tuple[np.ndarray, np.ndarray]:
-        """Synthetic depth/IR for UI testing without Kinect."""
         t = time.time()
         yy, xx = np.mgrid[0:480, 0:640]
-        depth = (1000 + 400 * np.sin(xx / 40.0 + t) + 200 * np.cos(yy / 30.0)).astype(np.uint16)
+        depth = (
+            1000 + 400 * np.sin(xx / 40.0 + t) + 200 * np.cos(yy / 30.0)
+        ).astype(np.uint16)
         depth = np.clip(depth, 1, 2000)
         ir = ((xx + yy + int(t * 30)) % 255).astype(np.uint8)
-        # fake person blob
         cv2.ellipse(ir, (320, 240), (60, 120), 0, 0, 360, 220, -1)
         return depth, ir
 
+    def _paint_reconnect(self, detail: str = "") -> None:
+        """Status UI while waiting for Kinect power/USB/video."""
+        W, H = self.s.frame_width, self.s.frame_height
+        err = np.zeros((H, W, 3), dtype=np.uint8)
+        err[:] = (20, 10, 10)
+        cv2.putText(
+            err,
+            "RECONNECTING TO KINECT…",
+            (40, 120),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.1,
+            (0, 180, 255),
+            2,
+            cv2.LINE_AA,
+        )
+        lines = [
+            detail[:90] if detail else self._status[:90],
+            f"retry #{self._reconnect_attempt} — power brick + USB",
+            "will keep trying until device returns",
+            "LED green + auto-level when reconnected",
+        ]
+        for i, line in enumerate(lines):
+            cv2.putText(
+                err,
+                line,
+                (40, 200 + i * 40),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (200, 200, 200),
+                1,
+                cv2.LINE_AA,
+            )
+        self._set_frame(err)
+
+    def _close_kinect(self) -> None:
+        if self._kinect:
+            try:
+                self._kinect.stop()
+            except Exception:
+                pass
+            self._kinect = None
+
     def _open_kinect(self) -> bool:
-        """Open live freenect stream: green LED + auto-level tilt, then depth+IR."""
+        """Open live freenect stream: green LED + auto-level + IR gain 50."""
         try:
             self._status = "opening kinect (LED green, auto-level)…"
-            # IR sensor gain fixed at 50 (full); not in UI — PiP only, not pose
             self.s.ir_brightness = 50
             self._kinect = freenect_io.FreenectSync(
                 index=self.s.device_index,
@@ -157,20 +196,16 @@ class FramePipeline:
                 auto_level=self.s.auto_level,
                 ir_brightness=50,
             )
-            self._kinect.prepare()  # LED green + tilt 0° + IR gain 50 + streams
+            self._kinect.prepare()
             depth, ir = self._kinect.get_depth_and_ir()
+            self._reconnect_attempt = 0
             self._status = (
                 f"live · {depth.shape[1]}x{depth.shape[0]} · LED green · tilt 0°"
             )
             return True
         except Exception as e:
             self._status = f"kinect error: {e}"
-            if self._kinect:
-                try:
-                    self._kinect.stop()
-                except Exception:
-                    pass
-            self._kinect = None
+            self._close_kinect()
             return False
 
     def _ensure_pose(self) -> None:
@@ -184,7 +219,6 @@ class FramePipeline:
             )
 
     def _compose(self, depth_bgr: np.ndarray, ir_bgr: np.ndarray) -> np.ndarray:
-        """Full-bleed depth + skeleton; IR + skeleton as small top-corner PiP."""
         W, H = self.s.frame_width, self.s.frame_height
         canvas = cv2.resize(depth_bgr, (W, H), interpolation=cv2.INTER_AREA)
 
@@ -199,7 +233,6 @@ class FramePipeline:
             cv2.LINE_AA,
         )
 
-        # IR picture-in-picture (top corner, scaled)
         pip_w = max(80, int(self.s.ir_pip_width))
         pip_h = max(60, int(self.s.ir_pip_height))
         margin = max(0, int(self.s.ir_pip_margin))
@@ -218,11 +251,9 @@ class FramePipeline:
         if self.s.ir_pip_corner == "top-left":
             x0, y0 = margin, margin
         else:
-            # default top-right
             x0 = W - pip_w - margin
             y0 = margin
 
-        # Border / shadow so PiP reads clearly over depth
         x1, y1 = x0 + pip_w, y0 + pip_h
         cv2.rectangle(canvas, (x0 - 2, y0 - 2), (x1 + 2, y1 + 2), (0, 0, 0), 2)
         cv2.rectangle(canvas, (x0 - 1, y0 - 1), (x1 + 1, y1 + 1), (0, 255, 180), 1)
@@ -240,57 +271,73 @@ class FramePipeline:
         )
         return canvas
 
-    def _loop(self) -> None:
-        use_kinect = self._open_kinect()
-        if not use_kinect and not self.s.allow_demo_without_kinect:
-            # still paint error frame
-            err = np.zeros((self.s.frame_height, self.s.frame_width, 3), dtype=np.uint8)
-            msg = self._status[:80]
-            cv2.putText(
-                err,
-                "SLS VIEWER — KINECT NOT OPEN",
-                (40, 120),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1.2,
-                (0, 80, 255),
-                2,
-                cv2.LINE_AA,
-            )
-            for i, line in enumerate(
-                [
-                    msg[:90],
-                    "1) Kinect power brick ON + USB plugged in",
-                    "2) sudo modprobe -r gspca_kinect  (if busy)",
-                    "3) ./software/linux/scripts/fix-kinect-access.sh",
-                    "4) Close other freenect apps; restart this app",
+    def _process_frames(
+        self, depth_u16: np.ndarray, ir_u8: np.ndarray, fps_smooth: float
+    ) -> float:
+        depth_bgr = colorize.colorize_depth(
+            depth_u16, self.s.depth_min, self.s.depth_max
+        )
+        ir_bgr = colorize.ir_to_bgr(ir_u8)
+
+        self._frame_i += 1
+        if self._pose and (self._frame_i % max(1, self.s.pose_every_n_frames) == 0):
+            try:
+                self._last_poses = self._pose.estimate(depth_bgr)[
+                    : int(self.s.max_poses)
                 ]
-            ):
-                cv2.putText(
-                    err,
-                    line,
-                    (40, 200 + i * 40),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (200, 200, 200),
-                    1,
-                    cv2.LINE_AA,
-                )
-            self._set_frame(err)
-            # keep refreshing error status occasionally
-            while self._running:
-                time.sleep(1.0)
-                if freenect_io.gspca_loaded() is False and self._open_kinect():
-                    use_kinect = True
-                    break
-                if not self._running:
-                    return
+            except Exception as e:
+                self._status = f"pose: {e}"
+
+        poses = self._last_poses[: self.s.max_poses]
+        self._poses_count = len(poses)
+
+        depth_bgr = draw_skeletons(
+            depth_bgr,
+            poses,
+            bone_color=self.s.bone_color,
+            joint_color=self.s.joint_color,
+            bone_thickness=self.s.bone_thickness,
+            joint_radius=self.s.joint_radius,
+            min_vis=self.s.skeleton_min_vis,
+        )
+        ir_bgr = draw_skeletons(
+            ir_bgr,
+            poses,
+            bone_color=self.s.bone_color,
+            joint_color=self.s.joint_color,
+            bone_thickness=max(1, self.s.bone_thickness),
+            joint_radius=max(2, self.s.joint_radius - 1),
+            min_vis=self.s.skeleton_min_vis,
+        )
+
+        depth_bgr = colorize.maybe_flip(depth_bgr, self.s.mirror)
+        ir_bgr = colorize.maybe_flip(ir_bgr, self.s.mirror)
+        self._set_frame(self._compose(depth_bgr, ir_bgr))
+        return fps_smooth
+
+    def _loop(self) -> None:
+        demo = bool(self.s.allow_demo_without_kinect)
+        use_kinect = self._open_kinect()
+
+        # Infinite reconnect until first success (unless demo)
+        while self._running and not use_kinect and not demo:
+            self._reconnect_attempt += 1
+            self._status = (
+                f"reconnecting… attempt {self._reconnect_attempt} "
+                "(power / USB / freenect)"
+            )
+            self._paint_reconnect()
+            time.sleep(1.5)
+            use_kinect = self._open_kinect()
+
+        if not use_kinect and demo:
+            self._status = "demo mode (no kinect)"
 
         try:
             self._ensure_pose()
         except Exception as e:
             self._status = f"pose model error: {e}"
 
-        t_prev = time.time()
         fps_smooth = 0.0
 
         while self._running:
@@ -300,69 +347,41 @@ class FramePipeline:
                     depth_u16, ir_u8 = self._kinect.get_depth_and_ir()
                 else:
                     depth_u16, ir_u8 = self._demo_frames()
-                    self._status = "demo mode (no kinect)"
+                    if not use_kinect:
+                        self._status = "demo mode (no kinect)"
 
-                depth_bgr = colorize.colorize_depth(
-                    depth_u16, self.s.depth_min, self.s.depth_max
-                )
-                ir_bgr = colorize.ir_to_bgr(ir_u8)
-
-                # Pose on colorized depth only (max 2 people). Same FOV as main view.
-                self._frame_i += 1
-                if self._pose and (self._frame_i % max(1, self.s.pose_every_n_frames) == 0):
-                    try:
-                        self._last_poses = self._pose.estimate(depth_bgr)[
-                            : int(self.s.max_poses)
-                        ]
-                    except Exception as e:
-                        self._status = f"pose: {e}"
-
-                poses = self._last_poses[: self.s.max_poses]
-                self._poses_count = len(poses)
-
-                depth_bgr = draw_skeletons(
-                    depth_bgr,
-                    poses,
-                    bone_color=self.s.bone_color,
-                    joint_color=self.s.joint_color,
-                    bone_thickness=self.s.bone_thickness,
-                    joint_radius=self.s.joint_radius,
-                    min_vis=self.s.skeleton_min_vis,
-                )
-                ir_bgr = draw_skeletons(
-                    ir_bgr,
-                    poses,
-                    bone_color=self.s.bone_color,
-                    joint_color=self.s.joint_color,
-                    bone_thickness=max(1, self.s.bone_thickness),
-                    joint_radius=max(2, self.s.joint_radius - 1),
-                    min_vis=self.s.skeleton_min_vis,
-                )
-
-                depth_bgr = colorize.maybe_flip(depth_bgr, self.s.mirror)
-                ir_bgr = colorize.maybe_flip(ir_bgr, self.s.mirror)
-
-                composite = self._compose(depth_bgr, ir_bgr)
-                self._set_frame(composite)
-
+                t1 = time.time()
+                fps_smooth = self._process_frames(depth_u16, ir_u8, fps_smooth)
                 dt = time.time() - t0
                 inst = 1.0 / dt if dt > 0 else 0.0
                 fps_smooth = 0.9 * fps_smooth + 0.1 * inst if fps_smooth else inst
                 self._fps = fps_smooth
 
-                # pace
                 min_dt = 1.0 / max(1.0, self.s.target_fps)
                 sleep_t = min_dt - (time.time() - t0)
                 if sleep_t > 0:
                     time.sleep(sleep_t)
+
             except freenect_io.FreenectError as e:
-                self._status = str(e)
+                # Device lost — infinite retry with reconnect UI
+                self._status = f"reconnecting… {e}"
+                self._close_kinect()
                 use_kinect = False
-                if self._kinect:
-                    self._kinect.stop()
-                    self._kinect = None
-                time.sleep(0.5)
-                use_kinect = self._open_kinect()
+                self._reconnect_attempt += 1
+                self._paint_reconnect(str(e))
+                time.sleep(1.0)
+                while self._running and not use_kinect:
+                    self._reconnect_attempt += 1
+                    self._status = (
+                        f"reconnecting… attempt {self._reconnect_attempt}"
+                    )
+                    self._paint_reconnect()
+                    time.sleep(1.5)
+                    use_kinect = self._open_kinect()
+                    if use_kinect:
+                        self._status = (
+                            f"live · reconnected · LED green · tilt 0°"
+                        )
             except Exception as e:
                 self._status = f"pipeline: {e}"
                 time.sleep(0.25)

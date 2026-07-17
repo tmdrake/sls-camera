@@ -9,7 +9,8 @@ Ubuntu / freenect path for the same Xbox 360 Kinect (NUI) hardware used by the W
 | **M0** — freenect install + `freenect-glview` | **Done** (OptiPlex + Kinect 360) |
 | **M1+M2** — depth + skeleton field UI | **Done** — Qt app under `viewer/` |
 | **Spectrum** — mic FFT strip | **Done** (Kinect USB Audio preferred after firmware) |
-| **Session** — Snap / Record / auto-snap | **Done** (main bar + Settings) |
+| **Session** — Snap / Record + mic in AVI | **Done** (main bar + Settings) |
+| **Reconnect** — video + mic retry | **Done** (RECONNECTING UI; spectrum mic retry) |
 | **Tablet appliance image** | Not started |
 | **Ovilus + Arduino sensors** | Not started |
 
@@ -27,7 +28,8 @@ Ubuntu / freenect path for the same Xbox 360 Kinect (NUI) hardware used by the W
 | Live depth + IR PiP | Done |
 | Stick figures (MediaPipe on colorized depth) | Done |
 | Spectrum strip | Done |
-| Snap / Record | Done |
+| Snap / Record (AVI + mic audio) | Done |
+| Kinect reconnect + mic retry | Done |
 | Auto-level tilt (no manual tilt UI) | Done |
 | Ovilus / multi-sensor | Later |
 

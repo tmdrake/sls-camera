@@ -38,7 +38,8 @@ AGENTS.md           Windows app notes + Linux path pointer
 
 - Live depth + IR PiP, skeletons on colorized depth (max people 1–6, MediaPipe defaults via **Defaults**)  
 - Spectrum strip (prefers **Kinect USB Audio** after `kinect-audio-setup`)  
-- Main bar: **Settings · Snap · Record · Quit** (timestamped captures, REC elapsed time)  
+- Main bar: **Settings · Snap · Record · Quit** (timestamped AVI **with mic audio**, REC elapsed)  
+- Kinect disconnect → RECONNECTING screen + infinite retry; spectrum mic auto-retry  
 - LED green + auto-level on open; IR sensor gain fixed at 50 (not in UI)  
 
 Docs: [linux README](software/linux/README.md) · [viewer README](software/linux/viewer/README.md) · [Ubuntu setup](software/linux/docs/UBUNTU-SETUP.md) · [M0 bring-up](software/linux/notes/BRINGUP-FREENECT.md).
@@ -60,8 +61,8 @@ cd software/linux/viewer && ./run.sh
 ## Next steps
 
 1. ~~Linux M0 freenect / M1–M2 SLS UI~~  
-2. ~~Spectrum + session Snap/Record (video-only)~~  
-3. **Mux audio into Record** (Kinect/system mic) — [docs/TODO.md](docs/TODO.md)  
+2. ~~Spectrum + session Snap/Record~~  
+3. ~~Mux audio into Record (AVI + mic)~~ · reconnect UI + mic retry  
 4. Field harden (autostart, packaging) when targeting tablets  
 5. Ovilus / sensor bridge (product vision)  
 6. Fill `hardware/` with portable-rig photos/wiring  

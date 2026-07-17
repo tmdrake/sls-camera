@@ -4,8 +4,8 @@ Living list of follow-ups for the SLS field app and appliance path.
 
 ## Recording / capture
 
-- [ ] **Mux audio into recordings** — today Record is video-only (OpenCV AVI/MJPG of composite frames). Spectrum uses Kinect USB Audio (or system mic) separately. Desired: save mic audio with the video (e.g. parallel WAV + ffmpeg mux to mp4/mkv, or an A/V writer). Prefer Kinect USB Audio when present.
-  - Related: `software/linux/viewer/sls_viewer/session_io.py`, `spectrum.py`
+- [x] **Mux audio into recordings** — Record writes MJPG video + parallel mic WAV, then muxes into a single AVI (PCM audio) via system `ffmpeg` or `imageio-ffmpeg`. Prefers Kinect USB Audio; shares spectrum stream to avoid exclusive-open conflicts. Fallback: video AVI + sidecar WAV if mux fails.
+  - Related: `software/linux/viewer/sls_viewer/session_io.py`, `spectrum.py`, `audio_device.py`
 
 ## Field / appliance
 

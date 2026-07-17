@@ -44,9 +44,10 @@ Run: `cd software/linux/viewer && ./run.sh`
 - [x] Linux path scaffold + Ubuntu setup notes  
 - [x] freenect working on OptiPlex (`freenect-glview`)  
 - [x] Linux SLS viewer (depth + skeleton + IR PiP)  
-- [x] Spectrum + session Snap/Record (video-only AVI)  
+- [x] Spectrum + session Snap/Record  
 - [x] Kinect audio ALSA path documented (firmware / hash recovery)  
-- [ ] **Mux audio into Record** (Kinect/system mic + video) — see `docs/TODO.md`  
+- [x] **Mux audio into Record** (Kinect/system mic → AVI with PCM)  
+- [x] Kinect video reconnect UI + infinite retry; spectrum mic retry  
 - [ ] Hardware photos / wiring notes in `hardware/`  
 - [ ] Tablet appliance image / autostart  
 - [ ] Ovilus + sensor bridge  

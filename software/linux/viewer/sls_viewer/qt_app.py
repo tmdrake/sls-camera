@@ -319,7 +319,9 @@ class SlsMainWindow(QMainWindow):
         self.btn_snap.clicked.connect(self._snapshot)
         self.btn_record = QPushButton("Record")
         self.btn_record.setObjectName("wide")
-        self.btn_record.setToolTip("Start/stop video recording (timestamped file)")
+        self.btn_record.setToolTip(
+            "Start/stop AVI recording with mic audio (Kinect preferred)"
+        )
         self.btn_record.clicked.connect(self._toggle_record)
         self.btn_quit = QPushButton("Quit")
         self.btn_quit.setObjectName("wide")
@@ -377,37 +379,25 @@ class SlsMainWindow(QMainWindow):
         QTimer.singleShot(0, self._force_fullscreen)
 
     def _paint_spectrum_strip(self) -> None:
-        """Always paint into the reserved strip (bars or idle)."""
+        """Always paint into the reserved strip (bars, retry, or idle)."""
         w = max(64, self.spectrum_label.width() or self.width() or 640)
         h = int(self.pipeline.s.spectrum_height)
-        if self.pipeline.s.spectrum_enabled and self.spectrum.active:
+        if self.pipeline.s.spectrum_enabled:
+            # paint_bgr shows bars when live, or "mic retry…" while reconnecting
             strip = self.spectrum.paint_bgr(w, h)
         else:
-            # Idle strip — same height, no layout jump
             strip = np.zeros((h, w, 3), dtype=np.uint8)
             strip[:] = (12, 12, 12)
-            if not self.pipeline.s.spectrum_enabled:
-                cv2.putText(
-                    strip,
-                    "spectrum off",
-                    (8, max(14, h // 2 + 4)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.4,
-                    (70, 70, 70),
-                    1,
-                    cv2.LINE_AA,
-                )
-            elif self.spectrum.error:
-                cv2.putText(
-                    strip,
-                    "spectrum unavailable",
-                    (8, max(14, h // 2 + 4)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.4,
-                    (70, 70, 70),
-                    1,
-                    cv2.LINE_AA,
-                )
+            cv2.putText(
+                strip,
+                "spectrum off",
+                (8, max(14, h // 2 + 4)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.4,
+                (70, 70, 70),
+                1,
+                cv2.LINE_AA,
+            )
         self.spectrum_label.setPixmap(bgr_to_qpixmap(strip))
 
     def _settings_open(self) -> bool:
@@ -458,7 +448,12 @@ class SlsMainWindow(QMainWindow):
             self.session.stop_record()
         else:
             frame = self.pipeline.get_bgr()
-            self.session.start_record(frame, fps=self.pipeline.s.record_fps)
+            # Share spectrum mic stream when present (one open of Kinect USB Audio).
+            self.session.start_record(
+                frame,
+                fps=self.pipeline.s.record_fps,
+                spectrum=self.spectrum,
+            )
         self._refresh_record_button()
         if self._settings_open():
             self._settings_dlg._refresh()
@@ -485,6 +480,10 @@ class SlsMainWindow(QMainWindow):
         self._force_fullscreen()
 
     def _tick(self) -> None:
+        # Infinite mic retry when spectrum on (or recorder is piggybacking)
+        if self.pipeline.s.spectrum_enabled or self.session.recording:
+            self.spectrum.ensure_running()
+
         mx = self.pipeline.max_poses
         flash = self.session.flash_message()
         if self.session.recording:
