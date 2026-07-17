@@ -11,7 +11,7 @@
 | **Pose** | MediaPipe on **colorized depth** only |
 | **Spectrum** | FFT strip under video; prefers **Kinect USB Audio** |
 | **Snap** | Timestamped JPEG → `captures/sls_YYYYMMDD_HHMMSS.jpg` |
-| **Record** | Timestamped AVI; status/button show **elapsed** (`REC 0:12`) |
+| **Record** | Timestamped AVI (**video only** — no mic yet); **elapsed** (`REC 0:12`). A/V mux: [docs/TODO.md](../../../docs/TODO.md) |
 | **Settings** | Max people, confidence, mirror, spectrum, auto-snap, Defaults |
 | **On open** | LED green, tilt auto-level 0°, IR sensor gain **50** (fixed, not in UI) |
 
