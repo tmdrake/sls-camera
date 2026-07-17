@@ -201,6 +201,18 @@ class SettingsDialog(QDialog):
         grid.addWidget(self.btn_drakevox, row, 1, 1, 3)
         row += 1
 
+        # DrakeVox on auto-snap (when pose appears + auto-snap on)
+        grid.addWidget(QLabel("DrakeVox on auto-snap"), row, 0)
+        self.btn_drakevox_autosnap = QPushButton()
+        self.btn_drakevox_autosnap.setObjectName("wide")
+        self.btn_drakevox_autosnap.setToolTip(
+            "When ON: auto-snap on detect also fires DrakeVox (word + TTS in the JPEG). "
+            "Manual Snap does not force a new word."
+        )
+        self.btn_drakevox_autosnap.clicked.connect(self._toggle_drakevox_autosnap)
+        grid.addWidget(self.btn_drakevox_autosnap, row, 1, 1, 3)
+        row += 1
+
         # Display brightness (sysfs backlight / brightnessctl / xrandr)
         grid.addWidget(QLabel("Brightness"), row, 0)
         self.btn_bright_down = QPushButton("−")
@@ -292,6 +304,10 @@ class SettingsDialog(QDialog):
         on = bool(self.pipeline.s.drakevox_enabled)
         self.btn_drakevox.setText("ON" if on else "OFF")
         self.btn_drakevox_now.setEnabled(on)
+        self.btn_drakevox_autosnap.setText(
+            "ON" if self.pipeline.s.drakevox_on_autosnap else "OFF"
+        )
+        self.btn_drakevox_autosnap.setEnabled(on)
 
         bri = get_brightness()
         if bri.available and bri.percent is not None:
@@ -370,6 +386,14 @@ class SettingsDialog(QDialog):
         parent = self.parent()
         if parent is not None and hasattr(parent, "set_drakevox_enabled"):
             parent.set_drakevox_enabled(not self.pipeline.s.drakevox_enabled)
+        self._refresh()
+
+    def _toggle_drakevox_autosnap(self) -> None:
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "set_drakevox_on_autosnap"):
+            parent.set_drakevox_on_autosnap(
+                not self.pipeline.s.drakevox_on_autosnap
+            )
         self._refresh()
 
     def _nudge_brightness(self, delta: int) -> None:
@@ -567,6 +591,13 @@ class SlsMainWindow(QMainWindow):
         if self._settings_open():
             self._settings_dlg._refresh()
 
+    def set_drakevox_on_autosnap(self, enabled: bool) -> None:
+        """When ON, auto-snap on detect also generates DrakeVox into the JPEG."""
+        self.pipeline.s.drakevox_on_autosnap = bool(enabled)
+        self.pipeline.s.save_persisted()
+        if self._settings_open():
+            self._settings_dlg._refresh()
+
     def nudge_display_brightness(self, delta: int) -> None:
         """Adjust panel/software brightness; persist if change succeeded."""
         info = nudge_brightness(int(delta))
@@ -709,27 +740,29 @@ class SlsMainWindow(QMainWindow):
             )
         return display
 
-    def _snapshot(self) -> None:
-        """Snap JPEG with DrakeVox word (if ON) burned into the image; LED red→green."""
+    def _snapshot(self, *, fire_drakevox: bool = False) -> None:
+        """Snap JPEG. Optionally fire DrakeVox (auto-snap path) so the word is in the photo."""
         frame = self.pipeline.get_bgr()
         if frame is None or getattr(frame, "size", 0) == 0:
             self.session.snapshot(frame)  # flash error
             return
 
-        # On capture: fire DrakeVox like key O (word + TTS + log)
-        if self.pipeline.s.drakevox_enabled:
+        # Auto-snap only (when setting on): generate word + TTS like key O
+        if (
+            fire_drakevox
+            and self.pipeline.s.drakevox_enabled
+            and self.pipeline.s.drakevox_on_autosnap
+        ):
             word = self.drakevox.generate_now()
             if word:
                 self._on_drakevox_word(word)
 
-        # Save composite so the new word is in the photo
+        # Composite may include current DrakeVox panel (no forced word on manual Snap)
         display = self._compose_drakevox(frame)
         path = self.session.snapshot(display)
         if path is not None:
             # LED: red flash, then restore (green idle / red if still REC)
-            from . import freenect_io as _fn
-
-            self.pipeline.set_led(_fn.LED_RED)
+            self.pipeline.set_led(freenect_io.LED_RED)
             QTimer.singleShot(400, self._restore_led_after_snap)
         if self._settings_open():
             self._settings_dlg._refresh()
@@ -832,10 +865,10 @@ class SlsMainWindow(QMainWindow):
 
         frame = self.pipeline.get_bgr()
         if frame is not None:
-            # Detect appear → optional auto-snap (same path as Snap: DrakeVox in JPEG)
+            # Detect appear → optional auto-snap (+ optional DrakeVox via setting)
             det = self.session.note_detection(self.pipeline.poses_count)
             if det == "appear" and self.pipeline.s.auto_snap_on_detect:
-                self._snapshot()
+                self._snapshot(fire_drakevox=True)
 
             # Composite DrakeVox overlay (hidden when OFF), then record + display
             display = self._compose_drakevox(frame)

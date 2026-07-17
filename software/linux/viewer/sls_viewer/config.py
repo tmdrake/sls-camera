@@ -26,6 +26,7 @@ PERSIST_KEYS = (
     "spectrum_enabled",
     "auto_snap_on_detect",
     "drakevox_enabled",
+    "drakevox_on_autosnap",
     "display_brightness",
 )
 
@@ -90,6 +91,8 @@ class Settings:
 
     # DrakeVox (random word every 5–15 min; timestamped + TTS)
     drakevox_enabled: bool = True
+    # Fire DrakeVox (word + TTS + burn into JPEG) when auto-snap on detect fires
+    drakevox_on_autosnap: bool = True
 
     # Display brightness 5–100 (None = leave OS default / don't force at start)
     display_brightness: Optional[int] = None
@@ -116,6 +119,7 @@ class Settings:
         self.spectrum_enabled = bool(self.spectrum_enabled)
         self.auto_snap_on_detect = bool(self.auto_snap_on_detect)
         self.drakevox_enabled = bool(self.drakevox_enabled)
+        self.drakevox_on_autosnap = bool(self.drakevox_on_autosnap)
         if self.display_brightness is not None:
             try:
                 self.display_brightness = int(self.display_brightness)
@@ -157,6 +161,7 @@ class Settings:
             "spectrum_enabled": bool(self.spectrum_enabled),
             "auto_snap_on_detect": bool(self.auto_snap_on_detect),
             "drakevox_enabled": bool(self.drakevox_enabled),
+            "drakevox_on_autosnap": bool(self.drakevox_on_autosnap),
             "display_brightness": (
                 int(self.display_brightness)
                 if self.display_brightness is not None
