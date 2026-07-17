@@ -23,4 +23,6 @@ software/linux/viewer/.venv/
 software/linux/viewer/**/__pycache__/
 # large model — run.sh downloads if missing
 software/linux/viewer/models/*.task
+# local UI prefs (IR brightness, mirror)
+software/linux/viewer/user_settings.json
 screen.jpg

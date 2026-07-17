@@ -48,7 +48,9 @@ On open the app will:
    Note: this is **sensor gain**, not IR projector power (projector stays on for depth).  
 5. Stream live depth (main) + IR (PiP); draw skeletons when pose detects a person  
 
-**Skeletons:** MediaPipe is trained on normal RGB photos. We run pose on **colorized depth** first (works in the dark), then enhanced IR. Stand ~1.5–3 m in the depth FOV, full body if possible. `poses: 0` means no person detected yet, not that overlay is disabled.  
+**Skeletons:** pose runs on **colorized depth only**, max **2** people. Status shows `Detected:#`. Stand ~1.5–3 m in the depth FOV.
+
+**IR brightness:** bottom bar `IR −` / `IR +` (1–50, sensor gain). Saved in `user_settings.json` and restored next run. Keys: `[` `]` (±5), `-` `=` (±1).  
 
 Keys: **Esc / Q** quit · **M** mirror · **F** re-assert fullscreen  
 

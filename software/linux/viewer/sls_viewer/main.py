@@ -9,6 +9,8 @@ import time
 from .config import WEB_ROOT, settings
 from .pipeline import FramePipeline
 
+# user_settings.json already applied in config.settings at import
+
 
 def parse_args(argv=None):
     p = argparse.ArgumentParser(

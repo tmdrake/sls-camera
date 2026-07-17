@@ -44,7 +44,12 @@ POSE_JOINTS: Sequence[int] = (
 
 
 class PoseEstimator:
-    def __init__(self, model_path: Path, min_confidence: float = 0.35):
+    def __init__(
+        self,
+        model_path: Path,
+        min_confidence: float = 0.35,
+        max_poses: int = 2,
+    ):
         from mediapipe import Image as MpImage
         from mediapipe import ImageFormat
         from mediapipe.tasks import python as mp_python
@@ -56,11 +61,12 @@ class PoseEstimator:
                 "Download pose_landmarker_lite.task into models/"
             )
 
+        self.max_poses = max(1, int(max_poses))
         base_options = mp_python.BaseOptions(model_asset_path=str(model_path))
         options = vision.PoseLandmarkerOptions(
             base_options=base_options,
             running_mode=vision.RunningMode.VIDEO,
-            num_poses=2,
+            num_poses=self.max_poses,
             min_pose_detection_confidence=min_confidence,
             min_pose_presence_confidence=min_confidence,
             min_tracking_confidence=min_confidence,
@@ -89,7 +95,7 @@ class PoseEstimator:
         poses: List[List[Tuple[float, float, float]]] = []
         if not result.pose_landmarks:
             return poses
-        for pose in result.pose_landmarks:
+        for pose in result.pose_landmarks[: self.max_poses]:
             pts: List[Tuple[float, float, float]] = []
             for lm in pose:
                 # Tasks API often fills presence more reliably than visibility
@@ -103,16 +109,6 @@ class PoseEstimator:
                 pts.append((lm.x * w, lm.y * h, score))
             poses.append(pts)
         return poses
-
-    def estimate_best(
-        self, images: Sequence[np.ndarray]
-    ) -> List[List[Tuple[float, float, float]]]:
-        """Try several image views; return first non-empty pose list."""
-        for img in images:
-            poses = self.estimate(img)
-            if poses:
-                return poses
-        return []
 
     def close(self) -> None:
         try:

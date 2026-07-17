@@ -27,7 +27,6 @@ def bgr_to_qpixmap(bgr: np.ndarray) -> QPixmap:
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
     h, w, ch = rgb.shape
     bytes_per_line = ch * w
-    # Copy so Qt owns stable memory after numpy buffer moves
     qimg = QImage(rgb.data, w, h, bytes_per_line, QImage.Format.Format_RGB888).copy()
     return QPixmap.fromImage(qimg)
 
@@ -50,12 +49,19 @@ class SlsMainWindow(QMainWindow):
                 color: #00ffb4; font-size: 16px; font-weight: 700;
                 letter-spacing: 2px; padding: 4px 8px;
             }
+            QLabel#irlabel {
+                color: #00ffb4; font-size: 14px; font-weight: 600;
+                min-width: 72px;
+            }
             QPushButton {
-                min-height: 48px; min-width: 120px;
+                min-height: 48px; min-width: 48px;
                 background-color: rgba(0, 40, 30, 220);
                 color: #00ffb4; border: 1px solid #00ffb4;
                 border-radius: 8px; font-size: 15px; font-weight: 600;
-                padding: 8px 16px;
+                padding: 8px 14px;
+            }
+            QPushButton#wide {
+                min-width: 110px;
             }
             QPushButton:pressed { background-color: rgba(0, 80, 60, 240); }
             """
@@ -76,23 +82,43 @@ class SlsMainWindow(QMainWindow):
         bar = QWidget()
         bar_layout = QHBoxLayout(bar)
         bar_layout.setContentsMargins(12, 8, 12, 12)
+        bar_layout.setSpacing(8)
+
         self.title = QLabel("SLS CAMERA")
         self.title.setObjectName("title")
         self.status = QLabel("starting…")
         self.status.setObjectName("status")
+
+        # Persistent IR brightness control
+        self.btn_ir_down = QPushButton("IR −")
+        self.btn_ir_down.setObjectName("wide")
+        self.btn_ir_down.clicked.connect(lambda: self._nudge_ir(-5))
+        self.ir_label = QLabel()
+        self.ir_label.setObjectName("irlabel")
+        self.ir_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.btn_ir_up = QPushButton("IR +")
+        self.btn_ir_up.setObjectName("wide")
+        self.btn_ir_up.clicked.connect(lambda: self._nudge_ir(+5))
+        self._refresh_ir_label()
+
         self.btn_mirror = QPushButton(
             "Mirror: ON" if pipeline.mirror else "Mirror: OFF"
         )
+        self.btn_mirror.setObjectName("wide")
         self.btn_mirror.clicked.connect(self._toggle_mirror)
         self.btn_quit = QPushButton("Quit")
+        self.btn_quit.setObjectName("wide")
         self.btn_quit.clicked.connect(self.close)
+
         bar_layout.addWidget(self.title)
         bar_layout.addWidget(self.status, stretch=1)
+        bar_layout.addWidget(self.btn_ir_down)
+        bar_layout.addWidget(self.ir_label)
+        bar_layout.addWidget(self.btn_ir_up)
         bar_layout.addWidget(self.btn_mirror)
         bar_layout.addWidget(self.btn_quit)
         layout.addWidget(bar)
 
-        # Always on top + tool-ish so some WMs keep it above panels
         self.setWindowFlags(
             Qt.WindowType.Window
             | Qt.WindowType.FramelessWindowHint
@@ -103,19 +129,27 @@ class SlsMainWindow(QMainWindow):
         QShortcut(QKeySequence("Q"), self, activated=self.close)
         QShortcut(QKeySequence("F"), self, activated=self._force_fullscreen)
         QShortcut(QKeySequence("M"), self, activated=self._toggle_mirror)
+        QShortcut(QKeySequence("["), self, activated=lambda: self._nudge_ir(-5))
+        QShortcut(QKeySequence("]"), self, activated=lambda: self._nudge_ir(+5))
+        QShortcut(QKeySequence("-"), self, activated=lambda: self._nudge_ir(-1))
+        QShortcut(QKeySequence("="), self, activated=lambda: self._nudge_ir(+1))
 
         self._timer = QTimer(self)
-        self._timer.setInterval(33)  # ~30 UI refresh
+        self._timer.setInterval(33)
         self._timer.timeout.connect(self._tick)
         self._timer.start()
 
-        # Defer fullscreen until shown (more reliable on some WMs)
         QTimer.singleShot(0, self._force_fullscreen)
 
+    def _refresh_ir_label(self) -> None:
+        self.ir_label.setText(f"IR {self.pipeline.ir_brightness}/50")
+
+    def _nudge_ir(self, delta: int) -> None:
+        self.pipeline.adjust_ir_brightness(delta)
+        self._refresh_ir_label()
+
     def _force_fullscreen(self) -> None:
-        self.setWindowState(
-            self.windowState() | Qt.WindowState.WindowFullScreen
-        )
+        self.setWindowState(self.windowState() | Qt.WindowState.WindowFullScreen)
         self.showFullScreen()
         self.raise_()
         self.activateWindow()
@@ -133,16 +167,16 @@ class SlsMainWindow(QMainWindow):
     def _tick(self) -> None:
         self.status.setText(
             f"{self.pipeline.status}  ·  {self.pipeline.fps:.1f} fps  ·  "
-            f"poses {self.pipeline.poses_count}"
+            f"Detected:{self.pipeline.poses_count}"
         )
         self.btn_mirror.setText(
             "Mirror: ON" if self.pipeline.mirror else "Mirror: OFF"
         )
+        self._refresh_ir_label()
         frame = self.pipeline.get_bgr()
         if frame is None:
             return
         pix = bgr_to_qpixmap(frame)
-        # Letterbox into label size
         target = self.video.size()
         if target.width() < 2 or target.height() < 2:
             return
@@ -159,7 +193,6 @@ class SlsMainWindow(QMainWindow):
 
 
 def run_qt(pipeline: FramePipeline) -> int:
-    # High-DPI tablets
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )

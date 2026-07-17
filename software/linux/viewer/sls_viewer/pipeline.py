@@ -50,6 +50,31 @@ class FramePipeline:
     @mirror.setter
     def mirror(self, value: bool) -> None:
         self.s.mirror = bool(value)
+        self.s.save_persisted()
+
+    @property
+    def ir_brightness(self) -> int:
+        return int(self.s.ir_brightness)
+
+    def set_ir_brightness(self, value: int) -> int:
+        """Set IR sensor brightness 1–50, apply live if open, persist."""
+        value = int(max(1, min(50, value)))
+        self.s.ir_brightness = value
+        self.s.save_persisted()
+        if self._kinect is not None:
+            try:
+                self._kinect.set_ir_brightness(value)
+                # refresh status brightness token if live
+                if self._status.startswith("live"):
+                    self._status = (
+                        f"live · depth+IR · LED green · tilt 0° · IR bright {value}/50"
+                    )
+            except Exception as e:
+                self._status = f"IR bright set failed: {e}"
+        return value
+
+    def adjust_ir_brightness(self, delta: int) -> int:
+        return self.set_ir_brightness(self.ir_brightness + int(delta))
 
     def get_jpeg(self) -> Optional[bytes]:
         with self._lock:
@@ -135,7 +160,9 @@ class FramePipeline:
     def _ensure_pose(self) -> None:
         if self._pose is None:
             self._pose = PoseEstimator(
-                self.s.model_path, min_confidence=self.s.pose_min_confidence
+                self.s.model_path,
+                min_confidence=self.s.pose_min_confidence,
+                max_poses=self.s.max_poses,
             )
 
     def _compose(self, depth_bgr: np.ndarray, ir_bgr: np.ndarray) -> np.ndarray:
@@ -261,20 +288,18 @@ class FramePipeline:
                     depth_u16, self.s.depth_min, self.s.depth_max
                 )
                 ir_bgr = colorize.ir_to_bgr(ir_u8)
-                ir_pose_img = colorize.ir_for_pose(ir_u8)
 
-                # Pose: MediaPipe is RGB-trained. Colorized depth works better
-                # than raw IR in dark rooms; fall back to enhanced IR.
+                # Pose on colorized depth only (max 2 people). Same FOV as main view.
                 self._frame_i += 1
                 if self._pose and (self._frame_i % max(1, self.s.pose_every_n_frames) == 0):
                     try:
-                        self._last_poses = self._pose.estimate_best(
-                            [depth_bgr, ir_pose_img]
-                        )
+                        self._last_poses = self._pose.estimate(depth_bgr)[
+                            : self.s.max_poses
+                        ]
                     except Exception as e:
                         self._status = f"pose: {e}"
 
-                poses = self._last_poses
+                poses = self._last_poses[: self.s.max_poses]
                 self._poses_count = len(poses)
 
                 depth_bgr = draw_skeletons(

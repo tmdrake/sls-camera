@@ -60,7 +60,7 @@
     try {
       const res = await fetch("/api/status");
       const data = await res.json();
-      statusEl.textContent = `${data.status} · ${data.fps} fps · poses ${data.poses}`;
+      statusEl.textContent = `${data.status} · ${data.fps} fps · Detected:${data.poses}`;
       btnMirror.textContent = data.mirror ? "Mirror: ON" : "Mirror: OFF";
     } catch (e) {
       statusEl.textContent = "backend offline";
