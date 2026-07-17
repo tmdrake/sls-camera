@@ -47,11 +47,13 @@ IR_W, IR_H_NATIVE = 640, 488
 # (USB unplug / power brick loss leaves last frame in memory otherwise).
 STALE_FRAME_S = 1.5
 # Wait this long for a fresh frame on each get_* call
-FRAME_WAIT_S = 2.5
-# First open after prepare(): wait for both streams
-OPEN_FRAME_WAIT_S = 8.0
+FRAME_WAIT_S = 2.0
+# First open after prepare(): wait for both streams (return as soon as frames arrive)
+OPEN_FRAME_WAIT_S = 4.0
 # How many freenect_process_events failures before marking dead
 EVENT_FAIL_LIMIT = 8
+# Internal open attempts per prepare() — keep short so startup fails fast to splash retry
+PREPARE_ATTEMPTS = 3
 
 
 class FreenectError(RuntimeError):
@@ -253,21 +255,22 @@ class FreenectSync:
         # Always full stop before (re)open — required after USB death
         self.stop()
         last_err: Optional[Exception] = None
-        for attempt in range(6):
+        for attempt in range(PREPARE_ATTEMPTS):
             try:
                 self._open_once()
                 return
             except FreenectError as e:
                 last_err = e
                 self.stop()
-                # USB re-enumeration after power loss often needs 1–3s
-                time.sleep(0.6 + 0.5 * attempt)
+                # Brief pause; pipeline does longer backoff between full prepares
+                if attempt + 1 < PREPARE_ATTEMPTS:
+                    time.sleep(0.35 * (attempt + 1))
         hints = []
         if gspca_loaded():
             hints.append("sudo modprobe -r gspca_kinect")
         hints.append("power brick on; free USB; no other freenect app")
         raise FreenectError(
-            f"Could not open Kinect: {last_err}. " + " | ".join(hints)
+            f"Could not open camera: {last_err}. " + " | ".join(hints)
         )
 
     def _open_once(self) -> None:

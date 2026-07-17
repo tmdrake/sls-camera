@@ -142,41 +142,73 @@ class FramePipeline:
         return depth, ir
 
     # Backoff between reconnect opens after USB/power loss (seconds)
-    RECONNECT_SLEEP_S = 2.5
+    RECONNECT_SLEEP_S = 2.0
 
-    def _paint_reconnect(self, detail: str = "") -> None:
-        """Status UI while waiting for Kinect power/USB/video."""
+    def _paint_splash(
+        self,
+        title: str = "Starting SLS Camera",
+        detail: str = "",
+        *,
+        reconnect: bool = False,
+    ) -> None:
+        """Simple splash while opening or reconnecting (shown ASAP so UI is not blank)."""
         W, H = self.s.frame_width, self.s.frame_height
         err = np.zeros((H, W, 3), dtype=np.uint8)
-        err[:] = (20, 10, 10)
+        err[:] = (12, 12, 14)
+        # Accent bar
+        cv2.rectangle(err, (0, 0), (W, 6), (0, 255, 180), -1)
+
         cv2.putText(
             err,
-            "RECONNECTING TO KINECT…",
-            (40, 120),
+            "SLS CAMERA",
+            (40, 72),
             cv2.FONT_HERSHEY_SIMPLEX,
-            1.1,
-            (0, 180, 255),
+            0.85,
+            (0, 255, 180),
             2,
             cv2.LINE_AA,
         )
-        lines = [
-            detail[:90] if detail else self._status[:90],
-            f"retry #{self._reconnect_attempt} every {self.RECONNECT_SLEEP_S:.1f}s",
-            "power brick + USB — wait for re-enumeration",
-            "stale frame ~1.5s → full freenect reopen",
-        ]
+        cv2.putText(
+            err,
+            title,
+            (40, 140),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.15,
+            (0, 200, 255) if reconnect else (220, 220, 220),
+            2,
+            cv2.LINE_AA,
+        )
+
+        lines = []
+        if detail:
+            lines.append(detail[:100])
+        if reconnect:
+            lines.append(
+                f"Retry #{self._reconnect_attempt} · every {self.RECONNECT_SLEEP_S:.0f}s"
+            )
+            lines.append("Check power brick and USB")
+        else:
+            lines.append("Opening depth sensor…")
+            lines.append("Please wait")
         for i, line in enumerate(lines):
             cv2.putText(
                 err,
                 line,
-                (40, 200 + i * 40),
+                (40, 210 + i * 36),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                (200, 200, 200),
+                0.65,
+                (160, 160, 160),
                 1,
                 cv2.LINE_AA,
             )
         self._set_frame(err)
+
+    def _paint_reconnect(self, detail: str = "") -> None:
+        self._paint_splash(
+            "Reconnecting to SLS Camera",
+            detail=detail,
+            reconnect=True,
+        )
 
     def _close_kinect(self) -> None:
         if self._kinect:
@@ -191,7 +223,7 @@ class FramePipeline:
         # Always tear down previous handle first (USB death leaves bad state)
         self._close_kinect()
         try:
-            self._status = "opening kinect (LED green, auto-level)…"
+            self._status = "opening SLS camera…"
             self.s.ir_brightness = 50
             self._kinect = freenect_io.FreenectSync(
                 index=self.s.device_index,
@@ -209,7 +241,7 @@ class FramePipeline:
             )
             return True
         except Exception as e:
-            self._status = f"kinect error: {e}"
+            self._status = f"camera error: {e}"
             self._close_kinect()
             return False
 
@@ -322,26 +354,33 @@ class FramePipeline:
 
     def _loop(self) -> None:
         demo = bool(self.s.allow_demo_without_kinect)
+
+        # Splash immediately so startup is not a blank screen
+        self._status = "starting…"
+        self._paint_splash("Starting SLS Camera", "Loading…")
+
+        # Pose model can load while user sees splash (before freenect open)
+        try:
+            self._ensure_pose()
+            self._paint_splash("Starting SLS Camera", "Opening camera…")
+        except Exception as e:
+            self._status = f"pose model error: {e}"
+            self._paint_splash("Starting SLS Camera", f"pose: {e}")
+
         use_kinect = self._open_kinect()
 
         # Infinite reconnect until first success (unless demo)
         while self._running and not use_kinect and not demo:
             self._reconnect_attempt += 1
             self._status = (
-                f"reconnecting… attempt {self._reconnect_attempt} "
-                "(power / USB / freenect)"
+                f"reconnecting… attempt {self._reconnect_attempt}"
             )
-            self._paint_reconnect()
+            self._paint_reconnect(self._status)
             time.sleep(self.RECONNECT_SLEEP_S)
             use_kinect = self._open_kinect()
 
         if not use_kinect and demo:
-            self._status = "demo mode (no kinect)"
-
-        try:
-            self._ensure_pose()
-        except Exception as e:
-            self._status = f"pose model error: {e}"
+            self._status = "demo mode (no camera)"
 
         fps_smooth = 0.0
 

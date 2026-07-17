@@ -150,13 +150,15 @@ If freenect loses the camera (unplug, BUSY, power brick), the main view shows **
 
 | Timing | Value | Meaning |
 |--------|-------|---------|
-| **Stale frame** | **1.5 s** | No new depth/IR callback → treat as dead (was: freeze on last frame) |
-| **Frame wait** | **2.5 s** | Max wait for a fresh frame before raising |
-| **Open wait** | **8 s** | Wait for first frames after open |
-| **Reconnect sleep** | **2.5 s** | Delay between full freenect close/reopen attempts |
-| **Open retries** | **6** | Internal tries per open, with increasing backoff |
+| **Stale frame** | **1.5 s** | No new depth/IR callback → treat as dead |
+| **Frame wait** | **2.0 s** | Max wait for a fresh frame before raising |
+| **Open wait** | **4.0 s** | Max wait for first frames after open (returns ASAP) |
+| **Reconnect sleep** | **2.0 s** | Delay between full freenect close/reopen attempts |
+| **Open retries** | **3** | Internal tries per prepare |
 
-Power/USB loss often prints `USB camera marked dead` / iso transfer `-4` in the console; the app should switch to RECONNECTING within ~2 s, then keep retrying until the brick/USB is back.
+Startup and reconnect show a splash: **Starting SLS Camera** / **Reconnecting to SLS Camera** (not a blank screen).
+
+Power/USB loss often prints `USB camera marked dead` / iso transfer `-4` in the console; the app should switch to the reconnect splash within ~2 s.
 
 ## Stack
 
