@@ -44,13 +44,10 @@ On open the app will:
 1. Claim the Kinect (depth + IR)  
 2. Set the **LED to green**  
 3. **Auto-level** the tilt motor to **0°**  
-4. Set **IR sensor brightness to 50/50** (freenect max useful gain; library default is ~30).  
-   Note: this is **sensor gain**, not IR projector power (projector stays on for depth).  
-5. Stream live depth (main) + IR (PiP); draw skeletons when pose detects a person  
+4. Set **IR sensor brightness fixed at 50/50** (no UI control for now)  
+5. Stream live depth (main) + IR (PiP); skeletons from **colorized depth** pose (max 2)  
 
-**Skeletons:** pose runs on **colorized depth only**, max **2** people. Status shows `Detected:#`. Stand ~1.5–3 m in the depth FOV.
-
-**IR brightness:** bottom bar `IR −` / `IR +` (1–50, sensor gain). Saved in `user_settings.json` and restored next run. Keys: `[` `]` (±5), `-` `=` (±1).  
+**Skeletons:** colorized-depth pose only, max **2** people, stricter confidence to reduce false positives. Status shows `Detected:#`.  
 
 Keys: **Esc / Q** quit · **M** mirror · **F** re-assert fullscreen  
 

@@ -52,30 +52,6 @@ class FramePipeline:
         self.s.mirror = bool(value)
         self.s.save_persisted()
 
-    @property
-    def ir_brightness(self) -> int:
-        return int(self.s.ir_brightness)
-
-    def set_ir_brightness(self, value: int) -> int:
-        """Set IR sensor brightness 1–50, apply live if open, persist."""
-        value = int(max(1, min(50, value)))
-        self.s.ir_brightness = value
-        self.s.save_persisted()
-        if self._kinect is not None:
-            try:
-                self._kinect.set_ir_brightness(value)
-                # refresh status brightness token if live
-                if self._status.startswith("live"):
-                    self._status = (
-                        f"live · depth+IR · LED green · tilt 0° · IR bright {value}/50"
-                    )
-            except Exception as e:
-                self._status = f"IR bright set failed: {e}"
-        return value
-
-    def adjust_ir_brightness(self, delta: int) -> int:
-        return self.set_ir_brightness(self.ir_brightness + int(delta))
-
     def get_jpeg(self) -> Optional[bytes]:
         with self._lock:
             return self._jpeg
@@ -131,20 +107,21 @@ class FramePipeline:
         """Open live freenect stream: green LED + auto-level tilt, then depth+IR."""
         try:
             self._status = "opening kinect (LED green, auto-level)…"
+            # IR brightness fixed at 50 (no UI control)
+            self.s.ir_brightness = 50
             self._kinect = freenect_io.FreenectSync(
                 index=self.s.device_index,
                 video_mode="ir",
                 led=freenect_io.LED_GREEN if self.s.led_green else freenect_io.LED_OFF,
                 tilt_degs=self.s.tilt_degs,
                 auto_level=self.s.auto_level,
-                ir_brightness=self.s.ir_brightness,
+                ir_brightness=50,
             )
-            self._kinect.prepare()  # LED green + tilt 0° + IR brightness + streams
+            self._kinect.prepare()  # LED green + tilt 0° + IR 50 + streams
             depth, ir = self._kinect.get_depth_and_ir()
-            br = self._kinect.get_ir_brightness()
             self._status = (
                 f"live · {depth.shape[1]}x{depth.shape[0]} · "
-                f"LED green · tilt 0° · IR bright {br}/50"
+                f"LED green · tilt 0° · IR 50/50"
             )
             return True
         except Exception as e:
@@ -163,6 +140,7 @@ class FramePipeline:
                 self.s.model_path,
                 min_confidence=self.s.pose_min_confidence,
                 max_poses=self.s.max_poses,
+                min_joints=self.s.pose_min_joints,
             )
 
     def _compose(self, depth_bgr: np.ndarray, ir_bgr: np.ndarray) -> np.ndarray:
@@ -309,6 +287,7 @@ class FramePipeline:
                     joint_color=self.s.joint_color,
                     bone_thickness=self.s.bone_thickness,
                     joint_radius=self.s.joint_radius,
+                    min_vis=self.s.skeleton_min_vis,
                 )
                 ir_bgr = draw_skeletons(
                     ir_bgr,
@@ -317,6 +296,7 @@ class FramePipeline:
                     joint_color=self.s.joint_color,
                     bone_thickness=max(2, self.s.bone_thickness - 1),
                     joint_radius=max(3, self.s.joint_radius - 1),
+                    min_vis=self.s.skeleton_min_vis,
                 )
 
                 depth_bgr = colorize.maybe_flip(depth_bgr, self.s.mirror)

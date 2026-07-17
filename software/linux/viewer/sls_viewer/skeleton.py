@@ -17,7 +17,7 @@ def draw_skeletons(
     joint_color: Tuple[int, int, int] = (0, 255, 255),
     bone_thickness: int = 3,
     joint_radius: int = 5,
-    min_vis: float = 0.20,
+    min_vis: float = 0.45,
 ) -> np.ndarray:
     out = image_bgr
     for pose in poses:

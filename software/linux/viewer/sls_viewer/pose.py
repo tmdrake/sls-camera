@@ -1,4 +1,4 @@
-"""MediaPipe Tasks Pose Landmarker wrapper."""
+"""MediaPipe Tasks Pose Landmarker — colorized depth, max 2 people."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ from typing import List, Sequence, Tuple
 import cv2
 import numpy as np
 
-# MediaPipe pose topology (lite)
 POSE_BONES: Sequence[Tuple[int, int]] = (
     (11, 12),
     (11, 23),
@@ -42,13 +41,17 @@ POSE_JOINTS: Sequence[int] = (
     28,
 )
 
+# Core torso/limb joints used to reject weak false positives
+_CORE_JOINTS = (11, 12, 23, 24, 13, 14, 25, 26)
+
 
 class PoseEstimator:
     def __init__(
         self,
         model_path: Path,
-        min_confidence: float = 0.35,
+        min_confidence: float = 0.55,
         max_poses: int = 2,
+        min_joints: int = 6,
     ):
         from mediapipe import Image as MpImage
         from mediapipe import ImageFormat
@@ -62,32 +65,43 @@ class PoseEstimator:
             )
 
         self.max_poses = max(1, int(max_poses))
+        self.min_joints = max(1, int(min_joints))
+        self.min_confidence = float(min_confidence)
         base_options = mp_python.BaseOptions(model_asset_path=str(model_path))
         options = vision.PoseLandmarkerOptions(
             base_options=base_options,
             running_mode=vision.RunningMode.VIDEO,
             num_poses=self.max_poses,
-            min_pose_detection_confidence=min_confidence,
-            min_pose_presence_confidence=min_confidence,
-            min_tracking_confidence=min_confidence,
+            min_pose_detection_confidence=self.min_confidence,
+            min_pose_presence_confidence=self.min_confidence,
+            min_tracking_confidence=self.min_confidence,
         )
         self._landmarker = vision.PoseLandmarker.create_from_options(options)
         self._MpImage = MpImage
         self._ImageFormat = ImageFormat
         self._frame_ts_ms = 0
 
+    def _landmark_score(self, lm) -> float:
+        vis = float(getattr(lm, "visibility", 0.0) or 0.0)
+        pres = float(getattr(lm, "presence", 0.0) or 0.0)
+        return max(vis, pres)
+
+    def _is_strong_pose(
+        self, pts: List[Tuple[float, float, float]]
+    ) -> bool:
+        """Require enough confident core joints (cuts empty-room ghosts)."""
+        good = 0
+        for j in _CORE_JOINTS:
+            if j < len(pts) and pts[j][2] >= self.min_confidence:
+                good += 1
+        return good >= self.min_joints
+
     def estimate(self, bgr: np.ndarray) -> List[List[Tuple[float, float, float]]]:
-        """
-        Returns list of poses; each pose is (x, y, score) in pixel coords.
-        """
         if bgr is None or bgr.size == 0:
             return []
-        # Ensure 3-channel uint8
         if bgr.ndim == 2:
             bgr = cv2.cvtColor(bgr, cv2.COLOR_GRAY2BGR)
-        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        # Contiguous for MediaPipe
-        rgb = np.ascontiguousarray(rgb)
+        rgb = np.ascontiguousarray(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB))
         mp_image = self._MpImage(image_format=self._ImageFormat.SRGB, data=rgb)
         self._frame_ts_ms += 33
         result = self._landmarker.detect_for_video(mp_image, self._frame_ts_ms)
@@ -98,16 +112,10 @@ class PoseEstimator:
         for pose in result.pose_landmarks[: self.max_poses]:
             pts: List[Tuple[float, float, float]] = []
             for lm in pose:
-                # Tasks API often fills presence more reliably than visibility
-                score = float(
-                    getattr(lm, "visibility", 0.0)
-                    or getattr(lm, "presence", 0.0)
-                    or 0.0
-                )
-                if score <= 0.0:
-                    score = 0.5  # still plot if landmark returned
+                score = self._landmark_score(lm)
                 pts.append((lm.x * w, lm.y * h, score))
-            poses.append(pts)
+            if self._is_strong_pose(pts):
+                poses.append(pts)
         return poses
 
     def close(self) -> None:
