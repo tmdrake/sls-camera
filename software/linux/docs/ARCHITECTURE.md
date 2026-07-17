@@ -62,13 +62,13 @@ libfreenect does **not** include Microsoft-style skeleton tracking. Overlay is a
 - Shared hardware photos/schematics go under `hardware/`
 - Cross-cutting goals stay in `docs/` and root `README.md` / `AGENTS.md`
 
-## Milestone sketch
+## Milestone status (2026-07)
 
-1. **M0** — freenect install + `freenect-glview` — **done 2026-07-16**  
-2. **M1** — backend live colorized depth (stream)  
-3. **M2** — SLS stick figures on main depth view (**parity core**)  
-4. **M3** — touch-friendly web kiosk chrome, tilt/mirror, HUD  
-5. **M4** — tablet appliance image (auto-start)  
-6. **M5** — Ovilus panel + Arduino/MCU sensor bridge  
+1. **M0** — freenect install + `freenect-glview` — **done**  
+2. **M1** — live colorized depth in app — **done**  
+3. **M2** — SLS stick figures on depth + IR PiP — **done**  
+4. **M3** — Qt Settings, spectrum, Snap/Record — **done**  
+5. **M4** — tablet appliance image — **not started**  
+6. **M5** — Ovilus + Arduino/MCU sensor bridge — **not started**  
 
-Details and risks: [LINUX-SLS-PLAN.md](LINUX-SLS-PLAN.md).
+Field app: `software/linux/viewer/`. Details: [LINUX-SLS-PLAN.md](LINUX-SLS-PLAN.md).

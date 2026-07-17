@@ -349,6 +349,8 @@ class SlsMainWindow(QMainWindow):
         QShortcut(QKeySequence("]"), self, activated=lambda: self._nudge_conf(+step))
         QShortcut(QKeySequence(","), self, activated=lambda: self._nudge_max(-1))
         QShortcut(QKeySequence("."), self, activated=lambda: self._nudge_max(+1))
+        QShortcut(QKeySequence("R"), self, activated=self._toggle_record)
+        QShortcut(QKeySequence("C"), self, activated=self._snapshot)
 
         self._timer = QTimer(self)
         self._timer.setInterval(33)
@@ -445,6 +447,28 @@ class SlsMainWindow(QMainWindow):
         if self._settings_open():
             self._settings_dlg._refresh()
 
+    def _snapshot(self) -> None:
+        frame = self.pipeline.get_bgr()
+        self.session.snapshot(frame)
+        if self._settings_open():
+            self._settings_dlg._refresh()
+
+    def _toggle_record(self) -> None:
+        if self.session.recording:
+            self.session.stop_record()
+        else:
+            frame = self.pipeline.get_bgr()
+            self.session.start_record(frame, fps=self.pipeline.s.record_fps)
+        self._refresh_record_button()
+        if self._settings_open():
+            self._settings_dlg._refresh()
+
+    def _refresh_record_button(self) -> None:
+        if self.session.recording:
+            self.btn_record.setText(f"Stop {self.session.recording_elapsed_str()}")
+        else:
+            self.btn_record.setText("Record")
+
     def _force_fullscreen(self) -> None:
         screen = self.screen() or QApplication.primaryScreen()
         if screen is not None:
@@ -463,7 +487,13 @@ class SlsMainWindow(QMainWindow):
     def _tick(self) -> None:
         mx = self.pipeline.max_poses
         flash = self.session.flash_message()
-        rec = " · REC" if self.session.recording else ""
+        if self.session.recording:
+            rec = f" · REC {self.session.recording_elapsed_str()}"
+            self._refresh_record_button()
+        else:
+            rec = ""
+            if self.btn_record.text() != "Record":
+                self.btn_record.setText("Record")
         base = (
             f"{self.pipeline.status}  ·  {self.pipeline.fps:.1f} fps  ·  "
             f"Detected:{self.pipeline.poses_count}/{mx}{rec}"

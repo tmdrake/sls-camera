@@ -1,31 +1,23 @@
 # SLS Linux viewer
 
-**Fullscreen native Qt app** (always on top):
+**Fullscreen native Qt app** (always on top) for Xbox 360 Kinect SLS-style monitoring.
 
-- **Main:** full-screen **colorized depth + skeleton**
-- **PiP:** small **IR + skeleton** in the **top corner** (scaled)
-- **Mirror OFF by default** (toggle in Settings or `--mirror`)
+## Features (current)
 
-Browser UI is **optional** (`--ui web`).
+| Area | Behavior |
+|------|----------|
+| **Main view** | Full-screen **colorized depth + skeleton** |
+| **PiP** | Small **IR + skeleton** (top-right) |
+| **Pose** | MediaPipe on **colorized depth** only |
+| **Spectrum** | FFT strip under video; prefers **Kinect USB Audio** |
+| **Snap** | Timestamped JPEG → `captures/sls_YYYYMMDD_HHMMSS.jpg` |
+| **Record** | Timestamped AVI; status/button show **elapsed** (`REC 0:12`) |
+| **Settings** | Max people, confidence, mirror, spectrum, auto-snap, Defaults |
+| **On open** | LED green, tilt auto-level 0°, IR sensor gain **50** (fixed, not in UI) |
 
-## Why Qt (not browser kiosk)
+Browser UI is optional (`--ui web`).
 
-| | Qt (default) | Browser kiosk |
-|--|--------------|---------------|
-| Fullscreen | `showFullScreen()` | Needs flags / user gesture |
-| Always on top | `WindowStaysOnTopHint` | Unreliable across WMs |
-| Tablet / Lubuntu field use | **Yes** | Possible, more fragile |
-
-## Layout
-
-| Pane | Content |
-|------|---------|
-| **Full frame** | Colorized depth + SLS stick figures |
-| **Top-corner PiP** | Infrared + same stick figures (small, scaled) |
-
-Kinect streams **depth + IR** (not RGB+IR at once). Pose runs on **colorized depth**.
-
-## Quick start (live Kinect)
+## Quick start
 
 ```bash
 # if freenect says BUSY / cannot open:
@@ -36,86 +28,120 @@ cd software/linux/viewer
 ./run.sh
 ```
 
-On open the app will:
+### Packages (host)
 
-1. Claim the Kinect (depth + IR)  
-2. Set the **LED to green**  
-3. **Auto-level** the tilt motor to **0°**  
-4. Set **IR sensor gain to 50** (full freenect range; fixed, not in UI)  
-5. Stream live depth (main) + IR (PiP); skeletons from colorized-depth pose  
+```bash
+sudo apt install -y freenect libfreenect-bin libportaudio2 alsa-utils
+# Kinect mic for spectrum (one-time; MS firmware download — see docs):
+sudo apt install -y kinect-audio-setup
+# unplug/replug Kinect; arecord -l should list "Kinect USB Audio"
+```
+
+If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/UBUNTU-SETUP.md) recovery steps.
+
+## Main bar
+
+**Settings · Snap · Record · Quit**
+
+| Control | Action |
+|---------|--------|
+| **Snap** | Save current composite frame |
+| **Record** | Start/stop recording; button becomes `Stop M:SS` |
+| **Settings** | Max people, Conf, Mirror, Spectrum, Auto-snap, Defaults |
+
+### Keyboard
+
+| Key | Action |
+|-----|--------|
+| `S` | Settings |
+| `C` | Snap |
+| `R` | Record toggle |
+| `[` `]` | Confidence − / + |
+| `,` `.` | Max people − / + |
+| `M` | Mirror |
+| `F` | Fullscreen |
+| `Esc` | Close Settings, then quit |
+| `Q` | Quit |
+
+## Settings details
+
+| Setting | Range / default |
+|---------|-----------------|
+| **Max people** | 1–6; MediaPipe default **1** |
+| **Confidence** | 0.25–0.99; MediaPipe default **0.5** |
+| **Defaults** | Resets Max=1 and Conf=0.5 ([PoseLandmarkerOptions](https://ai.google.dev/edge/api/mediapipe/python/mp/tasks/vision/PoseLandmarkerOptions)) |
+| **Mirror** | Off by default |
+| **Spectrum** | On/off; strip height always reserved (no layout jump) |
+| **Auto-snap on detect** | Off by default |
+
+## Captures
+
+```text
+viewer/captures/
+  sls_YYYYMMDD_HHMMSS.jpg    # snapshots
+  sls_YYYYMMDD_HHMMSS.avi    # recordings (MJPG)
+  session_*.jsonl            # detect/record event log
+```
+
+Directory is gitignored.
 
 ## IR sensor gain (fixed)
 
 | Item | Detail |
 |------|--------|
-| **Value** | **50** (full; freenect range is 1–50) |
+| **Value** | **50** (full freenect range 1–50) |
 | **What it is** | IR **camera sensor gain** only |
-| **What it is not** | IR **projector** power (projector stays on for depth; not software-adjustable here) |
-| **UI** | **None** — fixed in code; not shown in the status bar or Settings |
-| **Processing** | Affects **IR PiP look only** — pose/skeletons use colorized depth, not IR gain |
+| **What it is not** | IR **projector** power |
+| **UI** | Not shown (status stays clean) |
+| **Processing** | IR PiP look only — pose uses colorized depth |
 
 ## Spectrum strip
 
-- Thin bar under the video (mic FFT).  
-- Prefers **Kinect USB Audio** after `kinect-audio-setup` (see `docs/UBUNTU-SETUP.md`); else system default mic.  
-- Needs system package: `sudo apt install libportaudio2` (for Python `sounddevice`).  
-- Settings: **Spectrum** on/off.  
-
-## Session tools (main bar)
-
-| Action | Behavior |
-|--------|----------|
-| **Snap** | Save current composite JPEG under `viewer/captures/` (`sls_YYYYMMDD_HHMMSS.jpg`) |
-| **Record** | Start/stop MJPG AVI; button + status show elapsed time (`REC 0:12`); file is timestamped |
-| **Auto-snap on detect** | Settings: optional snap when `Detected` goes 0→≥1 |
-
-Keys: **C** snap · **R** record toggle.
-
-## Skeletons / Settings
-
-| Limit | Value |
-|-------|--------|
-| **Max people** | **1–6** — MediaPipe default **1**; Settings **Defaults** restores this |
-| **Detected status** | `Detected:n/max` on the main status bar |
-| **Confidence** | **0.25 – 0.99** — MediaPipe default **0.5** (detection/presence/tracking) |
-| **Defaults button** | Resets Max=1 and Conf=0.5 (official MediaPipe PoseLandmarker options) |
-| **Mirror** | in Settings |
-| **Skeleton lines** | thin (1px bones, small joints) |
-
-Sources: [PoseLandmarkerOptions](https://ai.google.dev/edge/api/mediapipe/python/mp/tasks/vision/PoseLandmarkerOptions) — `num_poses=1`, `min_pose_detection_confidence=0.5`, `min_pose_presence_confidence=0.5`, `min_tracking_confidence=0.5`.
-
-Bottom bar: **Settings** · **Snap** · **Record** · **Quit**. Spectrum strip sits above the bar.
-
-Keys: `S` settings · `C` snap · `R` record · `[` `]` conf · `,` `.` max · `M` mirror · `Esc` closes Settings then quits · `F` fullscreen · `Q` quit.
-
-```bash
-./run.sh --demo            # synthetic UI test (no Kinect)
-./run.sh --mirror          # horizontal mirror on
-./run.sh --no-auto-level   # leave tilt where it is
-./run.sh --led-off         # no green LED
-./run.sh --ui web          # optional browser UI
-```
+- Under video, above main bar  
+- Prefers capture device named like Kinect / USB Audio / Microsoft  
+- Falls back to system default mic  
+- Requires `libportaudio2` for Python `sounddevice`  
 
 ## Stack
 
 - **PySide6** — fullscreen always-on-top window  
-- `libfreenect` via ctypes  
-- OpenCV — colorize, draw, composite  
-- MediaPipe Pose Landmarker  
-- Flask — only if `--ui web`  
+- **libfreenect** — depth, IR, motor, LED (ctypes)  
+- **OpenCV** — colorize, draw, JPEG/AVI  
+- **MediaPipe** Pose Landmarker  
+- **sounddevice** — spectrum mic  
+- **Flask** — only if `--ui web`  
 
 ## Files
 
 ```text
 viewer/
   run.sh
+  README.md
+  requirements.txt
+  models/                 # pose model (downloaded by run.sh)
+  captures/               # local media (gitignored)
   sls_viewer/
-    main.py          # entry (--ui qt|web)
-    qt_app.py        # fullscreen UI + Settings popup
-    pipeline.py      # capture → pose → composite
+    main.py               # entry
+    qt_app.py             # UI + Settings
+    pipeline.py           # capture → pose → composite
     freenect_io.py
-    ...
-  web/               # optional browser UI
+    colorize.py
+    pose.py
+    skeleton.py
+    spectrum.py
+    session_io.py
+    config.py
+  web/                    # optional browser UI
+```
+
+## CLI
+
+```bash
+./run.sh --demo            # synthetic UI (no Kinect)
+./run.sh --mirror          # mirror on
+./run.sh --no-auto-level   # leave tilt as-is
+./run.sh --led-off         # no green LED
+./run.sh --ui web          # browser UI on :8765
 ```
 
 ## Troubleshooting
@@ -123,8 +149,9 @@ viewer/
 | Symptom | Fix |
 |---------|-----|
 | Window not on top | Press **F** |
-| gspca / open failed | `sudo modprobe -r gspca_kinect` + fix script |
-| Black window | Wait for first frame; try `./run.sh --demo` |
+| gspca / open failed | `sudo modprobe -r gspca_kinect` + `../scripts/fix-kinect-access.sh` |
+| Spectrum off / no mic | `libportaudio2`; for Kinect mic: `kinect-audio-setup` + replug |
+| Black window | Wait for first frame; `./run.sh --demo` |
 | No DISPLAY | Need a desktop session |
 
-Firmware / tablet image packaging is separate — see `docs/PRODUCT-VISION.md`.
+Firmware / tablet image packaging: [PRODUCT-VISION.md](../../../docs/PRODUCT-VISION.md).

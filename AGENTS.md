@@ -3,7 +3,7 @@
 ## Overview
 Modern SDK-style .NET 8 WPF application for modified Xbox 360 Kinect SLS camera. Features depth-first view with skeleton overlay, spectrum analyser below main screen, Ovilus random word generator (15-30min), un-mirrored camera, and optimized MVVM code.
 
-**Cross-platform product goal:** the main operator view is always **depth + SLS skeleton stick figures**, whether on Windows (this app + Kinect SDK) or Linux (`software/linux/` + freenect + pose engine + **web kiosk**). Longer term: flashable tablet image, Ovilus panel, extra sensors (Arduino-class). See `software/linux/docs/LINUX-SLS-PLAN.md` and `docs/PRODUCT-VISION.md`.
+**Cross-platform product goal:** the main operator view is always **depth + SLS skeleton stick figures**, whether on Windows (this app + Kinect SDK) or Linux (`software/linux/viewer/` + freenect + MediaPipe + **Qt fullscreen**). Longer term: flashable tablet image, Ovilus panel, extra sensors (Arduino-class). See `software/linux/docs/LINUX-SLS-PLAN.md` and `docs/PRODUCT-VISION.md`.
 
 ## Dev-Phase Install Instructions
 **Prerequisites**:
@@ -49,13 +49,15 @@ Defaults to Depth feed with skeleton on top. Spectrum analyser below main viewer
 Requires attached Xbox 360 Kinect (SLS structured light camera).
 
 ## Linux path
-Ubuntu / freenect work lives under `software/linux/`. **Same UI goal** as this Windows app (depth main + skeleton overlay); different stack (no Kinect SDK skeleton — use freenect + MediaPipe-class pose).
+Ubuntu / freenect work lives under `software/linux/`. **Same UI goal** as this Windows app (depth main + skeleton overlay); different stack (no Kinect SDK skeleton — freenect + MediaPipe on colorized depth).
 
-- Parity plan: `software/linux/docs/LINUX-SLS-PLAN.md`
-- Product vision (tablet image / Ovilus / sensors): `docs/PRODUCT-VISION.md`
-- Setup: `software/linux/docs/UBUNTU-SETUP.md`
-- **M0 complete** (2026-07-16): live `freenect-glview` — `software/linux/notes/BRINGUP-FREENECT.md`
-- **UI decision:** Qt fullscreen always-on-top (`software/linux/viewer/`, optional `--ui web`)
-- Next: harden on real Kinect → tablet autostart image → Ovilus/sensors
+- **Field app (working):** `software/linux/viewer/` — `./run.sh`  
+  Depth + IR PiP, skeletons, spectrum (Kinect USB Audio), Snap/Record, Settings  
+- Parity plan: `software/linux/docs/LINUX-SLS-PLAN.md`  
+- Product vision: `docs/PRODUCT-VISION.md`  
+- Setup: `software/linux/docs/UBUNTU-SETUP.md` (freenect + `kinect-audio-setup`)  
+- M0 bring-up notes: `software/linux/notes/BRINGUP-FREENECT.md`  
+- **UI:** Qt fullscreen always-on-top (optional `--ui web`)  
+- Next: tablet autostart image → Ovilus / sensors  
 
 Report issues on this repo: https://github.com/tmdrake/sls-camera/issues

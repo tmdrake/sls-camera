@@ -9,9 +9,8 @@ SLS Camera
 SLS-style camera system based on an **Xbox 360 Kinect** (structured light depth + skeleton-style stick figures), with:
 
 - Windows application under `software/source/` (Kinect SDK / WPF “SLS Explorer”)  
-- Linux bring-up under `software/linux/` (libfreenect → web kiosk viewer → tablet image)  
-- Possible future custom hardware add-ons under `hardware/`  
-- Longer term: Ovilus UI + Arduino-class sensor packs (see `docs/PRODUCT-VISION.md`)  
+- **Working Linux field app** under `software/linux/viewer/` (libfreenect + MediaPipe + Qt)  
+- Future: tablet image, Ovilus UI, Arduino-class sensor packs (`docs/PRODUCT-VISION.md`)  
 
 Same physical sensor class used on Ghost Hunters–style “SLS camera” demos.
 
@@ -20,7 +19,18 @@ Same physical sensor class used on Ghost Hunters–style “SLS camera” demos.
 | Platform | Location | Primary goal | Status |
 |----------|----------|--------------|--------|
 | Windows | `software/source/` | Full SLS Explorer (depth, skeleton, Ovilus, spectrum) | Code in repo |
-| Ubuntu / Lubuntu tablet | `software/linux/` | Depth + SLS sticks via **web kiosk** + backend; appliance image later | **M0 done**; UI + vision docs written |
+| Ubuntu / Lubuntu | `software/linux/viewer/` | Depth + SLS sticks, spectrum, session capture | **Field app working** (2026-07) |
+
+## Linux field app (implemented)
+
+- Qt fullscreen always-on-top; Settings popup  
+- Live depth + IR PiP; skeletons on colorized depth  
+- MediaPipe defaults (Conf 0.5, Max poses 1) via **Defaults** button  
+- Spectrum (Kinect USB Audio after `kinect-audio-setup`)  
+- Snap / Record on main bar (timestamped files, REC elapsed time)  
+- Auto-level on open; no manual tilt UI; IR sensor gain fixed at 50 (hidden)  
+
+Run: `cd software/linux/viewer && ./run.sh`
 
 ## Planned ownership
 
@@ -32,13 +42,14 @@ Same physical sensor class used on Ghost Hunters–style “SLS camera” demos.
 
 - [x] Software source in repo (`software/source/`)  
 - [x] Linux path scaffold + Ubuntu setup notes  
-- [x] freenect working on OptiPlex host (`freenect-glview`) — see `software/linux/notes/BRINGUP-FREENECT.md`  
-- [x] Linux ↔ Windows UI parity plan — `software/linux/docs/LINUX-SLS-PLAN.md`  
-- [x] Product vision + UI decision (web kiosk / tablet image) — `docs/PRODUCT-VISION.md`  
+- [x] freenect working on OptiPlex (`freenect-glview`)  
+- [x] Linux SLS viewer (depth + skeleton + IR PiP)  
+- [x] Spectrum + session Snap/Record  
+- [x] Kinect audio ALSA path documented (firmware / hash recovery)  
 - [ ] Hardware photos / wiring notes in `hardware/`  
-- [ ] Linux viewer M1 (backend depth stream)  
-- [ ] Linux viewer M2 (skeleton overlay = usable SLS)  
+- [ ] Tablet appliance image / autostart  
+- [ ] Ovilus + sensor bridge  
 
 ## Definition of ready (updated)
 
-Linux **M0** is complete. Product goal matches Windows main UI (depth + skeleton overlay) via MediaPipe-class pose + **web kiosk** UI for tablets. Appliance/Ovilus/sensor vision documented. Next session: implement M1/M2.
+Linux field app is **usable for investigations** on a desktop host with Kinect. Remaining work is packaging (tablet image), Ovilus/sensors, and hardware BOM docs—not core SLS UI.

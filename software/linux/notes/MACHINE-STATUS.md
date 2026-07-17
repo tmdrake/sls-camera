@@ -1,49 +1,36 @@
 # Machine status snapshot
 
-Last updated: **2026-07-16** (after successful freenect video / M0).
+Last updated: **2026-07-16** (field app + Kinect USB Audio verified).
 
 ## Host
 
 | Field | Value |
 |-------|--------|
 | Hostname | `tmdrake-optiplex7050` |
-| OS | Ubuntu 26.04 LTS (resolute) |
-| Kernel | 7.0.0-27-generic (at snapshot) |
+| OS | Ubuntu 26.04 LTS |
 | User | `tmdrake` |
-| Display | Desktop session with `DISPLAY=:0` (freenect GL viewer) |
+| App | `software/linux/viewer` Qt SLS |
 
 ## Kinect USB (confirmed)
 
 ```text
-045e:02b0  Microsoft Corp. Xbox NUI Motor
-045e:02ad  Microsoft Corp. Xbox NUI Audio
-045e:02ae  Microsoft Corp. Xbox NUI Camera
+045e:02b0  Xbox NUI Motor
+045e:02ad  Xbox NUI Audio  → after kinect-audio-setup: ALSA "Kinect USB Audio"
+045e:02ae  Xbox NUI Camera
 ```
 
-This is **Kinect for Xbox 360** (original), not Kinect v2 / Xbox One.
-
-## Software state (M0 complete)
+## Software state
 
 | Item | State |
 |------|--------|
-| `freenect` / `libfreenect-bin` | Installed `1:0.5.3-3.3` |
-| `freenect-glview` | Works — live video confirmed |
-| Blacklist | `/etc/modprobe.d/blacklist-gspca-kinect.conf` → `blacklist gspca_kinect` |
-| Udev | Package rules `60-libfreenect0.5t64.rules` |
-| USB node perms (working) | `crw-rw-rw- root plugdev` on motor/audio/camera |
-| Groups | `plugdev` active; add `video` if using V4L tools |
-| Custom SLS viewer | Not built yet (`software/linux/viewer/` scaffold only) |
+| freenect / depth+IR | Working |
+| Qt SLS app | Working (depth, IR PiP, pose, spectrum, snap/record) |
+| MediaPipe defaults | Conf 0.5, max poses 1 (**Defaults** button) |
+| IR sensor gain | Fixed 50 (not in UI) |
+| Kinect ALSA mic | Confirmed (`arecord -l` card “Kinect USB Audio”) |
+| Tablet image | Not started |
 
-## Driver notes
+## Notes
 
-- Prefer freenect for depth / SLS work; keep `gspca_kinect` blacklisted.
-- If `gspca_kinect` reappears in `lsmod` after reboot, re-check blacklist and unload: `sudo modprobe -r gspca_kinect`.
-- RGB-only V4L (`/dev/video0`) is the alternate path when gspca is loaded; not required for freenect.
-
-## Goal for this host
-
-Primary Linux development / field machine for freenect + SLS-style viewer under `software/linux/`.
-
-Windows SLS Explorer remains the reference UI/behavior under `software/source/`.
-
-Full bring-up story (errors, fixes, checklist): [BRINGUP-FREENECT.md](BRINGUP-FREENECT.md).
+- Prefer blacklisting / unloading `gspca_kinect` for freenect depth.  
+- MSI hash mismatch on `kinect-audio-setup` documented in `docs/UBUNTU-SETUP.md`.  

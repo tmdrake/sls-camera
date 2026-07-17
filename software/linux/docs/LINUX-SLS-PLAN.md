@@ -120,18 +120,18 @@ If registration is imperfect at first, v1 can draw sticks on a dual layout (dept
 
 ---
 
-## Milestones (updated)
+## Milestones (updated 2026-07)
 
 | ID | Deliverable | Success criteria | Status |
 |----|-------------|------------------|--------|
-| **M0** | freenect on host | `freenect-glview` live video | **Done** 2026-07-16 |
-| **M1** | Depth main window | Dark window, live colorized depth, mirror toggle, ~15+ FPS | Next |
-| **M2** | SLS skeleton overlay | Stick figure(s) over main depth view when a person is in frame | Core product goal |
-| **M3** | Kiosk UI polish | Touch-friendly web chrome, tilt/mirror controls, HUD, run script | |
-| **M4** | Appliance image | Auto-start backend + kiosk on Lubuntu-class tablet image | |
-| **M5** | Ovilus + sensors | Ovilus panel; Arduino/MCU bridge for extra sensors | After usable SLS |
+| **M0** | freenect on host | `freenect-glview` live video | **Done** |
+| **M1** | Depth main window | Live colorized depth, mirror, ~15+ FPS | **Done** (`viewer/`) |
+| **M2** | SLS skeleton overlay | Sticks on depth (+ IR PiP) | **Done** (MediaPipe on colorized depth) |
+| **M3** | Field UI polish | Qt Settings, spectrum, Snap/Record, HUD | **Done** (auto-level only; no manual tilt) |
+| **M4** | Appliance image | Auto-start on Lubuntu-class tablet | Not started |
+| **M5** | Ovilus + sensors | Ovilus panel; Arduino/MCU bridge | Not started |
 
-**Definition of “Linux SLS usable”:** M2 complete — someone can stand in front of the Kinect and see a depth field with a stick figure overlay without using Windows.
+**Definition of “Linux SLS usable”:** M2 — **met** on OptiPlex + Kinect.
 
 **Definition of “field appliance alpha”:** M4 — tablet boots to SLS without manual SSH.
 
@@ -139,16 +139,17 @@ If registration is imperfect at first, v1 can draw sticks on a dual layout (dept
 
 ## Windows feature map → Linux work
 
-| Windows (`AGENTS.md` / KinectWindow) | Linux component | Milestone |
-|--------------------------------------|-----------------|-----------|
-| Depth stream main | `depth.py` + colorize | M1 |
-| Skeleton bones/joints on depth | `pose.py` + `skeleton.py` | M2 |
-| Un-mirrored for behind-camera use | flip toggle (default unmirrored) | M1 |
-| Color side / swap | secondary panel or key swap | M3 |
-| Tilt / sensor settings | freenect motor API + keys | M3 |
-| Spectrum analyser | audio device + FFT strip | M4 |
-| Ovilus 15–30 min | timer + word list overlay | M4 |
-| Dark theme | palette constants | M1 |
+| Windows (`AGENTS.md` / KinectWindow) | Linux | Status |
+|--------------------------------------|-------|--------|
+| Depth stream main | `pipeline` + `colorize` | Done |
+| Skeleton bones/joints on depth | `pose` + `skeleton` | Done |
+| Un-mirrored for behind-camera | Settings mirror (default off) | Done |
+| IR secondary view | top-right PiP | Done |
+| Spectrum analyser | `spectrum.py` + Kinect USB Audio | Done |
+| Session capture | Snap / Record main bar | Done |
+| Tilt control | Auto-level on open only | Done (no manual UI by design) |
+| Ovilus 15–30 min | — | Later (M5) |
+| Color side / swap | — | Optional later |
 
 ---
 
