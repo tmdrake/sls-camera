@@ -44,7 +44,11 @@ On open the app will:
 1. Claim the Kinect (depth + IR)  
 2. Set the **LED to green**  
 3. **Auto-level** the tilt motor to **0°**  
-4. Stream live depth (main) + IR (PiP) with skeletons  
+4. Set **IR sensor brightness to 50/50** (freenect max useful gain; library default is ~30).  
+   Note: this is **sensor gain**, not IR projector power (projector stays on for depth).  
+5. Stream live depth (main) + IR (PiP); draw skeletons when pose detects a person  
+
+**Skeletons:** MediaPipe is trained on normal RGB photos. We run pose on **colorized depth** first (works in the dark), then enhanced IR. Stand ~1.5–3 m in the depth FOV, full body if possible. `poses: 0` means no person detected yet, not that overlay is disabled.  
 
 Keys: **Esc / Q** quit · **M** mirror · **F** re-assert fullscreen  
 

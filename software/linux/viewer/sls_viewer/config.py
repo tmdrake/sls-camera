@@ -23,14 +23,17 @@ class Settings:
     led_green: bool = True  # freenect LED_GREEN while running
     auto_level: bool = True  # tilt motor to 0° (level) on start
     tilt_degs: int = 0  # used only if auto_level is False
+    # IR *sensor* brightness 1–50 (not projector). Default 50 = max useful gain.
+    # freenect library default is ~30 if unset.
+    ir_brightness: int = 50
 
     # Mirror OFF by default (operator behind camera / unmirrored room view).
     # Use --mirror or UI toggle to turn on.
     mirror: bool = False
 
-    # Pose runs on IR (Kinect cannot stream RGB + IR at once with freenect).
-    # IR illuminator lights people well enough for MediaPipe in dark rooms.
-    pose_min_confidence: float = 0.45
+    # Pose: MediaPipe is trained on RGB photos. We try colorized depth first
+    # (works in dark rooms), then enhanced IR. Lower confidence for IR/depth.
+    pose_min_confidence: float = 0.30
     pose_every_n_frames: int = 1  # 1 = every frame; raise if CPU-bound
 
     # Depth colorization (mm-ish raw 11-bit mapped)

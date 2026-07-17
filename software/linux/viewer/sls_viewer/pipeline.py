@@ -112,10 +112,15 @@ class FramePipeline:
                 led=freenect_io.LED_GREEN if self.s.led_green else freenect_io.LED_OFF,
                 tilt_degs=self.s.tilt_degs,
                 auto_level=self.s.auto_level,
+                ir_brightness=self.s.ir_brightness,
             )
-            self._kinect.prepare()  # LED green + tilt 0° + first depth claim
+            self._kinect.prepare()  # LED green + tilt 0° + IR brightness + streams
             depth, ir = self._kinect.get_depth_and_ir()
-            self._status = f"live · {depth.shape[1]}x{depth.shape[0]} depth+IR · LED green · tilt 0°"
+            br = self._kinect.get_ir_brightness()
+            self._status = (
+                f"live · {depth.shape[1]}x{depth.shape[0]} · "
+                f"LED green · tilt 0° · IR bright {br}/50"
+            )
             return True
         except Exception as e:
             self._status = f"kinect error: {e}"
@@ -256,12 +261,16 @@ class FramePipeline:
                     depth_u16, self.s.depth_min, self.s.depth_max
                 )
                 ir_bgr = colorize.ir_to_bgr(ir_u8)
+                ir_pose_img = colorize.ir_for_pose(ir_u8)
 
-                # Pose on IR (same 640x480 space as depth for stick alignment)
+                # Pose: MediaPipe is RGB-trained. Colorized depth works better
+                # than raw IR in dark rooms; fall back to enhanced IR.
                 self._frame_i += 1
                 if self._pose and (self._frame_i % max(1, self.s.pose_every_n_frames) == 0):
                     try:
-                        self._last_poses = self._pose.estimate(ir_bgr)
+                        self._last_poses = self._pose.estimate_best(
+                            [depth_bgr, ir_pose_img]
+                        )
                     except Exception as e:
                         self._status = f"pose: {e}"
 
