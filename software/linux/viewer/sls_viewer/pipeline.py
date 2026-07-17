@@ -141,6 +141,9 @@ class FramePipeline:
         cv2.ellipse(ir, (320, 240), (60, 120), 0, 0, 360, 220, -1)
         return depth, ir
 
+    # Backoff between reconnect opens after USB/power loss (seconds)
+    RECONNECT_SLEEP_S = 2.5
+
     def _paint_reconnect(self, detail: str = "") -> None:
         """Status UI while waiting for Kinect power/USB/video."""
         W, H = self.s.frame_width, self.s.frame_height
@@ -158,9 +161,9 @@ class FramePipeline:
         )
         lines = [
             detail[:90] if detail else self._status[:90],
-            f"retry #{self._reconnect_attempt} — power brick + USB",
-            "will keep trying until device returns",
-            "LED green + auto-level when reconnected",
+            f"retry #{self._reconnect_attempt} every {self.RECONNECT_SLEEP_S:.1f}s",
+            "power brick + USB — wait for re-enumeration",
+            "stale frame ~1.5s → full freenect reopen",
         ]
         for i, line in enumerate(lines):
             cv2.putText(
@@ -185,6 +188,8 @@ class FramePipeline:
 
     def _open_kinect(self) -> bool:
         """Open live freenect stream: green LED + auto-level + IR gain 50."""
+        # Always tear down previous handle first (USB death leaves bad state)
+        self._close_kinect()
         try:
             self._status = "opening kinect (LED green, auto-level)…"
             self.s.ir_brightness = 50
@@ -327,7 +332,7 @@ class FramePipeline:
                 "(power / USB / freenect)"
             )
             self._paint_reconnect()
-            time.sleep(1.5)
+            time.sleep(self.RECONNECT_SLEEP_S)
             use_kinect = self._open_kinect()
 
         if not use_kinect and demo:
@@ -344,13 +349,16 @@ class FramePipeline:
             t0 = time.time()
             try:
                 if use_kinect and self._kinect:
+                    if self._kinect.is_dead():
+                        raise freenect_io.FreenectError(
+                            self._kinect.dead_reason() or "USB camera dead"
+                        )
                     depth_u16, ir_u8 = self._kinect.get_depth_and_ir()
                 else:
                     depth_u16, ir_u8 = self._demo_frames()
                     if not use_kinect:
                         self._status = "demo mode (no kinect)"
 
-                t1 = time.time()
                 fps_smooth = self._process_frames(depth_u16, ir_u8, fps_smooth)
                 dt = time.time() - t0
                 inst = 1.0 / dt if dt > 0 else 0.0
@@ -363,25 +371,38 @@ class FramePipeline:
                     time.sleep(sleep_t)
 
             except freenect_io.FreenectError as e:
-                # Device lost — infinite retry with reconnect UI
+                # Device lost / stale frames — full close + infinite reopen
                 self._status = f"reconnecting… {e}"
                 self._close_kinect()
                 use_kinect = False
                 self._reconnect_attempt += 1
                 self._paint_reconnect(str(e))
-                time.sleep(1.0)
+                time.sleep(self.RECONNECT_SLEEP_S)
                 while self._running and not use_kinect:
                     self._reconnect_attempt += 1
                     self._status = (
                         f"reconnecting… attempt {self._reconnect_attempt}"
                     )
-                    self._paint_reconnect()
-                    time.sleep(1.5)
+                    self._paint_reconnect(str(e))
+                    time.sleep(self.RECONNECT_SLEEP_S)
                     use_kinect = self._open_kinect()
                     if use_kinect:
                         self._status = (
-                            f"live · reconnected · LED green · tilt 0°"
+                            "live · reconnected · LED green · tilt 0°"
                         )
             except Exception as e:
+                # Treat unexpected freenect/USB failures like a disconnect
+                msg = str(e).lower()
+                if any(
+                    k in msg
+                    for k in ("usb", "freenect", "transfer", "libusb", "kinect")
+                ):
+                    self._status = f"reconnecting… {e}"
+                    self._close_kinect()
+                    use_kinect = False
+                    self._reconnect_attempt += 1
+                    self._paint_reconnect(str(e))
+                    time.sleep(self.RECONNECT_SLEEP_S)
+                    continue
                 self._status = f"pipeline: {e}"
                 time.sleep(0.25)

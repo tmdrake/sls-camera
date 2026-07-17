@@ -42,6 +42,17 @@ DEPTH_W, DEPTH_H = 640, 480
 # IR medium is 640x488 in freenect; we crop to 640x480 to match depth.
 IR_W, IR_H_NATIVE = 640, 488
 
+# Frame / reconnect timing (seconds)
+# If no new depth/video callback arrives within STALE_FRAME_S, treat device as dead
+# (USB unplug / power brick loss leaves last frame in memory otherwise).
+STALE_FRAME_S = 1.5
+# Wait this long for a fresh frame on each get_* call
+FRAME_WAIT_S = 2.5
+# First open after prepare(): wait for both streams
+OPEN_FRAME_WAIT_S = 8.0
+# How many freenect_process_events failures before marking dead
+EVENT_FAIL_LIMIT = 8
+
 
 class FreenectError(RuntimeError):
     pass
@@ -118,6 +129,11 @@ class FreenectSync:
         self._depth: Optional[np.ndarray] = None
         self._video: Optional[np.ndarray] = None
         self._prepared = False
+        self._last_depth_ts = 0.0
+        self._last_video_ts = 0.0
+        self._dead = False
+        self._dead_reason = ""
+        self._event_fails = 0
         # Keep callback refs alive
         self._depth_cb = _DEPTH_CB(self._on_depth)
         self._video_cb = _VIDEO_CB(self._on_video)
@@ -165,14 +181,30 @@ class FreenectSync:
         lib.freenect_get_ir_brightness.argtypes = [POINTER(_Dev)]
         lib.freenect_get_ir_brightness.restype = c_int
 
+    def _mark_dead(self, reason: str) -> None:
+        with self._lock:
+            self._dead = True
+            self._dead_reason = reason or "device dead"
+
+    def is_dead(self) -> bool:
+        with self._lock:
+            return bool(self._dead)
+
+    def dead_reason(self) -> str:
+        with self._lock:
+            return self._dead_reason or ""
+
     def _on_depth(self, dev, data, ts) -> None:
         n = DEPTH_W * DEPTH_H
         arr = np.ctypeslib.as_array(
             ctypes.cast(data, POINTER(c_uint16 * n)).contents
         ).reshape(DEPTH_H, DEPTH_W)
         frame = np.bitwise_and(arr, 0x7FF).copy()
+        now = time.time()
         with self._lock:
             self._depth = frame
+            self._last_depth_ts = now
+            self._event_fails = 0
 
     def _on_video(self, dev, data, ts) -> None:
         if self.video_mode == "ir":
@@ -189,28 +221,47 @@ class FreenectSync:
                 ctypes.cast(data, POINTER(ctypes.c_uint8 * n)).contents
             ).reshape(DEPTH_H, DEPTH_W, 3)
             frame = arr.copy()
+        now = time.time()
         with self._lock:
             self._video = frame
+            self._last_video_ts = now
+            self._event_fails = 0
 
     def _event_loop(self) -> None:
         while self._running and self._ctx:
             try:
-                self._lib.freenect_process_events(self._ctx)
+                rc = int(self._lib.freenect_process_events(self._ctx))
             except Exception:
-                time.sleep(0.01)
+                self._mark_dead("freenect_process_events exception")
+                break
+            if rc < 0:
+                # libusb / device errors (unplug, transfer -4, etc.)
+                with self._lock:
+                    self._event_fails += 1
+                    fails = self._event_fails
+                if fails >= EVENT_FAIL_LIMIT:
+                    self._mark_dead(f"freenect_process_events rc={rc}")
+                    break
+                time.sleep(0.02)
+            else:
+                with self._lock:
+                    self._event_fails = 0
 
     def prepare(self) -> None:
-        if self._prepared:
+        if self._prepared and not self.is_dead():
             return
+        # Always full stop before (re)open — required after USB death
+        self.stop()
         last_err: Optional[Exception] = None
-        for attempt in range(4):
+        for attempt in range(6):
             try:
                 self._open_once()
                 return
             except FreenectError as e:
                 last_err = e
                 self.stop()
-                time.sleep(0.4 * (attempt + 1))
+                # USB re-enumeration after power loss often needs 1–3s
+                time.sleep(0.6 + 0.5 * attempt)
         hints = []
         if gspca_loaded():
             hints.append("sudo modprobe -r gspca_kinect")
@@ -221,6 +272,15 @@ class FreenectSync:
 
     def _open_once(self) -> None:
         lib = self._lib
+        self._dead = False
+        self._dead_reason = ""
+        self._event_fails = 0
+        self._last_depth_ts = 0.0
+        self._last_video_ts = 0.0
+        with self._lock:
+            self._depth = None
+            self._video = None
+
         ctx = POINTER(_Ctx)()
         if lib.freenect_init(byref(ctx), None) != 0:
             raise FreenectError("freenect_init failed")
@@ -276,11 +336,20 @@ class FreenectSync:
         )
         self._thread.start()
 
-        # Wait for first frames
-        deadline = time.time() + 5.0
+        # Wait for first frames (USB reattach can be slow)
+        deadline = time.time() + OPEN_FRAME_WAIT_S
         while time.time() < deadline:
+            if self.is_dead():
+                raise FreenectError(
+                    f"device died during open: {self.dead_reason()}"
+                )
             with self._lock:
-                ok = self._depth is not None and self._video is not None
+                ok = (
+                    self._depth is not None
+                    and self._video is not None
+                    and self._last_depth_ts > 0
+                    and self._last_video_ts > 0
+                )
             if ok:
                 self._prepared = True
                 return
@@ -288,60 +357,84 @@ class FreenectSync:
         raise FreenectError("timeout waiting for depth/video frames")
 
     def get_ir_brightness(self) -> int:
-        if not self._dev:
+        if not self._dev or self.is_dead():
             return -1
         return int(self._lib.freenect_get_ir_brightness(self._dev))
 
     def set_ir_brightness(self, value: int) -> None:
         value = int(max(IR_BRIGHTNESS_MIN, min(IR_BRIGHTNESS_MAX, value)))
-        if not self._dev:
+        if not self._dev or self.is_dead():
             raise FreenectError("device not open")
         if self._lib.freenect_set_ir_brightness(self._dev, c_uint16(value)) != 0:
             raise FreenectError("set_ir_brightness failed")
         self.ir_brightness = value
 
+    def _wait_fresh_frame(
+        self, which: str, wait_s: float = FRAME_WAIT_S
+    ) -> np.ndarray:
+        """Return a recent frame or raise FreenectError (triggers pipeline reconnect)."""
+        if not self._prepared or self.is_dead():
+            reason = self.dead_reason() or "not prepared"
+            raise FreenectError(f"device unavailable: {reason}")
+
+        deadline = time.time() + float(wait_s)
+        while time.time() < deadline:
+            if self.is_dead():
+                raise FreenectError(
+                    f"USB camera dead: {self.dead_reason() or 'transfer failed'}"
+                )
+            now = time.time()
+            with self._lock:
+                if which == "depth":
+                    frame = self._depth
+                    ts = self._last_depth_ts
+                else:
+                    frame = self._video
+                    ts = self._last_video_ts
+                if frame is not None and ts > 0 and (now - ts) <= STALE_FRAME_S:
+                    return frame.copy()
+            time.sleep(0.01)
+
+        # Stale = same symptom as "USB camera marked dead" without a raise
+        age = 0.0
+        with self._lock:
+            ts = self._last_depth_ts if which == "depth" else self._last_video_ts
+            if ts > 0:
+                age = time.time() - ts
+        self._mark_dead(f"stale {which} frame age={age:.1f}s")
+        raise FreenectError(
+            f"no fresh {which} frame (stale {age:.1f}s — USB/power lost?)"
+        )
+
     def get_depth_u16(self) -> np.ndarray:
         if not self._prepared:
             self.prepare()
-        deadline = time.time() + 2.0
-        while time.time() < deadline:
-            with self._lock:
-                if self._depth is not None:
-                    return self._depth.copy()
-            time.sleep(0.01)
-        raise FreenectError("no depth frame")
+        return self._wait_fresh_frame("depth")
 
     def get_ir_u8(self) -> np.ndarray:
         if self.video_mode != "ir":
             raise FreenectError("video_mode is not ir")
         if not self._prepared:
             self.prepare()
-        deadline = time.time() + 2.0
-        while time.time() < deadline:
-            with self._lock:
-                if self._video is not None:
-                    return self._video.copy()
-            time.sleep(0.01)
-        raise FreenectError("no IR frame")
+        return self._wait_fresh_frame("video")
 
     def get_rgb_u8(self) -> np.ndarray:
         if self.video_mode != "rgb":
             raise FreenectError("video_mode is not rgb")
         if not self._prepared:
             self.prepare()
-        deadline = time.time() + 2.0
-        while time.time() < deadline:
-            with self._lock:
-                if self._video is not None:
-                    return self._video.copy()
-            time.sleep(0.01)
-        raise FreenectError("no RGB frame")
+        return self._wait_fresh_frame("video")
 
     def get_depth_and_ir(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Raises FreenectError on USB death / stale frames so pipeline can reconnect."""
+        if self.is_dead():
+            raise FreenectError(
+                f"USB camera dead: {self.dead_reason() or 'transfer failed'}"
+            )
         if not self._prepared:
             self.prepare()
-        depth = self.get_depth_u16()
-        ir = self.get_ir_u8()
+        depth = self._wait_fresh_frame("depth")
+        ir = self._wait_fresh_frame("video")
         return depth, ir
 
     def stop(self) -> None:
@@ -353,6 +446,9 @@ class FreenectSync:
         if self._dev:
             try:
                 lib.freenect_stop_video(self._dev)
+            except Exception:
+                pass
+            try:
                 lib.freenect_stop_depth(self._dev)
             except Exception:
                 pass
@@ -372,9 +468,14 @@ class FreenectSync:
                 pass
             self._ctx = None
         self._prepared = False
+        self._dead = False
+        self._dead_reason = ""
+        self._event_fails = 0
         with self._lock:
             self._depth = None
             self._video = None
+            self._last_depth_ts = 0.0
+            self._last_video_ts = 0.0
 
     def __enter__(self):
         self.prepare()

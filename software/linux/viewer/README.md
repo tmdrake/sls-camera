@@ -148,6 +148,16 @@ Spirit-box style word generator (Linux name; not “Ovilus”). Word list matche
 
 If freenect loses the camera (unplug, BUSY, power brick), the main view shows **RECONNECTING TO KINECT…** and retries forever until the device returns (LED green + auto-level on success).
 
+| Timing | Value | Meaning |
+|--------|-------|---------|
+| **Stale frame** | **1.5 s** | No new depth/IR callback → treat as dead (was: freeze on last frame) |
+| **Frame wait** | **2.5 s** | Max wait for a fresh frame before raising |
+| **Open wait** | **8 s** | Wait for first frames after open |
+| **Reconnect sleep** | **2.5 s** | Delay between full freenect close/reopen attempts |
+| **Open retries** | **6** | Internal tries per open, with increasing backoff |
+
+Power/USB loss often prints `USB camera marked dead` / iso transfer `-4` in the console; the app should switch to RECONNECTING within ~2 s, then keep retrying until the brick/USB is back.
+
 ## Stack
 
 - **PySide6** — fullscreen always-on-top window  
