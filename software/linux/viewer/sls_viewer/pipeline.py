@@ -85,6 +85,13 @@ class FramePipeline:
     def adjust_max_poses(self, delta: int) -> int:
         return self.set_max_poses(self.max_poses + int(delta))
 
+    def reset_pose_defaults(self) -> None:
+        """MediaPipe defaults: confidence 0.5, max poses 1."""
+        self.s.reset_pose_defaults()
+        if self._pose is not None:
+            self._pose.set_min_confidence(self.s.pose_min_confidence)
+            self._pose.set_max_poses(self.s.max_poses)
+
     def get_jpeg(self) -> Optional[bytes]:
         with self._lock:
             return self._jpeg

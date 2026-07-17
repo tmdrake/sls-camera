@@ -73,11 +73,14 @@ On open the app will:
 
 | Limit | Value |
 |-------|--------|
-| **Max people** | **1–6** (default **4**) — in **Settings** |
+| **Max people** | **1–6** — MediaPipe default **1**; Settings **Defaults** restores this |
 | **Detected status** | `Detected:n/max` on the main status bar |
-| **Confidence** | **0.25 – 0.99** (default 0.70) — in Settings |
+| **Confidence** | **0.25 – 0.99** — MediaPipe default **0.5** (detection/presence/tracking) |
+| **Defaults button** | Resets Max=1 and Conf=0.5 (official MediaPipe PoseLandmarker options) |
 | **Mirror** | in Settings |
 | **Skeleton lines** | thin (1px bones, small joints) |
+
+Sources: [PoseLandmarkerOptions](https://ai.google.dev/edge/api/mediapipe/python/mp/tasks/vision/PoseLandmarkerOptions) — `num_poses=1`, `min_pose_detection_confidence=0.5`, `min_pose_presence_confidence=0.5`, `min_tracking_confidence=0.5`.
 
 Bottom bar: **Settings** · **Quit**. Spectrum strip sits above the bar when enabled.
 

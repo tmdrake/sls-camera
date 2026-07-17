@@ -12,6 +12,12 @@ MODEL_PATH = VIEWER_ROOT / "models" / "pose_landmarker_lite.task"
 WEB_ROOT = VIEWER_ROOT / "web"
 SETTINGS_PATH = VIEWER_ROOT / "user_settings.json"
 
+# MediaPipe PoseLandmarker official defaults
+# (https://ai.google.dev/edge/api/mediapipe/python/mp/tasks/vision/PoseLandmarkerOptions)
+# num_poses=1, min_*_confidence=0.5
+MEDIAPIPE_DEFAULT_CONFIDENCE = 0.5
+MEDIAPIPE_DEFAULT_MAX_POSES = 1
+
 # User-tweakable prefs (IR gain fixed, not UI)
 PERSIST_KEYS = (
     "mirror",
@@ -38,14 +44,14 @@ class Settings:
     mirror: bool = False
 
     # Pose confidence (UI-adjustable). Higher = fewer false skeletons.
-    # Applied to MediaPipe thresholds + geometry filters (rebuilds model on change).
-    pose_min_confidence: float = 0.70
+    # Defaults match MediaPipe PoseLandmarker (0.5). Rebuilds model on change.
+    pose_min_confidence: float = MEDIAPIPE_DEFAULT_CONFIDENCE
     pose_conf_min: float = 0.25
     pose_conf_max: float = 0.99  # UI max
     pose_conf_step: float = 0.05
     pose_every_n_frames: int = 1
-    # Simultaneous people (MediaPipe num_poses); UI 1–6, default 4
-    max_poses: int = 4
+    # Simultaneous people (MediaPipe default num_poses=1); UI allows 1–6
+    max_poses: int = MEDIAPIPE_DEFAULT_MAX_POSES
     max_poses_min: int = 1
     max_poses_max: int = 6
     pose_min_joints: int = 6
@@ -114,6 +120,14 @@ class Settings:
     def clamp_max_poses(self) -> None:
         lo, hi = int(self.max_poses_min), int(self.max_poses_max)
         self.max_poses = int(max(lo, min(hi, int(self.max_poses))))
+
+    def reset_pose_defaults(self) -> None:
+        """Restore MediaPipe-recommended confidence and max poses."""
+        self.pose_min_confidence = float(MEDIAPIPE_DEFAULT_CONFIDENCE)
+        self.max_poses = int(MEDIAPIPE_DEFAULT_MAX_POSES)
+        self.clamp_pose_confidence()
+        self.clamp_max_poses()
+        self.save_persisted()
 
     def save_persisted(self, path: Path = SETTINGS_PATH) -> None:
         self.clamp_pose_confidence()

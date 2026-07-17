@@ -166,14 +166,21 @@ class SettingsDialog(QDialog):
 
         root.addLayout(grid)
 
-        # Session actions
+        # Defaults (MediaPipe recommended) + session actions
         act = QHBoxLayout()
+        self.btn_defaults = QPushButton("Defaults")
+        self.btn_defaults.setObjectName("wide")
+        self.btn_defaults.setToolTip(
+            "Reset Max people=1 and Confidence=0.5 (MediaPipe official defaults)"
+        )
+        self.btn_defaults.clicked.connect(self._reset_defaults)
         self.btn_snap = QPushButton("Snapshot")
         self.btn_snap.setObjectName("wide")
         self.btn_snap.clicked.connect(self._snapshot)
         self.btn_record = QPushButton("Record")
         self.btn_record.setObjectName("wide")
         self.btn_record.clicked.connect(self._toggle_record)
+        act.addWidget(self.btn_defaults)
         act.addWidget(self.btn_snap)
         act.addWidget(self.btn_record)
         act.addStretch(1)
@@ -244,6 +251,11 @@ class SettingsDialog(QDialog):
     def _toggle_autosnap(self) -> None:
         self.pipeline.s.auto_snap_on_detect = not self.pipeline.s.auto_snap_on_detect
         self.pipeline.s.save_persisted()
+        self._refresh()
+
+    def _reset_defaults(self) -> None:
+        """Confidence 0.5 + Max people 1 (MediaPipe PoseLandmarker defaults)."""
+        self.pipeline.reset_pose_defaults()
         self._refresh()
 
     def _snapshot(self) -> None:
