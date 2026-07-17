@@ -85,6 +85,30 @@ class FramePipeline:
     def adjust_max_poses(self, delta: int) -> int:
         return self.set_max_poses(self.max_poses + int(delta))
 
+    @property
+    def ir_brightness(self) -> int:
+        return int(self.s.ir_brightness)
+
+    def set_ir_brightness(self, value: int) -> int:
+        """IR sensor gain 1–50; apply live if Kinect open; persist."""
+        self.s.ir_brightness = int(value)
+        self.s.clamp_ir_brightness()
+        self.s.save_persisted()
+        value = self.s.ir_brightness
+        if self._kinect is not None:
+            try:
+                self._kinect.set_ir_brightness(value)
+                if self._status.startswith("live"):
+                    self._status = (
+                        f"live · depth+IR · LED green · tilt 0° · IR {value}/50"
+                    )
+            except Exception as e:
+                self._status = f"IR bright failed: {e}"
+        return value
+
+    def adjust_ir_brightness(self, delta: int) -> int:
+        return self.set_ir_brightness(self.ir_brightness + int(delta))
+
     def get_jpeg(self) -> Optional[bytes]:
         with self._lock:
             return self._jpeg
@@ -140,21 +164,21 @@ class FramePipeline:
         """Open live freenect stream: green LED + auto-level tilt, then depth+IR."""
         try:
             self._status = "opening kinect (LED green, auto-level)…"
-            # IR brightness fixed at 50 (no UI control)
-            self.s.ir_brightness = 50
+            self.s.clamp_ir_brightness()
+            br = int(self.s.ir_brightness)
             self._kinect = freenect_io.FreenectSync(
                 index=self.s.device_index,
                 video_mode="ir",
                 led=freenect_io.LED_GREEN if self.s.led_green else freenect_io.LED_OFF,
                 tilt_degs=self.s.tilt_degs,
                 auto_level=self.s.auto_level,
-                ir_brightness=50,
+                ir_brightness=br,
             )
-            self._kinect.prepare()  # LED green + tilt 0° + IR 50 + streams
+            self._kinect.prepare()  # LED green + tilt 0° + IR brightness + streams
             depth, ir = self._kinect.get_depth_and_ir()
             self._status = (
                 f"live · {depth.shape[1]}x{depth.shape[0]} · "
-                f"LED green · tilt 0° · IR 50/50"
+                f"LED green · tilt 0° · IR {br}/50"
             )
             return True
         except Exception as e:

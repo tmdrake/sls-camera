@@ -12,8 +12,8 @@ MODEL_PATH = VIEWER_ROOT / "models" / "pose_landmarker_lite.task"
 WEB_ROOT = VIEWER_ROOT / "web"
 SETTINGS_PATH = VIEWER_ROOT / "user_settings.json"
 
-# User-tweakable prefs (IR brightness fixed at 50)
-PERSIST_KEYS = ("mirror", "pose_min_confidence", "max_poses")
+# User-tweakable prefs
+PERSIST_KEYS = ("mirror", "pose_min_confidence", "max_poses", "ir_brightness")
 
 
 @dataclass
@@ -25,8 +25,11 @@ class Settings:
     led_green: bool = True
     auto_level: bool = True
     tilt_degs: int = 0
-    # Fixed IR sensor brightness (1–50). No UI control for now.
+    # IR sensor brightness 1–50 (Settings UI). Default 50.
     ir_brightness: int = 50
+    ir_brightness_min: int = 1
+    ir_brightness_max: int = 50
+    ir_brightness_step: int = 5
 
     mirror: bool = False
 
@@ -82,8 +85,7 @@ class Settings:
         self.mirror = bool(self.mirror)
         self.clamp_pose_confidence()
         self.clamp_max_poses()
-        # Always force IR to fixed default (ignore old saved brightness)
-        self.ir_brightness = 50
+        self.clamp_ir_brightness()
 
     def clamp_pose_confidence(self) -> None:
         lo, hi = float(self.pose_conf_min), float(self.pose_conf_max)
@@ -97,13 +99,19 @@ class Settings:
         lo, hi = int(self.max_poses_min), int(self.max_poses_max)
         self.max_poses = int(max(lo, min(hi, int(self.max_poses))))
 
+    def clamp_ir_brightness(self) -> None:
+        lo, hi = int(self.ir_brightness_min), int(self.ir_brightness_max)
+        self.ir_brightness = int(max(lo, min(hi, int(self.ir_brightness))))
+
     def save_persisted(self, path: Path = SETTINGS_PATH) -> None:
         self.clamp_pose_confidence()
         self.clamp_max_poses()
+        self.clamp_ir_brightness()
         data: Dict[str, Any] = {
             "mirror": bool(self.mirror),
             "pose_min_confidence": float(self.pose_min_confidence),
             "max_poses": int(self.max_poses),
+            "ir_brightness": int(self.ir_brightness),
         }
         try:
             path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")

@@ -57,8 +57,10 @@ On open the app will:
 | **Mirror** | in Settings |
 | **Skeleton lines** | thin (1px bones, small joints) |
 
-Bottom bar: **Settings** · **Quit**. Open Settings for Max / Conf / Mirror.  
-Keys: `S` settings · `[` `]` conf · `,` `.` max people · `M` mirror · `Esc` closes Settings then quits.  
+Bottom bar: **Settings** · **Quit**. Open Settings for Max / Conf / **IR brightness** / Mirror.  
+Keys: `S` settings · `[` `]` conf · `,` `.` max · `-` `=` IR · `M` mirror · `Esc` closes Settings then quits.  
+
+IR control is **sensor gain** (1–50), not projector power; default **50**, saved with other prefs.  
 
 Keys: **Esc / Q** quit · **M** mirror · **F** re-assert fullscreen  
 
