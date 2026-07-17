@@ -4,7 +4,7 @@
 
 - **Main:** full-screen **colorized depth + skeleton**
 - **PiP:** small **IR + skeleton** in the **top corner** (scaled)
-- **Mirror OFF by default** (toggle in UI or `--mirror`)
+- **Mirror OFF by default** (toggle in Settings or `--mirror`)
 
 Browser UI is **optional** (`--ui web`).
 
@@ -15,9 +15,6 @@ Browser UI is **optional** (`--ui web`).
 | Fullscreen | `showFullScreen()` | Needs flags / user gesture |
 | Always on top | `WindowStaysOnTopHint` | Unreliable across WMs |
 | Tablet / Lubuntu field use | **Yes** | Possible, more fragile |
-| Extra sensor panels later | Still fine (or hybrid) | Easier HTML dashboards |
-
-For a bulletproof “this is the app” experience: **Qt fullscreen always-on-top**.
 
 ## Layout
 
@@ -26,7 +23,7 @@ For a bulletproof “this is the app” experience: **Qt fullscreen always-on-to
 | **Full frame** | Colorized depth + SLS stick figures |
 | **Top-corner PiP** | Infrared + same stick figures (small, scaled) |
 
-Kinect streams **depth + IR** (not RGB+IR at once). Pose runs on **IR**.
+Kinect streams **depth + IR** (not RGB+IR at once). Pose runs on **colorized depth**.
 
 ## Quick start (live Kinect)
 
@@ -44,25 +41,34 @@ On open the app will:
 1. Claim the Kinect (depth + IR)  
 2. Set the **LED to green**  
 3. **Auto-level** the tilt motor to **0°**  
-4. Set **IR sensor brightness fixed at 50/50** (no UI control for now)  
-5. Stream live depth (main) + IR (PiP); skeletons from **colorized depth** pose (max 2)  
+4. Set **IR sensor gain to 30** (freenect-style default; fixed, not in UI)  
+5. Stream live depth (main) + IR (PiP); skeletons from colorized-depth pose  
 
-**Skeletons:** colorized-depth pose only.
+## IR sensor gain (fixed)
+
+| Item | Detail |
+|------|--------|
+| **Value** | **30** (range available in freenect is 1–50) |
+| **What it is** | IR **camera sensor gain** only |
+| **What it is not** | IR **projector** power (projector stays on for depth; not software-adjustable here) |
+| **UI** | **None** — fixed at 30; noted in Settings as read-only text |
+| **Why 30** | Matches freenect’s usual library default; good enough without extra controls |
+
+Status bar shows `IR gain 30` when live.
+
+## Skeletons / Settings
 
 | Limit | Value |
 |-------|--------|
-| **Max people** | **1–6** (default **4**) — in **Settings** popup |
+| **Max people** | **1–6** (default **4**) — in **Settings** |
 | **Detected status** | `Detected:n/max` on the main status bar |
 | **Confidence** | **0.25 – 0.99** (default 0.70) — in Settings |
 | **Mirror** | in Settings |
 | **Skeleton lines** | thin (1px bones, small joints) |
 
-Bottom bar: **Settings** · **Quit**. Open Settings for Max / Conf / **IR brightness** / Mirror.  
-Keys: `S` settings · `[` `]` conf · `,` `.` max · `-` `=` IR · `M` mirror · `Esc` closes Settings then quits.  
+Bottom bar: **Settings** · **Quit**.  
 
-IR control is **sensor gain** (1–50), not projector power; default **50**, saved with other prefs.  
-
-Keys: **Esc / Q** quit · **M** mirror · **F** re-assert fullscreen  
+Keys: `S` settings · `[` `]` conf · `,` `.` max people · `M` mirror · `Esc` closes Settings then quits · `F` fullscreen · `Q` quit.
 
 ```bash
 ./run.sh --demo            # synthetic UI test (no Kinect)
@@ -87,7 +93,7 @@ viewer/
   run.sh
   sls_viewer/
     main.py          # entry (--ui qt|web)
-    qt_app.py        # fullscreen always-on-top UI
+    qt_app.py        # fullscreen UI + Settings popup
     pipeline.py      # capture → pose → composite
     freenect_io.py
     ...
@@ -98,7 +104,9 @@ viewer/
 
 | Symptom | Fix |
 |---------|-----|
-| Window not on top | Press **F**; some WMs need “focus follows” off |
+| Window not on top | Press **F** |
 | gspca / open failed | `sudo modprobe -r gspca_kinect` + fix script |
 | Black window | Wait for first frame; try `./run.sh --demo` |
-| No DISPLAY | Need a desktop session (not pure SSH without X) |
+| No DISPLAY | Need a desktop session |
+
+Firmware / tablet image packaging is separate — see `docs/PRODUCT-VISION.md`.

@@ -32,9 +32,9 @@ FREENECT_DEPTH_11BIT = 0
 LED_OFF = 0
 LED_GREEN = 1
 
-# IR sensor brightness (not projector power). Docs: range 1–50.
-# Library default is typically ~30; we use 50 for field visibility / pose.
-IR_BRIGHTNESS_DEFAULT = 50
+# IR sensor gain only (not projector power). freenect range 1–50.
+# Library default is ~30; app keeps that fixed (no Settings UI).
+IR_BRIGHTNESS_DEFAULT = 30
 IR_BRIGHTNESS_MIN = 1
 IR_BRIGHTNESS_MAX = 50
 

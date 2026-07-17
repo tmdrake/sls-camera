@@ -73,7 +73,7 @@ def bgr_to_qpixmap(bgr: np.ndarray) -> QPixmap:
 
 
 class SettingsDialog(QDialog):
-    """Popup settings: max people, confidence, IR brightness, mirror."""
+    """Popup settings: max people, confidence, mirror."""
 
     def __init__(self, pipeline: FramePipeline, parent=None):
         super().__init__(parent)
@@ -86,7 +86,7 @@ class SettingsDialog(QDialog):
             | Qt.WindowType.WindowStaysOnTopHint
         )
         self.setStyleSheet(_STYLE)
-        self.setMinimumWidth(360)
+        self.setMinimumWidth(340)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 14, 16, 14)
@@ -101,7 +101,6 @@ class SettingsDialog(QDialog):
         grid.setVerticalSpacing(10)
 
         step = pipeline.s.pose_conf_step
-        ir_step = pipeline.s.ir_brightness_step
 
         # Max people
         grid.addWidget(QLabel("Max people"), 0, 0)
@@ -129,33 +128,25 @@ class SettingsDialog(QDialog):
         grid.addWidget(self.conf_label, 1, 2)
         grid.addWidget(self.btn_conf_up, 1, 3)
 
-        # IR brightness (sensor gain 1–50)
-        grid.addWidget(QLabel("IR brightness"), 2, 0)
-        self.btn_ir_down = QPushButton("−")
-        self.btn_ir_down.clicked.connect(lambda: self._nudge_ir(-ir_step))
-        self.ir_label = QLabel()
-        self.ir_label.setObjectName("vallabel")
-        self.ir_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.btn_ir_up = QPushButton("+")
-        self.btn_ir_up.clicked.connect(lambda: self._nudge_ir(+ir_step))
-        grid.addWidget(self.btn_ir_down, 2, 1)
-        grid.addWidget(self.ir_label, 2, 2)
-        grid.addWidget(self.btn_ir_up, 2, 3)
-
         # Mirror
-        grid.addWidget(QLabel("Mirror"), 3, 0)
+        grid.addWidget(QLabel("Mirror"), 2, 0)
         self.btn_mirror = QPushButton()
         self.btn_mirror.setObjectName("wide")
         self.btn_mirror.clicked.connect(self._toggle_mirror)
-        grid.addWidget(self.btn_mirror, 3, 1, 1, 3)
+        grid.addWidget(self.btn_mirror, 2, 1, 1, 3)
 
         root.addLayout(grid)
 
-        hint = QLabel(
-            "IR is sensor gain (1–50), not projector power. "
-            "Keys: [ ] conf   , . max   - = IR   M mirror   Esc close"
+        note = QLabel(
+            "IR sensor gain is fixed at 30 (freenect default). "
+            "That is sensor gain only, not IR projector power."
         )
-        hint.setStyleSheet("color: #666; font-size: 11px; padding-top: 6px;")
+        note.setStyleSheet("color: #666; font-size: 11px; padding-top: 4px;")
+        note.setWordWrap(True)
+        root.addWidget(note)
+
+        hint = QLabel("Keys:  [ ] conf   , . max people   M mirror   Esc close")
+        hint.setStyleSheet("color: #666; font-size: 11px;")
         hint.setWordWrap(True)
         root.addWidget(hint)
 
@@ -172,7 +163,6 @@ class SettingsDialog(QDialog):
     def _refresh(self) -> None:
         self.max_label.setText(f"{self.pipeline.max_poses}")
         self.conf_label.setText(f"{self.pipeline.pose_confidence:.2f}")
-        self.ir_label.setText(f"{self.pipeline.ir_brightness}/50")
         self.btn_mirror.setText(
             "ON" if self.pipeline.mirror else "OFF"
         )
@@ -183,10 +173,6 @@ class SettingsDialog(QDialog):
 
     def _nudge_max(self, delta: int) -> None:
         self.pipeline.adjust_max_poses(delta)
-        self._refresh()
-
-    def _nudge_ir(self, delta: int) -> None:
-        self.pipeline.adjust_ir_brightness(delta)
         self._refresh()
 
     def _toggle_mirror(self) -> None:
@@ -263,13 +249,10 @@ class SlsMainWindow(QMainWindow):
         QShortcut(QKeySequence("F"), self, activated=self._force_fullscreen)
         QShortcut(QKeySequence("M"), self, activated=self._toggle_mirror)
         QShortcut(QKeySequence("S"), self, activated=self._open_settings)
-        ir_step = pipeline.s.ir_brightness_step
         QShortcut(QKeySequence("["), self, activated=lambda: self._nudge_conf(-step))
         QShortcut(QKeySequence("]"), self, activated=lambda: self._nudge_conf(+step))
         QShortcut(QKeySequence(","), self, activated=lambda: self._nudge_max(-1))
         QShortcut(QKeySequence("."), self, activated=lambda: self._nudge_max(+1))
-        QShortcut(QKeySequence("-"), self, activated=lambda: self._nudge_ir(-ir_step))
-        QShortcut(QKeySequence("="), self, activated=lambda: self._nudge_ir(+ir_step))
 
         self._timer = QTimer(self)
         self._timer.setInterval(33)
@@ -305,11 +288,6 @@ class SlsMainWindow(QMainWindow):
 
     def _nudge_max(self, delta: int) -> None:
         self.pipeline.adjust_max_poses(delta)
-        if self._settings_open():
-            self._settings_dlg._refresh()
-
-    def _nudge_ir(self, delta: int) -> None:
-        self.pipeline.adjust_ir_brightness(delta)
         if self._settings_open():
             self._settings_dlg._refresh()
 
