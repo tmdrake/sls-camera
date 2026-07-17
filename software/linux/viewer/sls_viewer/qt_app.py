@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import cv2
 import numpy as np
@@ -21,6 +21,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .session_io import SessionRecorder
+from .spectrum import SpectrumAnalyzer
+
 if TYPE_CHECKING:
     from .pipeline import FramePipeline
 
@@ -29,6 +32,7 @@ QMainWindow, QWidget, QDialog {
     background-color: #000000; color: #c8c8c8;
 }
 QLabel#video { background-color: #000000; }
+QLabel#spectrum { background-color: #0c0c0c; }
 QLabel#status {
     color: #aaaaaa; font-size: 13px; padding: 4px 8px;
 }
@@ -39,9 +43,6 @@ QLabel#title {
 QLabel#hdr {
     color: #00ffb4; font-size: 15px; font-weight: 700;
     padding: 4px 0 10px 0;
-}
-QLabel#rowlabel {
-    color: #aaaaaa; font-size: 13px;
 }
 QLabel#vallabel {
     color: #00ffb4; font-size: 14px; font-weight: 600;
@@ -73,11 +74,19 @@ def bgr_to_qpixmap(bgr: np.ndarray) -> QPixmap:
 
 
 class SettingsDialog(QDialog):
-    """Popup settings: max people, confidence, mirror."""
+    """Popup: max people, confidence, mirror, spectrum, session tools."""
 
-    def __init__(self, pipeline: FramePipeline, parent=None):
+    def __init__(
+        self,
+        pipeline: FramePipeline,
+        spectrum: SpectrumAnalyzer,
+        session: SessionRecorder,
+        parent=None,
+    ):
         super().__init__(parent)
         self.pipeline = pipeline
+        self.spectrum = spectrum
+        self.session = session
         self.setWindowTitle("Settings")
         self.setModal(False)
         self.setWindowFlags(
@@ -86,7 +95,7 @@ class SettingsDialog(QDialog):
             | Qt.WindowType.WindowStaysOnTopHint
         )
         self.setStyleSheet(_STYLE)
-        self.setMinimumWidth(340)
+        self.setMinimumWidth(380)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 14, 16, 14)
@@ -99,11 +108,11 @@ class SettingsDialog(QDialog):
         grid = QGridLayout()
         grid.setHorizontalSpacing(8)
         grid.setVerticalSpacing(10)
-
         step = pipeline.s.pose_conf_step
+        row = 0
 
         # Max people
-        grid.addWidget(QLabel("Max people"), 0, 0)
+        grid.addWidget(QLabel("Max people"), row, 0)
         self.btn_max_down = QPushButton("−")
         self.btn_max_down.clicked.connect(lambda: self._nudge_max(-1))
         self.max_label = QLabel()
@@ -111,12 +120,13 @@ class SettingsDialog(QDialog):
         self.max_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.btn_max_up = QPushButton("+")
         self.btn_max_up.clicked.connect(lambda: self._nudge_max(+1))
-        grid.addWidget(self.btn_max_down, 0, 1)
-        grid.addWidget(self.max_label, 0, 2)
-        grid.addWidget(self.btn_max_up, 0, 3)
+        grid.addWidget(self.btn_max_down, row, 1)
+        grid.addWidget(self.max_label, row, 2)
+        grid.addWidget(self.btn_max_up, row, 3)
+        row += 1
 
         # Confidence
-        grid.addWidget(QLabel("Confidence"), 1, 0)
+        grid.addWidget(QLabel("Confidence"), row, 0)
         self.btn_conf_down = QPushButton("−")
         self.btn_conf_down.clicked.connect(lambda: self._nudge_conf(-step))
         self.conf_label = QLabel()
@@ -124,21 +134,57 @@ class SettingsDialog(QDialog):
         self.conf_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.btn_conf_up = QPushButton("+")
         self.btn_conf_up.clicked.connect(lambda: self._nudge_conf(+step))
-        grid.addWidget(self.btn_conf_down, 1, 1)
-        grid.addWidget(self.conf_label, 1, 2)
-        grid.addWidget(self.btn_conf_up, 1, 3)
+        grid.addWidget(self.btn_conf_down, row, 1)
+        grid.addWidget(self.conf_label, row, 2)
+        grid.addWidget(self.btn_conf_up, row, 3)
+        row += 1
 
         # Mirror
-        grid.addWidget(QLabel("Mirror"), 2, 0)
+        grid.addWidget(QLabel("Mirror"), row, 0)
         self.btn_mirror = QPushButton()
         self.btn_mirror.setObjectName("wide")
         self.btn_mirror.clicked.connect(self._toggle_mirror)
-        grid.addWidget(self.btn_mirror, 2, 1, 1, 3)
+        grid.addWidget(self.btn_mirror, row, 1, 1, 3)
+        row += 1
+
+        # Spectrum
+        grid.addWidget(QLabel("Spectrum"), row, 0)
+        self.btn_spectrum = QPushButton()
+        self.btn_spectrum.setObjectName("wide")
+        self.btn_spectrum.clicked.connect(self._toggle_spectrum)
+        grid.addWidget(self.btn_spectrum, row, 1, 1, 3)
+        row += 1
+
+        # Auto-snap
+        grid.addWidget(QLabel("Auto-snap on detect"), row, 0)
+        self.btn_autosnap = QPushButton()
+        self.btn_autosnap.setObjectName("wide")
+        self.btn_autosnap.clicked.connect(self._toggle_autosnap)
+        grid.addWidget(self.btn_autosnap, row, 1, 1, 3)
+        row += 1
 
         root.addLayout(grid)
 
-        hint = QLabel("Keys:  [ ] conf   , . max people   M mirror   Esc close")
-        hint.setStyleSheet("color: #666; font-size: 11px; padding-top: 4px;")
+        # Session actions
+        act = QHBoxLayout()
+        self.btn_snap = QPushButton("Snapshot")
+        self.btn_snap.setObjectName("wide")
+        self.btn_snap.clicked.connect(self._snapshot)
+        self.btn_record = QPushButton("Record")
+        self.btn_record.setObjectName("wide")
+        self.btn_record.clicked.connect(self._toggle_record)
+        act.addWidget(self.btn_snap)
+        act.addWidget(self.btn_record)
+        act.addStretch(1)
+        root.addLayout(act)
+
+        self.mic_label = QLabel("")
+        self.mic_label.setStyleSheet("color: #666; font-size: 11px;")
+        self.mic_label.setWordWrap(True)
+        root.addWidget(self.mic_label)
+
+        hint = QLabel("Keys: [ ] conf  , . max  M mirror  S settings  Esc close")
+        hint.setStyleSheet("color: #666; font-size: 11px;")
         hint.setWordWrap(True)
         root.addWidget(hint)
 
@@ -155,9 +201,26 @@ class SettingsDialog(QDialog):
     def _refresh(self) -> None:
         self.max_label.setText(f"{self.pipeline.max_poses}")
         self.conf_label.setText(f"{self.pipeline.pose_confidence:.2f}")
-        self.btn_mirror.setText(
-            "ON" if self.pipeline.mirror else "OFF"
+        self.btn_mirror.setText("ON" if self.pipeline.mirror else "OFF")
+        self.btn_spectrum.setText(
+            "ON" if self.pipeline.s.spectrum_enabled else "OFF"
         )
+        self.btn_autosnap.setText(
+            "ON" if self.pipeline.s.auto_snap_on_detect else "OFF"
+        )
+        self.btn_record.setText(
+            "Stop rec" if self.session.recording else "Record"
+        )
+        mic = self.spectrum.device_name or "(no mic)"
+        err = self.spectrum.error
+        if self.spectrum.active:
+            self.mic_label.setText(f"Mic: {mic}")
+        elif err:
+            self.mic_label.setText(f"Mic: off — {err[:80]}")
+        else:
+            self.mic_label.setText(
+                "Mic: off — install kinect-audio-setup for Kinect array, or use system mic"
+            )
 
     def _nudge_conf(self, delta: float) -> None:
         self.pipeline.adjust_pose_confidence(delta)
@@ -171,10 +234,33 @@ class SettingsDialog(QDialog):
         self.pipeline.mirror = not self.pipeline.mirror
         self._refresh()
 
+    def _toggle_spectrum(self) -> None:
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "set_spectrum_enabled"):
+            parent.set_spectrum_enabled(not self.pipeline.s.spectrum_enabled)
+        self._refresh()
+
+    def _toggle_autosnap(self) -> None:
+        self.pipeline.s.auto_snap_on_detect = not self.pipeline.s.auto_snap_on_detect
+        self.pipeline.s.save_persisted()
+        self._refresh()
+
+    def _snapshot(self) -> None:
+        frame = self.pipeline.get_bgr()
+        self.session.snapshot(frame)
+        self._refresh()
+
+    def _toggle_record(self) -> None:
+        if self.session.recording:
+            self.session.stop_record()
+        else:
+            frame = self.pipeline.get_bgr()
+            self.session.start_record(frame, fps=self.pipeline.s.record_fps)
+        self._refresh()
+
     def showEvent(self, event) -> None:
         super().showEvent(event)
         self._refresh()
-        # Place near bottom-right of parent if available
         parent = self.parentWidget()
         if parent is not None:
             pg = parent.geometry()
@@ -190,7 +276,9 @@ class SlsMainWindow(QMainWindow):
     def __init__(self, pipeline: FramePipeline):
         super().__init__()
         self.pipeline = pipeline
-        self._settings_dlg: SettingsDialog | None = None
+        self.spectrum = SpectrumAnalyzer(n_bars=pipeline.s.spectrum_bars)
+        self.session = SessionRecorder()
+        self._settings_dlg: Optional[SettingsDialog] = None
         self.setWindowTitle("SLS Camera")
         self.setStyleSheet(_STYLE)
 
@@ -205,6 +293,12 @@ class SlsMainWindow(QMainWindow):
         self.video.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.video.setScaledContents(False)
         layout.addWidget(self.video, stretch=1)
+
+        self.spectrum_label = QLabel()
+        self.spectrum_label.setObjectName("spectrum")
+        self.spectrum_label.setFixedHeight(pipeline.s.spectrum_height)
+        self.spectrum_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.spectrum_label)
 
         bar = QWidget()
         bar_layout = QHBoxLayout(bar)
@@ -251,14 +345,36 @@ class SlsMainWindow(QMainWindow):
         self._timer.timeout.connect(self._tick)
         self._timer.start()
 
+        if pipeline.s.spectrum_enabled:
+            self.spectrum.start()
+        self._sync_spectrum_visibility()
+
         QTimer.singleShot(0, self._force_fullscreen)
+
+    def set_spectrum_enabled(self, enabled: bool) -> None:
+        self.pipeline.s.spectrum_enabled = bool(enabled)
+        self.pipeline.s.save_persisted()
+        if enabled:
+            if not self.spectrum.active:
+                self.spectrum.start()
+        else:
+            self.spectrum.stop()
+        self._sync_spectrum_visibility()
+
+    def _sync_spectrum_visibility(self) -> None:
+        on = bool(self.pipeline.s.spectrum_enabled)
+        self.spectrum_label.setVisible(on)
+        if on:
+            self.spectrum_label.setFixedHeight(self.pipeline.s.spectrum_height)
 
     def _settings_open(self) -> bool:
         return self._settings_dlg is not None and self._settings_dlg.isVisible()
 
     def _open_settings(self) -> None:
         if self._settings_dlg is None:
-            self._settings_dlg = SettingsDialog(self.pipeline, self)
+            self._settings_dlg = SettingsDialog(
+                self.pipeline, self.spectrum, self.session, self
+            )
         if self._settings_dlg.isVisible():
             self._settings_dlg.raise_()
             self._settings_dlg.activateWindow()
@@ -300,26 +416,44 @@ class SlsMainWindow(QMainWindow):
 
     def _tick(self) -> None:
         mx = self.pipeline.max_poses
-        self.status.setText(
+        flash = self.session.flash_message()
+        rec = " · REC" if self.session.recording else ""
+        base = (
             f"{self.pipeline.status}  ·  {self.pipeline.fps:.1f} fps  ·  "
-            f"Detected:{self.pipeline.poses_count}/{mx}"
+            f"Detected:{self.pipeline.poses_count}/{mx}{rec}"
         )
+        self.status.setText(f"{flash}  ·  {base}" if flash else base)
+
         frame = self.pipeline.get_bgr()
-        if frame is None:
-            return
-        pix = bgr_to_qpixmap(frame)
-        target = self.video.size()
-        if target.width() < 2 or target.height() < 2:
-            return
-        scaled = pix.scaled(
-            target,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        self.video.setPixmap(scaled)
+        if frame is not None:
+            if self.session.recording:
+                self.session.write_frame(frame)
+            self.session.note_detection(
+                self.pipeline.poses_count,
+                self.pipeline.s.auto_snap_on_detect,
+                frame,
+            )
+            pix = bgr_to_qpixmap(frame)
+            target = self.video.size()
+            if target.width() >= 2 and target.height() >= 2:
+                scaled = pix.scaled(
+                    target,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+                self.video.setPixmap(scaled)
+
+        if self.pipeline.s.spectrum_enabled and self.spectrum_label.isVisible():
+            w = max(64, self.spectrum_label.width())
+            h = self.pipeline.s.spectrum_height
+            strip = self.spectrum.paint_bgr(w, h)
+            self.spectrum_label.setPixmap(bgr_to_qpixmap(strip))
 
     def closeEvent(self, event) -> None:
         self._timer.stop()
+        if self.session.recording:
+            self.session.stop_record()
+        self.spectrum.stop()
         if self._settings_dlg is not None:
             self._settings_dlg.close()
         super().closeEvent(event)

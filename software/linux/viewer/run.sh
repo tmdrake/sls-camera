@@ -36,6 +36,12 @@ if lsmod 2>/dev/null | grep -q '^gspca_kinect'; then
   echo "  Or:   ../scripts/fix-kinect-access.sh"
 fi
 
+# Spectrum uses sounddevice → needs PortAudio
+if ! ldconfig -p 2>/dev/null | grep -q portaudio; then
+  echo "NOTE: libportaudio not found — spectrum may stay off until:"
+  echo "  sudo apt install libportaudio2"
+fi
+
 echo "Starting SLS viewer (Qt fullscreen always-on-top)..."
 # Default UI is qt; pass --ui web for browser, --demo for synthetic frames
 exec .venv/bin/python -m sls_viewer "$@"

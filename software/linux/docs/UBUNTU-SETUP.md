@@ -55,6 +55,40 @@ sudo apt install -y python3-pip python3-venv python3-opencv
 # freenect Python bindings vary by distro; may need source build
 ```
 
+## Kinect microphone (spectrum strip)
+
+The Xbox 360 Kinect has a **4-mic array** (USB **NUI Audio** `045e:02ad`). Out of the box it is **not** a normal ALSA sound card until **audio firmware** is loaded.
+
+### One-time setup (recommended for field spectrum)
+
+```bash
+sudo apt install -y kinect-audio-setup alsa-utils
+# Package downloads non-redistributable UAC firmware from Microsoft
+# (debconf license prompts). See package description / MS Kinect SDK ToS.
+```
+
+Then **unplug and replug** the Kinect (or reboot) so udev can load firmware. Check:
+
+```bash
+arecord -l
+# Expect a USB Audio capture device (name may include USB / Microsoft)
+./software/linux/scripts/check-kinect.sh
+```
+
+After that, the SLS viewer spectrum strip **prefers** a Kinect/USB capture device, else falls back to the system default mic.
+
+Also install PortAudio for the Python spectrum capture:
+
+```bash
+sudo apt install -y libportaudio2
+```
+
+**Notes**
+
+- Firmware is **not** redistributed in this git repo.  
+- This is independent of freenect depth/IR (depth uses the camera USB interface).  
+- freenect’s raw 4-mic API is **not** used by the current viewer (ALSA UAC path only).
+
 ## User groups
 
 ```bash

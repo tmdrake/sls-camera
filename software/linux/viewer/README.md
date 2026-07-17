@@ -54,6 +54,21 @@ On open the app will:
 | **UI** | **None** — fixed in code; not shown in the status bar or Settings |
 | **Processing** | Affects **IR PiP look only** — pose/skeletons use colorized depth, not IR gain |
 
+## Spectrum strip
+
+- Thin bar under the video (mic FFT).  
+- Prefers **Kinect USB Audio** after `kinect-audio-setup` (see `docs/UBUNTU-SETUP.md`); else system default mic.  
+- Needs system package: `sudo apt install libportaudio2` (for Python `sounddevice`).  
+- Settings: **Spectrum** on/off.  
+
+## Session tools (Settings)
+
+| Action | Behavior |
+|--------|----------|
+| **Snapshot** | Save current composite JPEG under `viewer/captures/` |
+| **Record** | Start/stop MJPG AVI of the composite view |
+| **Auto-snap on detect** | Optional snap when `Detected` goes 0→≥1 |
+
 ## Skeletons / Settings
 
 | Limit | Value |
@@ -64,7 +79,7 @@ On open the app will:
 | **Mirror** | in Settings |
 | **Skeleton lines** | thin (1px bones, small joints) |
 
-Bottom bar: **Settings** · **Quit**.  
+Bottom bar: **Settings** · **Quit**. Spectrum strip sits above the bar when enabled.
 
 Keys: `S` settings · `[` `]` conf · `,` `.` max people · `M` mirror · `Esc` closes Settings then quits · `F` fullscreen · `Q` quit.
 

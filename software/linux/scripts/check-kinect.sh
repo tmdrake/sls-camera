@@ -57,6 +57,24 @@ else
 fi
 echo
 
+echo "--- ALSA capture (Kinect mic after kinect-audio-setup) ---"
+if command -v arecord >/dev/null 2>&1; then
+  arecord -l 2>/dev/null || true
+  if arecord -l 2>/dev/null | grep -qiE 'kinect|xbox|microsoft|usb'; then
+    echo "(possible Kinect/USB capture device listed above)"
+  else
+    echo "(no obvious Kinect/USB capture device — install kinect-audio-setup, then unplug/replug)"
+  fi
+else
+  echo "arecord not installed (alsa-utils)"
+fi
+if dpkg -l kinect-audio-setup 2>/dev/null | grep -q '^ii'; then
+  echo "kinect-audio-setup: installed"
+else
+  echo "kinect-audio-setup: not installed (sudo apt install kinect-audio-setup)"
+fi
+echo
+
 echo "=== Done ==="
 echo "Depth test when ready: freenect-glview"
 echo "Setup docs: software/linux/docs/UBUNTU-SETUP.md"

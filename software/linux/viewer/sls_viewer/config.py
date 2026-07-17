@@ -12,8 +12,14 @@ MODEL_PATH = VIEWER_ROOT / "models" / "pose_landmarker_lite.task"
 WEB_ROOT = VIEWER_ROOT / "web"
 SETTINGS_PATH = VIEWER_ROOT / "user_settings.json"
 
-# User-tweakable prefs (IR brightness is fixed, not UI)
-PERSIST_KEYS = ("mirror", "pose_min_confidence", "max_poses")
+# User-tweakable prefs (IR gain fixed, not UI)
+PERSIST_KEYS = (
+    "mirror",
+    "pose_min_confidence",
+    "max_poses",
+    "spectrum_enabled",
+    "auto_snap_on_detect",
+)
 
 
 @dataclass
@@ -65,6 +71,15 @@ class Settings:
     jpeg_quality: int = 80
     target_fps: float = 20.0
 
+    # Spectrum strip (ALSA/Pulse; prefers Kinect UAC after kinect-audio-setup)
+    spectrum_enabled: bool = True
+    spectrum_height: int = 56
+    spectrum_bars: int = 48
+
+    # Session tools
+    auto_snap_on_detect: bool = False
+    record_fps: float = 15.0
+
     model_path: Path = field(default_factory=lambda: MODEL_PATH)
     allow_demo_without_kinect: bool = False
 
@@ -81,6 +96,8 @@ class Settings:
             if key in data:
                 setattr(self, key, data[key])
         self.mirror = bool(self.mirror)
+        self.spectrum_enabled = bool(self.spectrum_enabled)
+        self.auto_snap_on_detect = bool(self.auto_snap_on_detect)
         self.clamp_pose_confidence()
         self.clamp_max_poses()
         # IR gain is not user-persisted; always full sensor gain (50)
@@ -105,6 +122,8 @@ class Settings:
             "mirror": bool(self.mirror),
             "pose_min_confidence": float(self.pose_min_confidence),
             "max_poses": int(self.max_poses),
+            "spectrum_enabled": bool(self.spectrum_enabled),
+            "auto_snap_on_detect": bool(self.auto_snap_on_detect),
         }
         try:
             path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
