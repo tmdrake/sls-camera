@@ -15,7 +15,7 @@ Ubuntu / freenect path for the same Xbox 360 Kinect (NUI) hardware used by the W
 - Bring-up: [notes/BRINGUP-FREENECT.md](notes/BRINGUP-FREENECT.md)  
 - **Parity plan:** [docs/LINUX-SLS-PLAN.md](docs/LINUX-SLS-PLAN.md)  
 - **Product vision:** [../../docs/PRODUCT-VISION.md](../../docs/PRODUCT-VISION.md)  
-- **UI:** web kiosk + Python backend (not OpenCV field UI)  
+- **UI:** **Qt fullscreen always-on-top** (optional web) — `viewer/run.sh`  
 
 ## Goal
 

@@ -23,33 +23,34 @@ Not a one-off laptop hack — a **repeatable appliance** (firmware-like image + 
 
 Touch may be imperfect on some tablets; UI must still work with **large controls**, **fullscreen kiosk**, and **keyboard/remote** fallback.
 
-## UI decision (locked for planning)
+## UI decision (locked)
 
-**Product UI: local web UI in kiosk browser** (Chromium/Firefox fullscreen), fed by a **Python backend service**.
+**Product UI: Qt (PySide6) native window — fullscreen and always-on-top.**
 
 | Choice | Why |
 |--------|-----|
-| **Web kiosk** | Best default for **touch tablets**; easy dark SLS chrome; simple to add panels (Ovilus, sensors, status) |
-| **Backend service** | freenect + pose + frame compose stay in Python; restartable via **systemd** on the image |
-| **Not OpenCV highgui as product UI** | Fine for early spikes on the OptiPlex; poor touch/kiosk story |
-| **Not primary Qt (for now)** | Lubuntu is LXQt-friendly, but web panels scale faster for Ovilus + multi-sensor dashboards; Qt remains a fallback if kiosk browser is too heavy on a given tablet |
+| **Qt fullscreen + always on top** | Reliable field app: covers the desktop, stays visible, works on Lubuntu/tablets without browser quirks |
+| **Same Python process** | freenect + pose + composite in a background thread; UI only displays frames |
+| **Optional web UI** | `--ui web` for debug/remote; not required for the appliance |
+| **Not browser kiosk as primary** | Auto-fullscreen and always-on-top are fragile across browsers/WMs |
 
-**Dev path:** spike depth/pose on desktop (even OpenCV window) → same processing pipeline serves MJPEG/WebSocket into the kiosk UI → package as services on the image.
+**Appliance path:** autostart `./run.sh` (or systemd user unit) after login → Qt SLS fills the screen.
 
-Detail: `software/linux/docs/LINUX-SLS-PLAN.md`.
+Detail: `software/linux/docs/LINUX-SLS-PLAN.md` · app: `software/linux/viewer/`.
 
 ## Software shape on the appliance
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
-│  Kiosk browser (fullscreen) — SLS page + Ovilus + HUD   │
+│  Qt SLS app — fullscreen, always-on-top                 │
+│    depth+skeleton main · IR+skeleton side · HUD         │
 ├─────────────────────────────────────────────────────────┤
-│  sls-backend  (systemd)  depth, pose, overlay, stream   │
-│  optional: sensor-bridge  (USB/serial MQTT/HTTP)        │
+│  Python pipeline (same process / systemd)               │
+│  optional: sensor-bridge  (USB/serial)                  │
 ├─────────────────────────────────────────────────────────┤
 │  libfreenect · udev · blacklisted gspca · auto-login    │
 ├─────────────────────────────────────────────────────────┤
-│  Tablet Linux image (Lubuntu/Ubuntu minimal + our pkgs) │
+│  Tablet Linux image (Lubuntu/Ubuntu + our app)          │
 └─────────────────────────────────────────────────────────┘
          │ USB                  │ USB/serial (future)
          ▼                      ▼

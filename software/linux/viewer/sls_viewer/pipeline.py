@@ -20,6 +20,7 @@ class FramePipeline:
         self.s = settings
         self._lock = threading.Lock()
         self._jpeg: Optional[bytes] = None
+        self._bgr: Optional[np.ndarray] = None
         self._status = "starting"
         self._fps = 0.0
         self._poses_count = 0
@@ -54,6 +55,13 @@ class FramePipeline:
         with self._lock:
             return self._jpeg
 
+    def get_bgr(self) -> Optional[np.ndarray]:
+        """Latest composite BGR frame (copy) for native Qt UI."""
+        with self._lock:
+            if self._bgr is None:
+                return None
+            return self._bgr.copy()
+
     def start(self) -> None:
         if self._running:
             return
@@ -72,14 +80,15 @@ class FramePipeline:
             self._pose.close()
             self._pose = None
 
-    def _set_jpeg(self, bgr: np.ndarray) -> None:
+    def _set_frame(self, bgr: np.ndarray) -> None:
         ok, buf = cv2.imencode(
             ".jpg",
             bgr,
             [int(cv2.IMWRITE_JPEG_QUALITY), self.s.jpeg_quality],
         )
-        if ok:
-            with self._lock:
+        with self._lock:
+            self._bgr = bgr
+            if ok:
                 self._jpeg = buf.tobytes()
 
     def _demo_frames(self) -> Tuple[np.ndarray, np.ndarray]:
@@ -200,7 +209,7 @@ class FramePipeline:
                     1,
                     cv2.LINE_AA,
                 )
-            self._set_jpeg(err)
+            self._set_frame(err)
             # keep refreshing error status occasionally
             while self._running:
                 time.sleep(1.0)
@@ -264,7 +273,7 @@ class FramePipeline:
                 ir_bgr = colorize.maybe_flip(ir_bgr, self.s.mirror)
 
                 composite = self._compose(depth_bgr, ir_bgr)
-                self._set_jpeg(composite)
+                self._set_frame(composite)
 
                 dt = time.time() - t0
                 inst = 1.0 / dt if dt > 0 else 0.0

@@ -55,7 +55,7 @@ Ubuntu / freenect work lives under `software/linux/`. **Same UI goal** as this W
 - Product vision (tablet image / Ovilus / sensors): `docs/PRODUCT-VISION.md`
 - Setup: `software/linux/docs/UBUNTU-SETUP.md`
 - **M0 complete** (2026-07-16): live `freenect-glview` — `software/linux/notes/BRINGUP-FREENECT.md`
-- **UI decision:** web kiosk + Python backend (Lubuntu/tablet-friendly)
-- Next: M1 backend depth stream → M2 SLS sticks → kiosk image → Ovilus/sensors
+- **UI decision:** Qt fullscreen always-on-top (`software/linux/viewer/`, optional `--ui web`)
+- Next: harden on real Kinect → tablet autostart image → Ovilus/sensors
 
 Report issues on this repo: https://github.com/tmdrake/sls-camera/issues

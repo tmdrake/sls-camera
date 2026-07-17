@@ -33,7 +33,7 @@ AGENTS.md           app features / build notes (Windows-focused; Linux mirrors g
 | [`software/linux/`](software/linux/) | Ubuntu / Lubuntu tablet | freenect + pose + **web kiosk** | **M0 done**; UI + appliance plan written |
 
 **Linux product goal (same as Windows):** main depth screen + SLS skeleton overlay — [plan](software/linux/docs/LINUX-SLS-PLAN.md).  
-**UI decision:** kiosk **web UI** + Python backend (not OpenCV as field UI).
+**UI decision:** **Qt fullscreen always-on-top** (optional `--ui web`).
 
 Start on Linux: [software/linux/README.md](software/linux/README.md) · [setup](software/linux/docs/UBUNTU-SETUP.md) · [M0 bring-up](software/linux/notes/BRINGUP-FREENECT.md).
 

@@ -10,17 +10,17 @@ Reference Windows UI: `software/source/example/KinectWindow.xaml` — depth view
 
 ---
 
-## UI decision (2026-07-16)
+## UI decision (updated)
 
 | Layer | Decision |
 |-------|----------|
-| **Product / tablet UI** | **Local web UI in kiosk browser** (fullscreen Chromium/Firefox) |
-| **Processing** | **Python backend service** (freenect + pose + overlay; systemd on appliance) |
-| **Early desktop spike** | OpenCV window OK on OptiPlex for M1 plumbing only — not the field UI |
-| **Why not OpenCV as product UI** | Weak touch/kiosk story on tablets |
-| **Why not Qt first** | Web panels scale better for Ovilus + multi-sensor dashboards; Qt is fallback if browser is too heavy on a given tablet |
+| **Product / tablet UI** | **Qt (PySide6) fullscreen + always-on-top** — primary field app |
+| **Processing** | Same process: freenect + pose + composite pipeline thread |
+| **Optional** | `--ui web` browser/MJPEG for remote glance or experiments |
+| **Why Qt over browser kiosk** | True fullscreen + `WindowStaysOnTopHint`; no browser gesture/flags dance; better “appliance app” feel on Lubuntu tablets |
+| **Ovilus / sensors later** | Qt panels or a second window; web remains available if we want HTML dashboards |
 
-Target field OS: **Lubuntu / Ubuntu-class** tablet image with auto-login + kiosk + backend. Touch preferred; large buttons + keyboard fallback required.
+Target field OS: **Lubuntu / Ubuntu-class** tablet image with auto-login + **autostart Qt SLS app**. Large touch buttons + keyboard fallback (Esc/Q/M/F).
 
 ---
 

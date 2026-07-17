@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start SLS viewer (depth + IR + skeleton web UI).
+# Start SLS viewer — Qt fullscreen always-on-top by default.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
@@ -16,6 +16,12 @@ if [[ ! -x .venv/bin/python ]]; then
   uv pip install --python .venv/bin/python -r requirements.txt
 fi
 
+# Ensure Qt is present (added after first web-only install)
+if ! .venv/bin/python -c "import PySide6" 2>/dev/null; then
+  echo "Installing PySide6..."
+  uv pip install --python .venv/bin/python 'PySide6>=6.6'
+fi
+
 MODEL="models/pose_landmarker_lite.task"
 if [[ ! -f "$MODEL" ]]; then
   echo "Downloading MediaPipe pose model..."
@@ -30,5 +36,6 @@ if lsmod 2>/dev/null | grep -q '^gspca_kinect'; then
   echo "  Or:   ../scripts/fix-kinect-access.sh"
 fi
 
-echo "Starting SLS viewer..."
-exec .venv/bin/python -m sls_viewer.main "$@"
+echo "Starting SLS viewer (Qt fullscreen always-on-top)..."
+# Default UI is qt; pass --ui web for browser, --demo for synthetic frames
+exec .venv/bin/python -m sls_viewer "$@"

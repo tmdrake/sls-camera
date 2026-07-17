@@ -1,74 +1,74 @@
 # SLS Linux viewer
 
-Fullscreen web app: **large colorized depth + skeleton**, **smaller IR + skeleton**.  
-Operator is expected **behind the camera** (mirror **off** by default).
+**Fullscreen native Qt app** (always on top): large **colorized depth + skeleton**, smaller **IR + skeleton**.  
+Operator **behind the camera** — mirror **off** by default.
+
+Browser kiosk is **optional** (`--ui web`), not the field UI.
+
+## Why Qt (not browser kiosk)
+
+| | Qt (default) | Browser kiosk |
+|--|--------------|---------------|
+| Fullscreen | `showFullScreen()` | Needs flags / user gesture |
+| Always on top | `WindowStaysOnTopHint` | Unreliable across WMs |
+| Tablet / Lubuntu field use | **Yes** | Possible, more fragile |
+| Extra sensor panels later | Still fine (or hybrid) | Easier HTML dashboards |
+
+For a bulletproof “this is the app” experience: **Qt fullscreen always-on-top**.
 
 ## Layout
 
 | Pane | Content |
 |------|---------|
 | **Main (large)** | Colorized depth + SLS stick figures |
-| **Side (small)** | Infrared camera + same stick figures |
+| **Side (small)** | Infrared + same stick figures |
 
-Kinect 360 (libfreenect) cannot stream **RGB and IR at the same time**. This app runs **depth + IR** and runs MediaPipe pose on the **IR** image so both panes stay live.
+Kinect streams **depth + IR** (not RGB+IR at once). Pose runs on **IR**.
 
 ## Quick start
 
 ```bash
-# one-time: unload kernel webcam driver if needed
-sudo modprobe -r gspca_kinect
-# or: ../scripts/fix-kinect-access.sh
-
+sudo modprobe -r gspca_kinect   # if needed
 cd software/linux/viewer
 ./run.sh
 ```
 
-Open **http://127.0.0.1:8765/** — tap once for fullscreen if the browser blocks auto-fullscreen.
-
-Options:
+Keys: **Esc / Q** quit · **M** mirror · **F** re-assert fullscreen  
+Touch: **Mirror** / **Quit** buttons on the bottom bar.
 
 ```bash
-./run.sh --demo          # synthetic frames if Kinect unavailable
-./run.sh --mirror        # selfie-style flip (default off)
-./run.sh --port 8765
+./run.sh --demo           # no Kinect (UI test)
+./run.sh --mirror         # selfie flip
+./run.sh --ui web         # optional browser UI on :8765
 ```
 
 ## Stack
 
-- `libfreenect` (system) via ctypes sync API  
-- OpenCV — colorize, draw, JPEG  
-- MediaPipe Tasks Pose Landmarker (`models/pose_landmarker_lite.task`)  
-- Flask — MJPEG stream + minimal API  
-- Web kiosk page — fullscreen, large touch buttons  
+- **PySide6** — fullscreen always-on-top window  
+- `libfreenect` via ctypes  
+- OpenCV — colorize, draw, composite  
+- MediaPipe Pose Landmarker  
+- Flask — only if `--ui web`  
 
 ## Files
 
 ```text
 viewer/
   run.sh
-  requirements.txt
-  models/pose_landmarker_lite.task   # auto-downloaded by run.sh
   sls_viewer/
-    main.py          # Flask entry
+    main.py          # entry (--ui qt|web)
+    qt_app.py        # fullscreen always-on-top UI
     pipeline.py      # capture → pose → composite
-    freenect_io.py   # ctypes freenect
-    colorize.py
-    pose.py
-    skeleton.py
-    config.py
-  web/
-    index.html
-    style.css
-    app.js
+    freenect_io.py
+    ...
+  web/               # optional browser UI
 ```
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---------|-----|
-| “gspca_kinect loaded” | `sudo modprobe -r gspca_kinect` + blacklist |
-| open camera -3 | `../scripts/fix-kinect-access.sh` |
-| No skeleton | Stand in IR/depth FOV ~1.5–3 m; room can be dark (IR illuminator) |
-| Low FPS | `./run.sh` and set higher `pose_every_n_frames` in `config.py` |
-
-Firmware / tablet image packaging is separate — see `docs/PRODUCT-VISION.md`.
+| Window not on top | Press **F**; some WMs need “focus follows” off |
+| gspca / open failed | `sudo modprobe -r gspca_kinect` + fix script |
+| Black window | Wait for first frame; try `./run.sh --demo` |
+| No DISPLAY | Need a desktop session (not pure SSH without X) |
