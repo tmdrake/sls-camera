@@ -11,10 +11,10 @@
 | **Pose** | MediaPipe on **colorized depth** only |
 | **Spectrum** | FFT strip under video; prefers **Kinect USB Audio**; **retries** if mic drops |
 | **Snap** | Timestamped JPEG → `captures/sls_YYYYMMDD_HHMMSS.jpg` |
-| **Record** | Timestamped **AVI with mic audio** (MJPG + PCM); **elapsed** (`REC 0:12`); shares spectrum mic |
+| **Record** | Timestamped **AVI** (MJPG + mic PCM + DrakeVox TTS); overlay burned in; **elapsed** |
 | **Reconnect** | Kinect video loss → **RECONNECTING** frame; infinite retry until device returns |
-| **Ovilus** | Random word every **5–15 min** (timestamped); under IR PiP last 5; key **O** |
-| **Settings** | Max people, confidence, mirror, spectrum, auto-snap, Ovilus, Defaults |
+| **DrakeVox** | Random word every **5–15 min** (timestamped + **TTS**); under IR PiP last 5; key **O** |
+| **Settings** | Max people, confidence, mirror, spectrum, auto-snap, DrakeVox, Defaults |
 | **On open** | LED green, tilt auto-level 0°, IR sensor gain **50** (fixed, not in UI) |
 
 Browser UI is optional (`--ui web`).
@@ -34,6 +34,8 @@ cd software/linux/viewer
 
 ```bash
 sudo apt install -y freenect libfreenect-bin libportaudio2 alsa-utils
+# DrakeVox TTS (CLI optional; libespeak-ng often enough for synthesis):
+sudo apt install -y espeak-ng
 # optional host ffmpeg (viewer also uses imageio-ffmpeg binary if needed):
 sudo apt install -y ffmpeg
 # Kinect mic for spectrum + Record audio (one-time; MS firmware — see docs):
@@ -51,7 +53,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 |---------|--------|
 | **Snap** | Save current composite frame |
 | **Record** | Start/stop recording; button becomes `Stop M:SS` |
-| **Settings** | Max people, Conf, Mirror, Spectrum, Auto-snap, Ovilus, Defaults |
+| **Settings** | Max people, Conf, Mirror, Spectrum, Auto-snap, DrakeVox, Defaults |
 
 ### Keyboard
 
@@ -60,7 +62,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 | `S` | Settings |
 | `C` | Snap |
 | `R` | Record toggle |
-| `O` | Ovilus generate now |
+| `O` | DrakeVox generate now |
 | `[` `]` | Confidence − / + |
 | `,` `.` | Max people − / + |
 | `M` | Mirror |
@@ -78,7 +80,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 | **Mirror** | Off by default |
 | **Spectrum** | On/off; strip height always reserved (no layout jump) |
 | **Auto-snap on detect** | Off by default |
-| **Ovilus** | On by default; random word every **5–15 min** (timestamped); **Ovilus now** forces a word |
+| **DrakeVox** | On by default; **5–15 min** + TTS; **DrakeVox now** / key **O**; in Record AVI |
 
 ## Captures
 
@@ -128,18 +130,19 @@ The app **does not set** ALSA or Pulse capture gain. Levels come from the OS/dev
 - **Retries** every ~2s if the mic drops (unplug / power cycle) — strip shows `mic retry…`  
 - Requires `libportaudio2` for Python `sounddevice`  
 
-## Ovilus
+## DrakeVox
 
-Windows parity (`KinectWindow.xaml.cs`):
+Spirit-box style word generator (Linux name; not “Ovilus”). Word list matches the classic Windows explorer vocabulary.
 
 | Item | Detail |
 |------|--------|
 | **Words** | SPIRIT, GHOST, SHADOW, CHILD, WOMAN, MAN, DEMON, ANGEL, LEAVE, STAY, HELP, HERE, COLD, ENERGY, YES, NO, DARK, LIGHT, FOLLOW, GO |
 | **Timer** | Random **5–15 minutes** between words |
 | **UI** | Taller panel **under the IR PiP**; **last 5** as `HH:MM:SS WORD` (newest first) |
-| **History** | Last 5 on overlay; last 12 in Settings; `session_*.jsonl` event `ovilus` |
-| **Manual** | Settings **Ovilus now** or key **`O`** |
-| **Recording** | Overlay is display-only (not burned into the AVI) |
+| **TTS** | Speaks each word (`libespeak-ng` / `espeak-ng` / `espeak`; live fallback `spd-say`) |
+| **History** | Last 5 on overlay; last 12 in Settings; `session_*.jsonl` event `drakevox` |
+| **Manual** | Settings **DrakeVox now** or key **`O`** |
+| **Recording** | Overlay **burned into AVI video**; spoken audio **mixed into AVI** with mic |
 
 ## Kinect reconnect
 
@@ -151,7 +154,8 @@ If freenect loses the camera (unplug, BUSY, power brick), the main view shows **
 - **libfreenect** — depth, IR, motor, LED (ctypes)  
 - **OpenCV** — colorize, draw, JPEG/AVI  
 - **MediaPipe** Pose Landmarker  
-- **sounddevice** — spectrum + record mic  
+- **sounddevice** — spectrum + record mic + TTS playback  
+- **espeak-ng** (lib or CLI) — DrakeVox TTS synthesis for live + AVI  
 - **imageio-ffmpeg** / host **ffmpeg** — AVI audio mux  
 - **Flask** — only if `--ui web`  
 
@@ -174,7 +178,8 @@ viewer/
     skeleton.py
     spectrum.py           # FFT + mic retry + PCM sinks
     session_io.py         # Snap / Record + A/V mux
-    ovilus.py             # random word 5–15 min, timestamped
+    drakevox.py             # random word 5–15 min, timestamped overlay
+    tts.py                  # espeak TTS for DrakeVox + AVI mix
     audio_device.py       # Kinect mic picker
     config.py
   web/                    # optional browser UI

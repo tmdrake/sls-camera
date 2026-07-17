@@ -25,7 +25,7 @@ PERSIST_KEYS = (
     "max_poses",
     "spectrum_enabled",
     "auto_snap_on_detect",
-    "ovilus_enabled",
+    "drakevox_enabled",
 )
 
 
@@ -87,8 +87,8 @@ class Settings:
     auto_snap_on_detect: bool = False
     record_fps: float = 15.0
 
-    # Ovilus (random word every 5–15 min; each hit timestamped)
-    ovilus_enabled: bool = True
+    # DrakeVox (random word every 5–15 min; timestamped + TTS)
+    drakevox_enabled: bool = True
 
     model_path: Path = field(default_factory=lambda: MODEL_PATH)
     allow_demo_without_kinect: bool = False
@@ -105,10 +105,13 @@ class Settings:
         for key in PERSIST_KEYS:
             if key in data:
                 setattr(self, key, data[key])
+        # Migrate older preference key
+        if "drakevox_enabled" not in data and "ovilus_enabled" in data:
+            self.drakevox_enabled = bool(data["ovilus_enabled"])
         self.mirror = bool(self.mirror)
         self.spectrum_enabled = bool(self.spectrum_enabled)
         self.auto_snap_on_detect = bool(self.auto_snap_on_detect)
-        self.ovilus_enabled = bool(self.ovilus_enabled)
+        self.drakevox_enabled = bool(self.drakevox_enabled)
         self.clamp_pose_confidence()
         self.clamp_max_poses()
         # IR gain is not user-persisted; always full sensor gain (50)
@@ -143,7 +146,7 @@ class Settings:
             "max_poses": int(self.max_poses),
             "spectrum_enabled": bool(self.spectrum_enabled),
             "auto_snap_on_detect": bool(self.auto_snap_on_detect),
-            "ovilus_enabled": bool(self.ovilus_enabled),
+            "drakevox_enabled": bool(self.drakevox_enabled),
         }
         try:
             path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")

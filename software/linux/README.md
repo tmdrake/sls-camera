@@ -13,8 +13,8 @@ Ubuntu / freenect path for the same Xbox 360 Kinect (NUI) hardware used by the W
 | **Reconnect** — video + mic retry | **Done** (RECONNECTING UI; spectrum mic retry) |
 | **Dev install / uninstall scripts** | **Done** (`scripts/install-field-app.sh`) |
 | **Tablet firmware image** | Not started (clean desktop first — see TODO) |
-| **Ovilus** word panel (5–15 min, timestamped) | **Done** |
-| **Arduino sensors + Ovilus triggers** | Not started |
+| **DrakeVox** word panel (5–15 min, timestamped) | **Done** |
+| **Arduino sensors + DrakeVox triggers** | Not started |
 | **External power policy** | Not started |
 
 - Bring-up: [notes/BRINGUP-FREENECT.md](notes/BRINGUP-FREENECT.md)  
@@ -34,7 +34,7 @@ Ubuntu / freenect path for the same Xbox 360 Kinect (NUI) hardware used by the W
 | Snap / Record (AVI + mic audio) | Done |
 | Kinect reconnect + mic retry | Done |
 | Auto-level tilt (no manual tilt UI) | Done |
-| Ovilus / multi-sensor | Later |
+| DrakeVox / multi-sensor | Later |
 
 ## Layout
 
@@ -73,7 +73,7 @@ cd software/linux/viewer
 ```
 
 Main bar: **Settings · Snap · Record · Quit**.  
-Keys: `S` settings · `C` snap · `R` record · `O` ovilus · `F` fullscreen · `Q` quit.
+Keys: `S` settings · `C` snap · `R` record · `O` drakevox · `F` fullscreen · `Q` quit.
 
 ### Dev packaging (launcher / autostart)
 

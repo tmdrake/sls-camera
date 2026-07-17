@@ -17,8 +17,8 @@ Shared look (from root `AGENTS.md`):
 - Optional secondary color view  
 - Un-mirrored option for operator behind camera  
 - Spectrum strip + session Snap/Record (AVI + mic) — **done on Linux**  
-- Ovilus random words (5–15 min, timestamped) — **done on Linux**  
-- Later: Ovilus external triggers, extra sensors  
+- DrakeVox random words (5–15 min, timestamped) — **done on Linux**  
+- Later: DrakeVox external triggers, extra sensors  
 
 ## Layers
 
@@ -26,7 +26,7 @@ Shared look (from root `AGENTS.md`):
 ┌─────────────────────────────────────────────┐
 │  Qt field UI (fullscreen) · optional web UI │
 │    depth+sticks · spectrum · snap/record    │
-│    reconnect · later Ovilus / sensors       │
+│    reconnect · later DrakeVox / sensors       │
 ├─────────────────────────────────────────────┤
 │  Python pipeline (thread) + session_io      │
 │    MediaPipe pose on colorized depth        │
@@ -71,7 +71,7 @@ libfreenect does **not** include Microsoft-style skeleton tracking. Overlay is a
 3. **M2** — SLS stick figures on depth + IR PiP — **done**  
 4. **M3** — Qt Settings, spectrum, Snap/Record+audio, reconnect — **done**  
 5. **M4** — tablet appliance image — **not started**  
-6. **M5a** — Ovilus timer panel — **done**  
-7. **M5b** — Arduino/MCU + Ovilus triggers — **not started**  
+6. **M5a** — DrakeVox timer panel — **done**  
+7. **M5b** — Arduino/MCU + DrakeVox triggers — **not started**  
 
 Field app: `software/linux/viewer/`. Details: [LINUX-SLS-PLAN.md](LINUX-SLS-PLAN.md).

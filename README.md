@@ -1,13 +1,13 @@
 # SLS Camera Project
 
-Xbox 360 Kinect–based **SLS-style** depth + skeleton camera (Ghost Hunters–style stick figures), with a **working Linux field app** and a path toward a **tablet appliance** (Lubuntu-class image, optional Ovilus + extra sensors).
+Xbox 360 Kinect–based **SLS-style** depth + skeleton camera (Ghost Hunters–style stick figures), with a **working Linux field app** and a path toward a **tablet appliance** (Lubuntu-class image, optional DrakeVox + extra sensors).
 
 ## Purpose
 
 - Modified / field-portable **Xbox 360 Kinect** hardware  
 - **Windows** SLS Explorer (Kinect SDK / WPF) — reference UI  
 - **Linux** freenect + MediaPipe + **Qt fullscreen** viewer — **primary field app**  
-- Future: Ovilus panel, Arduino-class sensors, flashable tablet image  
+- Future: DrakeVox panel, Arduino-class sensors, flashable tablet image  
 
 Product vision: [docs/PRODUCT-VISION.md](docs/PRODUCT-VISION.md).
 
@@ -65,9 +65,9 @@ cd software/linux/viewer && ./run.sh
 3. ~~Mux audio into Record (AVI + mic)~~ · reconnect UI + mic retry  
 4. ~~Dev install/uninstall scripts~~ · next: clean desktop → tablet firmware package  
 5. Power management (external power + tablet) · sensors  
-6. ~~Ovilus timer panel~~ · remaining: external triggers / sensor bridge  
+6. ~~DrakeVox timer panel~~ · remaining: external triggers / sensor bridge  
 7. Fill `hardware/` with portable-rig photos/wiring  
-8. Windows app polish (Ovilus, installer) as needed  
+8. Windows app polish (DrakeVox, installer) as needed  
 
 Full backlog: [docs/TODO.md](docs/TODO.md).  
 

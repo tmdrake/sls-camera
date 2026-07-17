@@ -1,7 +1,7 @@
-"""Ovilus random-word panel.
+"""DrakeVox random-word panel (field spirit-box style word generator).
 
-Word list from Windows SLS Explorer; timer is field-tuned to 5–15 min
-(Windows was 15–30). Each generation is timestamped for overlay + history.
+Renamed from the old Windows "Ovilus" label for trademark safety.
+Timer: random 5–15 min between words; each hit is timestamped.
 """
 
 from __future__ import annotations
@@ -13,7 +13,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, Sequence, Tuple
 
-# Same vocabulary as the Windows SLS Explorer
 DEFAULT_WORDS: Tuple[str, ...] = (
     "SPIRIT",
     "GHOST",
@@ -37,14 +36,14 @@ DEFAULT_WORDS: Tuple[str, ...] = (
     "GO",
 )
 
-# Field interval: random 5–15 minutes between words
 MIN_INTERVAL_S = 5 * 60
 MAX_INTERVAL_S = 15 * 60
 HISTORY_MAX = 12
+OVERLAY_HISTORY_N = 5
 
 
 @dataclass
-class OvilusEvent:
+class DrakeVoxEvent:
     ts: float
     word: str
 
@@ -55,7 +54,7 @@ class OvilusEvent:
         return f"{self.time_str()} — {self.word}"
 
 
-class OvilusEngine:
+class DrakeVoxEngine:
     """Thread-safe timer + word state for the Qt field UI."""
 
     def __init__(
@@ -73,10 +72,10 @@ class OvilusEngine:
         self._lock = threading.Lock()
         self._enabled = bool(enabled)
         self._current = ""
-        self._history: List[OvilusEvent] = []
+        self._history: List[DrakeVoxEvent] = []
         self._next_at = 0.0
         self._last_fire_at = 0.0
-        self._schedule_next(from_now=True)
+        self._schedule_next_unlocked(from_now=True)
 
     @property
     def enabled(self) -> bool:
@@ -100,7 +99,7 @@ class OvilusEngine:
         with self._lock:
             return self._last_fire_at
 
-    def history(self) -> List[OvilusEvent]:
+    def history(self) -> List[DrakeVoxEvent]:
         with self._lock:
             return list(self._history)
 
@@ -108,7 +107,6 @@ class OvilusEngine:
         return [e.label() for e in self.history()[:limit]]
 
     def tick(self) -> Optional[str]:
-        """Call from UI loop. Returns a new word if the timer just fired."""
         if not self.enabled:
             return None
         with self._lock:
@@ -117,20 +115,14 @@ class OvilusEngine:
             return self._generate_unlocked()
 
     def generate_now(self) -> str:
-        """Manual / Settings trigger (also reschedules the random timer)."""
         with self._lock:
             return self._generate_unlocked()
 
     def flash_active(self, hold_s: float = 8.0) -> bool:
-        """True briefly after a word so UI can emphasize it."""
         with self._lock:
             if self._last_fire_at <= 0:
                 return False
             return (time.time() - self._last_fire_at) < hold_s
-
-    def _schedule_next(self, from_now: bool = True) -> None:
-        with self._lock:
-            self._schedule_next_unlocked(from_now=from_now)
 
     def _schedule_next_unlocked(self, from_now: bool = True) -> None:
         lo = min(self.min_interval_s, self.max_interval_s)
@@ -140,37 +132,30 @@ class OvilusEngine:
         self._next_at = base + delay
 
     def _generate_unlocked(self) -> str:
-        if not self.words:
-            word = "—"
-        else:
-            word = random.choice(self.words)
+        word = random.choice(self.words) if self.words else "—"
         now = time.time()
         self._current = word
         self._last_fire_at = now
-        self._history.insert(0, OvilusEvent(ts=now, word=word))
+        self._history.insert(0, DrakeVoxEvent(ts=now, word=word))
         if len(self._history) > self.history_max:
             self._history = self._history[: self.history_max]
         self._schedule_next_unlocked(from_now=True)
         return word
 
 
-# Overlay under IR PiP: show this many recent words (newest first)
-OVERLAY_HISTORY_N = 5
-
-
-def paint_ovilus_bgr(
+def paint_drakevox_bgr(
     bgr,
     *,
     enabled: bool,
     flash: bool = False,
-    history: Optional[Sequence[OvilusEvent]] = None,
+    history: Optional[Sequence[DrakeVoxEvent]] = None,
     pip_w: int = 280,
     pip_h: int = 210,
     pip_margin: int = 12,
     pip_corner: str = "top-right",
     history_n: int = OVERLAY_HISTORY_N,
 ) -> None:
-    """Draw Ovilus panel under IR PiP: last N words with generation timestamps."""
+    """Draw DrakeVox panel under IR PiP: last N words with timestamps."""
     import cv2
 
     if bgr is None or bgr.size == 0:
@@ -180,16 +165,15 @@ def paint_ovilus_bgr(
         return
 
     n_show = max(1, int(history_n))
-    events: List[OvilusEvent] = list(history or [])[:n_show]
+    events: List[DrakeVoxEvent] = list(history or [])[:n_show]
 
     margin = max(0, int(pip_margin))
     box_w = max(80, min(int(pip_w), w - 2 * margin))
-    # Taller panel: title + N timestamped rows
     title_h = 22
     row_h = 26
     pad_y = 10
     box_h = title_h + pad_y + n_show * row_h + 12
-    gap = 6  # gap between IR bottom and Ovilus top
+    gap = 6
 
     if str(pip_corner).lower() in ("top-left", "left"):
         x0 = margin
@@ -209,7 +193,7 @@ def paint_ovilus_bgr(
     alpha = 0.78 if flash else 0.62
     cv2.addWeighted(overlay, alpha, bgr, 1.0 - alpha, 0, bgr)
 
-    title = "OVILUS" if enabled else "OVILUS OFF"
+    title = "DRAKEVOX" if enabled else "DRAKEVOX OFF"
     cv2.putText(
         bgr,
         title,
@@ -240,19 +224,16 @@ def paint_ovilus_bgr(
 
     for i, ev in enumerate(events):
         is_latest = i == 0
-        tstr = ev.time_str()
-        wtxt = ev.word
+        label = f"{ev.time_str()} {ev.word}"
         if is_latest:
             scale = 0.58 if flash else 0.52
-            color = (0, 0, 220)  # BGR red-ish
+            color = (0, 0, 220)
             thick = 2
-            label = f"{tstr} {wtxt}"
         else:
             scale = 0.45
             fade = max(70, 160 - i * 22)
             color = (fade, fade, fade)
             thick = 1
-            label = f"{tstr} {wtxt}"
         max_chars = max(8, box_w // 8)
         if len(label) > max_chars:
             label = label[: max_chars - 1] + "…"

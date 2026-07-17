@@ -67,7 +67,7 @@ Now (dev)
 Later (tablet appliance)
   clean desktop chrome (no stock Lubuntu clutter)
   firmware / image package install
-  sensors (Arduino-class) + Ovilus triggers
+  sensors (Arduino-class) + DrakeVox triggers
   power management: stable SLS on external power + tablet battery policy
 ```
 

@@ -66,11 +66,11 @@ Detail: `software/linux/docs/LINUX-SLS-PLAN.md` · app: `software/linux/viewer/`
 5. **Dev packaging** — install/uninstall scripts for launcher + optional autostart — **done** (`software/linux/scripts/install-field-app.sh`)  
 6. **Appliance hardening** — freenect udev, no gspca fights, watchdog restart; **clean desktop before firmware package**  
 7. **Image / firmware package** — tablet-oriented install (not just `~/.local` wrappers)  
-8. **Ovilus interface** — word/phrase display — **timer done on Linux**; sensor-triggered / MCU inputs later  
+8. **DrakeVox interface** — word/phrase display + TTS — **done on Linux** (not “Ovilus”; trademark-safe name); sensor triggers later  
 9. **Additional sensors** — EMF, temp, IMU, etc. on Arduino (or similar); bridge into the same UI  
 10. **Power management** — stable SLS on **external power** + tablet (sleep/USB policy so investigations stay up)  
 
-Spelling note: product/docs use **Ovilus** (spirit box–style word UI already referenced in Windows `AGENTS.md`).
+Naming: Linux field app uses **DrakeVox** (spirit-box style words + TTS). Older Windows code may still say Ovilus.
 
 ## Hardware evolution
 
@@ -78,7 +78,7 @@ Spelling note: product/docs use **Ovilus** (spirit box–style word UI already r
 |-------|----------|
 | Now | Xbox 360 Kinect + host power/USB |
 | Next | Tablet + Kinect integrated rig (photos/BOM in `hardware/`) |
-| Later | Companion board (Arduino-class) for extra sensors + optional Ovilus triggers |
+| Later | Companion board (Arduino-class) for extra sensors + optional DrakeVox triggers |
 | Optional | Custom carrier / power / tilt — still under `hardware/` |
 
 ## Success criteria (long term)

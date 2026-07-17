@@ -94,6 +94,7 @@ if [[ "$WITH_APT" -eq 1 ]]; then
   PKGS=(
     freenect libfreenect-bin
     libportaudio2 alsa-utils
+    espeak-ng
     python3 python3-venv python3-pip
   )
   # ffmpeg is optional; imageio-ffmpeg covers mux if missing

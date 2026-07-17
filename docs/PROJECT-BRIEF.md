@@ -10,7 +10,7 @@ SLS-style camera system based on an **Xbox 360 Kinect** (structured light depth 
 
 - Windows application under `software/source/` (Kinect SDK / WPF “SLS Explorer”)  
 - **Working Linux field app** under `software/linux/viewer/` (libfreenect + MediaPipe + Qt)  
-- Future: tablet image, Ovilus UI, Arduino-class sensor packs (`docs/PRODUCT-VISION.md`)  
+- Future: tablet image, DrakeVox UI, Arduino-class sensor packs (`docs/PRODUCT-VISION.md`)  
 
 Same physical sensor class used on Ghost Hunters–style “SLS camera” demos.
 
@@ -18,7 +18,7 @@ Same physical sensor class used on Ghost Hunters–style “SLS camera” demos.
 
 | Platform | Location | Primary goal | Status |
 |----------|----------|--------------|--------|
-| Windows | `software/source/` | Full SLS Explorer (depth, skeleton, Ovilus, spectrum) | Code in repo |
+| Windows | `software/source/` | Full SLS Explorer (depth, skeleton, DrakeVox, spectrum) | Code in repo |
 | Ubuntu / Lubuntu | `software/linux/viewer/` | Depth + SLS sticks, spectrum, session capture | **Field app working** (2026-07) |
 
 ## Linux field app (implemented)
@@ -48,12 +48,12 @@ Run: `cd software/linux/viewer && ./run.sh`
 - [x] Kinect audio ALSA path documented (firmware / hash recovery)  
 - [x] **Mux audio into Record** (Kinect/system mic → AVI with PCM)  
 - [x] Kinect video reconnect UI + infinite retry; spectrum mic retry  
-- [x] Ovilus word panel (5–15 min timer, timestamped)  
+- [x] DrakeVox word panel (5–15 min timer, timestamped)  
 - [x] Dev install/uninstall scripts (launcher + optional autostart)  
 - [ ] Clean desktop before tablet firmware package  
 - [ ] Tablet firmware / image package  
 - [ ] Power management (external supply + tablet)  
-- [ ] Ovilus triggers + sensor bridge  
+- [ ] DrakeVox triggers + sensor bridge  
 - [ ] Hardware photos / wiring notes in `hardware/`  
 
 Backlog: [docs/TODO.md](TODO.md).  

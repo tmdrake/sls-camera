@@ -63,6 +63,8 @@ class SessionRecorder:
         self._has_audio = False
         self._spectrum: Optional["SpectrumAnalyzer"] = None
         self._via_spectrum = False
+        # DrakeVox TTS clips: (offset_seconds from record start, float32 mono)
+        self._tts_clips: List[tuple] = []
 
     @property
     def recording(self) -> bool:
@@ -164,11 +166,29 @@ class SessionRecorder:
             self._has_audio = False
             return False
 
+    def inject_tts(self, pcm: np.ndarray, wall_time: float) -> None:
+        """Queue TTS PCM to mix into the recording at wall_time (epoch)."""
+        if not self._recording or pcm is None:
+            return
+        try:
+            arr = np.asarray(pcm, dtype=np.float32).reshape(-1)
+        except Exception:
+            return
+        if arr.size == 0:
+            return
+        with self._lock:
+            if not self._recording or self._record_started <= 0:
+                return
+            offset = max(0.0, float(wall_time) - float(self._record_started))
+            self._tts_clips.append((offset, arr.copy()))
+            self._has_audio = True
+
     def _start_audio(
         self, spectrum: Optional["SpectrumAnalyzer"] = None
     ) -> bool:
         """Capture mic for mux. Prefer sharing spectrum stream (one device open)."""
         self._audio_chunks = []
+        self._tts_clips = []
         self._has_audio = False
         self._audio_device_name = ""
         self._via_spectrum = False
@@ -208,13 +228,58 @@ class SessionRecorder:
                 pass
             self._audio_stream = None
 
-    def _write_wav(self, path: Path) -> bool:
+    def _mix_audio(self) -> Optional[np.ndarray]:
+        """Mic chunks + DrakeVox TTS clips → mono float32 timeline."""
         with self._lock:
             chunks = list(self._audio_chunks)
+            clips = list(self._tts_clips)
             self._audio_chunks = []
-        if not chunks:
+            self._tts_clips = []
+            elapsed = 0.0
+            if self._record_started > 0:
+                elapsed = max(0.0, time.time() - self._record_started)
+
+        mic = np.concatenate(chunks).astype(np.float32) if chunks else None
+        if mic is None and not clips:
+            return None
+
+        # Timeline length: mic length or enough for TTS + short pad
+        n_mic = int(mic.size) if mic is not None else 0
+        n_end = n_mic
+        for offset_s, tts in clips:
+            end = int(offset_s * AUDIO_SAMPLE_RATE) + int(tts.size)
+            if end > n_end:
+                n_end = end
+        if elapsed > 0:
+            n_end = max(n_end, int(elapsed * AUDIO_SAMPLE_RATE))
+        n_end = max(n_end, 1)
+
+        out = np.zeros(n_end, dtype=np.float32)
+        if mic is not None and n_mic > 0:
+            out[: min(n_mic, n_end)] = mic[: min(n_mic, n_end)]
+
+        # Mix TTS louder than ambient so words stay clear on playback
+        for offset_s, tts in clips:
+            start = int(max(0.0, offset_s) * AUDIO_SAMPLE_RATE)
+            if start >= n_end:
+                continue
+            seg = np.asarray(tts, dtype=np.float32).reshape(-1) * 0.95
+            end = min(n_end, start + seg.size)
+            n = end - start
+            if n <= 0:
+                continue
+            out[start:end] += seg[:n]
+
+        # Soft clip
+        peak = float(np.max(np.abs(out))) if out.size else 0.0
+        if peak > 1.0:
+            out = out / peak
+        return out
+
+    def _write_wav(self, path: Path) -> bool:
+        audio = self._mix_audio()
+        if audio is None or audio.size == 0:
             return False
-        audio = np.concatenate(chunks)
         pcm = np.clip(audio, -1.0, 1.0)
         pcm = (pcm * 32767.0).astype(np.int16)
         try:
@@ -296,6 +361,7 @@ class SessionRecorder:
             self._recording = True
             self._fps = float(fps)
             self._record_started = time.time()
+            self._tts_clips = []
 
         if audio_ok:
             self._set_flash(f"recording {final.name} +audio")
@@ -329,8 +395,9 @@ class SessionRecorder:
         audio_tmp = self._audio_tmp
         elapsed = self.recording_elapsed_str() if self._recording else "0:00"
         had_audio = self._has_audio
-
+        had_tts = False
         with self._lock:
+            had_tts = bool(self._tts_clips)
             if self._writer is not None:
                 try:
                     self._writer.release()
@@ -338,15 +405,22 @@ class SessionRecorder:
                     pass
             self._writer = None
             self._recording = False
-            self._record_started = 0.0
+            # keep _record_started until mix so elapsed length works
+            rec_started = self._record_started
 
         self._stop_audio_capture()
 
         final_path = path
         audio_saved = False
         muxed = False
-        if had_audio and audio_tmp is not None:
+        if (had_audio or had_tts) and audio_tmp is not None:
+            # restore start for mix length if needed
+            if self._record_started <= 0 and rec_started > 0:
+                self._record_started = rec_started
             audio_saved = self._write_wav(audio_tmp)
+            self._record_started = 0.0
+        else:
+            self._record_started = 0.0
 
         if (
             audio_saved
@@ -421,9 +495,9 @@ class SessionRecorder:
         except OSError:
             pass
 
-    def note_ovilus(self, word: str) -> None:
-        self._log_event("ovilus", {"word": word})
-        self._set_flash(f"OVILUS: {word}", seconds=4.0)
+    def note_drakevox(self, word: str) -> None:
+        self._log_event("drakevox", {"word": word})
+        self._set_flash(f"DRAKEVOX: {word}", seconds=4.0)
 
     def note_detection(
         self, detected: int, auto_snap: bool, bgr: Optional[np.ndarray]

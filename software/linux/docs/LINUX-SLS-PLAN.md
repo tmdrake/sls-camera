@@ -6,7 +6,7 @@
 
 Reference Windows UI: `software/source/example/KinectWindow.xaml` — depth viewer + `KinectSkeletonViewer` stacked on top (`ShowBones`, `ShowJoints`, `ImageType="Depth"`). Product notes: root `AGENTS.md`.
 
-**Longer product vision** (tablet image, sensors, Ovilus): `docs/PRODUCT-VISION.md`.
+**Longer product vision** (tablet image, sensors, DrakeVox): `docs/PRODUCT-VISION.md`.
 
 ---
 
@@ -18,7 +18,7 @@ Reference Windows UI: `software/source/example/KinectWindow.xaml` — depth view
 | **Processing** | Same process: freenect + pose + composite pipeline thread |
 | **Optional** | `--ui web` browser/MJPEG for remote glance or experiments |
 | **Why Qt over browser kiosk** | True fullscreen + `WindowStaysOnTopHint`; no browser gesture/flags dance; better “appliance app” feel on Lubuntu tablets |
-| **Ovilus / sensors later** | Qt panels or a second window; web remains available if we want HTML dashboards |
+| **DrakeVox / sensors later** | Qt panels or a second window; web remains available if we want HTML dashboards |
 
 Target field OS: **Lubuntu / Ubuntu-class** tablet image with auto-login + **autostart Qt SLS app**. Large touch buttons + keyboard fallback (Esc/Q/M/F).
 
@@ -46,7 +46,7 @@ Nice-to-have for **v1.x** (Windows already notes these; not required for first u
 | Spectrum analyser under main view | **Done** |
 | Session record (AVI + mic) | **Done** |
 | Reconnect / mic retry | **Done** |
-| Ovilus random words (5–15 min, timestamped) | **Done** (timer; external triggers later) |
+| DrakeVox random words (5–15 min, timestamped) | **Done** (timer; external triggers later) |
 
 ---
 
@@ -98,7 +98,7 @@ If registration is imperfect at first, v1 can draw sticks on a dual layout (dept
 ```text
 ┌──────────────────────────────────────────────────────────┐
 │  Kiosk browser — SLS page (depth+sticks), HUD, later       │
-│    Ovilus panel + sensor tiles (touch-friendly)            │
+│    DrakeVox panel + sensor tiles (touch-friendly)            │
 ├──────────────────────────────────────────────────────────┤
 │  HTTP / WebSocket / MJPEG  (local only, e.g. 127.0.0.1)  │
 ├──────────────────────────────────────────────────────────┤
@@ -117,7 +117,7 @@ If registration is imperfect at first, v1 can draw sticks on a dual layout (dept
 
 **Bindings:** prefer packaged/python freenect if available; else libfreenect wrappers. Spike this in M1.
 
-**Ovilus + extra sensors:** same web shell; Ovilus as a panel/API; Arduino-class boards as a separate bridge process publishing into the UI (not blocking SLS core).
+**DrakeVox + extra sensors:** same web shell; DrakeVox as a panel/API; Arduino-class boards as a separate bridge process publishing into the UI (not blocking SLS core).
 
 ---
 
@@ -130,8 +130,8 @@ If registration is imperfect at first, v1 can draw sticks on a dual layout (dept
 | **M2** | SLS skeleton overlay | Sticks on depth (+ IR PiP) | **Done** (MediaPipe on colorized depth) |
 | **M3** | Field UI polish | Qt Settings, spectrum, Snap/Record+audio, reconnect | **Done** (auto-level only; no manual tilt) |
 | **M4** | Appliance image | Auto-start on Lubuntu-class tablet | Not started |
-| **M5a** | Ovilus panel | 5–15 min timestamped words on Qt UI | **Done** (timer; triggers later) |
-| **M5b** | Sensors | Arduino/MCU bridge + Ovilus triggers | Not started |
+| **M5a** | DrakeVox panel | 5–15 min timestamped words on Qt UI | **Done** (timer; triggers later) |
+| **M5b** | Sensors | Arduino/MCU bridge + DrakeVox triggers | Not started |
 
 **Definition of “Linux SLS usable”:** M2 — **met** on OptiPlex + Kinect.
 
@@ -151,7 +151,7 @@ If registration is imperfect at first, v1 can draw sticks on a dual layout (dept
 | Session capture | Snap / Record main bar; AVI + PCM mic | Done |
 | Device reconnect | RECONNECTING UI; infinite freenect retry | Done |
 | Tilt control | Auto-level on open only | Done (no manual UI by design) |
-| Ovilus 5–15 min + timestamp | `ovilus.py` + Settings / key O | Done (timer) |
+| DrakeVox 5–15 min + timestamp | `drakevox.py` + Settings / key O | Done (timer) |
 | Color side / swap | — | Optional later |
 
 ---
@@ -182,7 +182,7 @@ software/linux/viewer/
     skeleton.py
     stream.py            # MJPEG / WebSocket / control API
     config.py
-  web/                   # kiosk frontend (SLS page, later Ovilus)
+  web/                   # kiosk frontend (SLS page, later DrakeVox)
     index.html
     app.js
     style.css
@@ -198,7 +198,7 @@ Shared product goals: root `AGENTS.md`, `docs/PRODUCT-VISION.md`, this plan.
 2. **Tablet model / Lubuntu version** for the golden image.  
 3. **Default mirror:** un-mirrored for behind-camera — default **on**.  
 4. **Multi-person:** v1 one strongest pose; multi later.  
-5. **Ovilus trigger sources:** timer only first; then depth/skeleton events; then Arduino sensors.  
+5. **DrakeVox trigger sources:** timer only first; then depth/skeleton events; then Arduino sensors.  
 
 Defaults locked: **MediaPipe + web kiosk UI + Python backend + unmirrored default + single person first.**
 
@@ -210,7 +210,7 @@ Defaults locked: **MediaPipe + web kiosk UI + Python backend + unmirrored defaul
 2. M1: backend serves colorized depth (even if UI is temporary).  
 3. M2: MediaPipe sticks on composite + main web view.  
 4. Field/tablet test; note FPS and false positives.  
-5. M3/M4 kiosk + image; then Ovilus/sensor bridge.
+5. M3/M4 kiosk + image; then DrakeVox/sensor bridge.
 
 ---
 

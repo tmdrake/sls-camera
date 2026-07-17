@@ -22,9 +22,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .ovilus import OvilusEngine, paint_ovilus_bgr
-from .session_io import SessionRecorder
+from .drakevox import DrakeVoxEngine, paint_drakevox_bgr
+from .session_io import AUDIO_SAMPLE_RATE, SessionRecorder
 from .spectrum import SpectrumAnalyzer
+from .tts import DrakeVoxTTS, backend_name as tts_backend_name
 
 if TYPE_CHECKING:
     from .pipeline import FramePipeline
@@ -83,14 +84,14 @@ class SettingsDialog(QDialog):
         pipeline: FramePipeline,
         spectrum: SpectrumAnalyzer,
         session: SessionRecorder,
-        ovilus: OvilusEngine,
+        drakevox: DrakeVoxEngine,
         parent=None,
     ):
         super().__init__(parent)
         self.pipeline = pipeline
         self.spectrum = spectrum
         self.session = session
-        self.ovilus = ovilus
+        self.drakevox = drakevox
         self.setWindowTitle("Settings")
         self.setModal(False)
         self.setWindowFlags(
@@ -167,18 +168,20 @@ class SettingsDialog(QDialog):
         grid.addWidget(self.btn_autosnap, row, 1, 1, 3)
         row += 1
 
-        # Ovilus
-        grid.addWidget(QLabel("Ovilus"), row, 0)
-        self.btn_ovilus = QPushButton()
-        self.btn_ovilus.setObjectName("wide")
-        self.btn_ovilus.setToolTip("Random word every 5–15 min; each hit is timestamped")
-        self.btn_ovilus.clicked.connect(self._toggle_ovilus)
-        grid.addWidget(self.btn_ovilus, row, 1, 1, 3)
+        # DrakeVox
+        grid.addWidget(QLabel("DrakeVox"), row, 0)
+        self.btn_drakevox = QPushButton()
+        self.btn_drakevox.setObjectName("wide")
+        self.btn_drakevox.setToolTip(
+            "DrakeVox: random word every 5–15 min; TTS spoken; burned into Record AVI"
+        )
+        self.btn_drakevox.clicked.connect(self._toggle_drakevox)
+        grid.addWidget(self.btn_drakevox, row, 1, 1, 3)
         row += 1
 
         root.addLayout(grid)
 
-        # Defaults + Ovilus generate — Snapshot/Record on main bar
+        # Defaults + DrakeVox generate — Snapshot/Record on main bar
         act = QHBoxLayout()
         self.btn_defaults = QPushButton("Defaults")
         self.btn_defaults.setObjectName("wide")
@@ -187,11 +190,13 @@ class SettingsDialog(QDialog):
         )
         self.btn_defaults.clicked.connect(self._reset_defaults)
         act.addWidget(self.btn_defaults)
-        self.btn_ovilus_now = QPushButton("Ovilus now")
-        self.btn_ovilus_now.setObjectName("wide")
-        self.btn_ovilus_now.setToolTip("Generate a word immediately (also reschedules timer)")
-        self.btn_ovilus_now.clicked.connect(self._ovilus_now)
-        act.addWidget(self.btn_ovilus_now)
+        self.btn_drakevox_now = QPushButton("DrakeVox now")
+        self.btn_drakevox_now.setObjectName("wide")
+        self.btn_drakevox_now.setToolTip(
+            "Speak a word now (timestamped; recorded if REC is active)"
+        )
+        self.btn_drakevox_now.clicked.connect(self._drakevox_now)
+        act.addWidget(self.btn_drakevox_now)
         act.addStretch(1)
         root.addLayout(act)
 
@@ -200,20 +205,20 @@ class SettingsDialog(QDialog):
         self.mic_label.setWordWrap(True)
         root.addWidget(self.mic_label)
 
-        self.ovilus_label = QLabel("")
-        self.ovilus_label.setStyleSheet("color: #aa4444; font-size: 12px;")
-        self.ovilus_label.setWordWrap(True)
-        root.addWidget(self.ovilus_label)
+        self.drakevox_label = QLabel("")
+        self.drakevox_label.setStyleSheet("color: #aa4444; font-size: 12px;")
+        self.drakevox_label.setWordWrap(True)
+        root.addWidget(self.drakevox_label)
 
-        self.ovilus_history = QLabel("")
-        self.ovilus_history.setStyleSheet(
+        self.drakevox_history = QLabel("")
+        self.drakevox_history.setStyleSheet(
             "color: #888; font-size: 11px; font-family: monospace;"
         )
-        self.ovilus_history.setWordWrap(True)
-        root.addWidget(self.ovilus_history)
+        self.drakevox_history.setWordWrap(True)
+        root.addWidget(self.drakevox_history)
 
         hint = QLabel(
-            "Keys: [ ] conf  , . max  M mirror  O ovilus now  S settings  Esc close"
+            "Keys: [ ] conf  , . max  M mirror  O DrakeVox now  S settings  Esc close"
         )
         hint.setStyleSheet("color: #666; font-size: 11px;")
         hint.setWordWrap(True)
@@ -239,7 +244,7 @@ class SettingsDialog(QDialog):
         self.btn_autosnap.setText(
             "ON" if self.pipeline.s.auto_snap_on_detect else "OFF"
         )
-        self.btn_ovilus.setText("ON" if self.pipeline.s.ovilus_enabled else "OFF")
+        self.btn_drakevox.setText("ON" if self.pipeline.s.drakevox_enabled else "OFF")
         mic = self.spectrum.device_name or "(no mic)"
         err = self.spectrum.error
         if self.spectrum.active:
@@ -250,16 +255,21 @@ class SettingsDialog(QDialog):
             self.mic_label.setText(
                 "Mic: off — install kinect-audio-setup for Kinect array, or use system mic"
             )
-        if self.pipeline.s.ovilus_enabled:
-            hist0 = self.ovilus.history()
+        if self.pipeline.s.drakevox_enabled:
+            hist0 = self.drakevox.history()
+            tts = tts_backend_name()
             if hist0:
-                self.ovilus_label.setText(f"Ovilus: {hist0[0].label()}")
+                self.drakevox_label.setText(
+                    f"DrakeVox: {hist0[0].label()}  ·  TTS: {tts}"
+                )
             else:
-                self.ovilus_label.setText("Ovilus: (waiting for first word)")
+                self.drakevox_label.setText(
+                    f"DrakeVox: (waiting)  ·  TTS: {tts}"
+                )
         else:
-            self.ovilus_label.setText("Ovilus: off")
-        hist = self.ovilus.history_lines(8)
-        self.ovilus_history.setText(
+            self.drakevox_label.setText("DrakeVox: off")
+        hist = self.drakevox.history_lines(8)
+        self.drakevox_history.setText(
             "History:\n" + "\n".join(hist) if hist else "History: (none yet)"
         )
 
@@ -286,16 +296,16 @@ class SettingsDialog(QDialog):
         self.pipeline.s.save_persisted()
         self._refresh()
 
-    def _toggle_ovilus(self) -> None:
+    def _toggle_drakevox(self) -> None:
         parent = self.parent()
-        if parent is not None and hasattr(parent, "set_ovilus_enabled"):
-            parent.set_ovilus_enabled(not self.pipeline.s.ovilus_enabled)
+        if parent is not None and hasattr(parent, "set_drakevox_enabled"):
+            parent.set_drakevox_enabled(not self.pipeline.s.drakevox_enabled)
         self._refresh()
 
-    def _ovilus_now(self) -> None:
+    def _drakevox_now(self) -> None:
         parent = self.parent()
-        if parent is not None and hasattr(parent, "ovilus_generate_now"):
-            parent.ovilus_generate_now()
+        if parent is not None and hasattr(parent, "drakevox_generate_now"):
+            parent.drakevox_generate_now()
         self._refresh()
 
     def _reset_defaults(self) -> None:
@@ -323,7 +333,10 @@ class SlsMainWindow(QMainWindow):
         self.pipeline = pipeline
         self.spectrum = SpectrumAnalyzer(n_bars=pipeline.s.spectrum_bars)
         self.session = SessionRecorder()
-        self.ovilus = OvilusEngine(enabled=pipeline.s.ovilus_enabled)
+        self.drakevox = DrakeVoxEngine(enabled=pipeline.s.drakevox_enabled)
+        self.tts = DrakeVoxTTS(sample_rate=AUDIO_SAMPLE_RATE)
+        # Mix spoken words into AVI whenever recording
+        self.tts.set_record_callback(self.session.inject_tts)
         self._settings_dlg: Optional[SettingsDialog] = None
         self.setWindowTitle("SLS Camera")
         self.setStyleSheet(_STYLE)
@@ -410,7 +423,7 @@ class SlsMainWindow(QMainWindow):
         QShortcut(QKeySequence("."), self, activated=lambda: self._nudge_max(+1))
         QShortcut(QKeySequence("R"), self, activated=self._toggle_record)
         QShortcut(QKeySequence("C"), self, activated=self._snapshot)
-        QShortcut(QKeySequence("O"), self, activated=self.ovilus_generate_now)
+        QShortcut(QKeySequence("O"), self, activated=self.drakevox_generate_now)
 
         self._timer = QTimer(self)
         self._timer.setInterval(33)
@@ -436,18 +449,24 @@ class SlsMainWindow(QMainWindow):
         # Re-assert fullscreen in case the WM reacted to layout churn
         QTimer.singleShot(0, self._force_fullscreen)
 
-    def set_ovilus_enabled(self, enabled: bool) -> None:
-        self.pipeline.s.ovilus_enabled = bool(enabled)
+    def set_drakevox_enabled(self, enabled: bool) -> None:
+        self.pipeline.s.drakevox_enabled = bool(enabled)
         self.pipeline.s.save_persisted()
-        self.ovilus.enabled = bool(enabled)
+        self.drakevox.enabled = bool(enabled)
 
-    def ovilus_generate_now(self) -> None:
-        if not self.pipeline.s.ovilus_enabled:
-            self.set_ovilus_enabled(True)
-        word = self.ovilus.generate_now()
-        self.session.note_ovilus(word)
+    def _on_drakevox_word(self, word: str) -> None:
+        """Log, speak (TTS), and inject PCM into any active recording."""
+        self.session.note_drakevox(word)
+        # speak() also calls inject_tts via set_record_callback while REC
+        self.tts.speak(word)
         if self._settings_open():
             self._settings_dlg._refresh()
+
+    def drakevox_generate_now(self) -> None:
+        if not self.pipeline.s.drakevox_enabled:
+            self.set_drakevox_enabled(True)
+        word = self.drakevox.generate_now()
+        self._on_drakevox_word(word)
 
     def _paint_spectrum_strip(self) -> None:
         """Always paint into the reserved strip (bars, retry, or idle)."""
@@ -480,7 +499,7 @@ class SlsMainWindow(QMainWindow):
                 self.pipeline,
                 self.spectrum,
                 self.session,
-                self.ovilus,
+                self.drakevox,
                 self,
             )
         if self._settings_dlg.isVisible():
@@ -559,13 +578,11 @@ class SlsMainWindow(QMainWindow):
         if self.pipeline.s.spectrum_enabled or self.session.recording:
             self.spectrum.ensure_running()
 
-        # Ovilus 5–15 min timer
-        if self.pipeline.s.ovilus_enabled:
-            fired = self.ovilus.tick()
+        # DrakeVox 5–15 min timer + TTS
+        if self.pipeline.s.drakevox_enabled:
+            fired = self.drakevox.tick()
             if fired:
-                self.session.note_ovilus(fired)
-                if self._settings_open():
-                    self._settings_dlg._refresh()
+                self._on_drakevox_word(fired)
 
         mx = self.pipeline.max_poses
         flash = self.session.flash_message()
@@ -576,38 +593,38 @@ class SlsMainWindow(QMainWindow):
             rec = ""
             if self.btn_record.text() != "Record":
                 self.btn_record.setText("Record")
-        ovi = ""
-        if self.pipeline.s.ovilus_enabled and self.ovilus.current:
-            ovi = f" · OVILUS:{self.ovilus.current}"
+        dv = ""
+        if self.pipeline.s.drakevox_enabled and self.drakevox.current:
+            dv = f" · DRAKEVOX:{self.drakevox.current}"
         base = (
             f"{self.pipeline.status}  ·  {self.pipeline.fps:.1f} fps  ·  "
-            f"Detected:{self.pipeline.poses_count}/{mx}{rec}{ovi}"
+            f"Detected:{self.pipeline.poses_count}/{mx}{rec}{dv}"
         )
         self.status.setText(f"{flash}  ·  {base}" if flash else base)
 
         frame = self.pipeline.get_bgr()
         if frame is not None:
-            if self.session.recording:
-                # Record clean SLS frame (Ovilus is operator overlay only)
-                self.session.write_frame(frame)
             self.session.note_detection(
                 self.pipeline.poses_count,
                 self.pipeline.s.auto_snap_on_detect,
                 frame,
             )
+            # Composite DrakeVox overlay, then record + display the same frame
             display = frame.copy()
             s = self.pipeline.s
-            paint_ovilus_bgr(
+            paint_drakevox_bgr(
                 display,
-                enabled=s.ovilus_enabled,
-                flash=self.ovilus.flash_active(),
-                history=self.ovilus.history()[:5],
+                enabled=s.drakevox_enabled,
+                flash=self.drakevox.flash_active(),
+                history=self.drakevox.history()[:5],
                 pip_w=s.ir_pip_width,
                 pip_h=s.ir_pip_height,
                 pip_margin=s.ir_pip_margin,
                 pip_corner=s.ir_pip_corner,
                 history_n=5,
             )
+            if self.session.recording:
+                self.session.write_frame(display)
             pix = bgr_to_qpixmap(display)
             target = self.video.size()
             if target.width() >= 2 and target.height() >= 2:
