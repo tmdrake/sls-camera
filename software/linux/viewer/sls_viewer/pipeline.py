@@ -153,8 +153,7 @@ class FramePipeline:
             self._kinect.prepare()  # LED green + tilt 0° + IR gain 50 + streams
             depth, ir = self._kinect.get_depth_and_ir()
             self._status = (
-                f"live · {depth.shape[1]}x{depth.shape[0]} · "
-                f"LED green · tilt 0° · IR gain 50"
+                f"live · {depth.shape[1]}x{depth.shape[0]} · LED green · tilt 0°"
             )
             return True
         except Exception as e:

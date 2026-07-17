@@ -51,10 +51,8 @@ On open the app will:
 | **Value** | **50** (full; freenect range is 1–50) |
 | **What it is** | IR **camera sensor gain** only |
 | **What it is not** | IR **projector** power (projector stays on for depth; not software-adjustable here) |
-| **UI** | **None** — fixed at 50; noted in Settings as read-only text |
+| **UI** | **None** — fixed in code; not shown in the status bar or Settings |
 | **Processing** | Affects **IR PiP look only** — pose/skeletons use colorized depth, not IR gain |
-
-Status bar shows `IR gain 50` when live.
 
 ## Skeletons / Settings
 

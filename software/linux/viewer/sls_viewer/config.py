@@ -83,8 +83,8 @@ class Settings:
         self.mirror = bool(self.mirror)
         self.clamp_pose_confidence()
         self.clamp_max_poses()
-        # IR gain is not user-persisted; always use library-default style 30
-        self.ir_brightness = 30
+        # IR gain is not user-persisted; always full sensor gain (50)
+        self.ir_brightness = 50
 
     def clamp_pose_confidence(self) -> None:
         lo, hi = float(self.pose_conf_min), float(self.pose_conf_max)

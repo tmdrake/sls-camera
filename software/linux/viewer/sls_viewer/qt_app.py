@@ -137,16 +137,8 @@ class SettingsDialog(QDialog):
 
         root.addLayout(grid)
 
-        note = QLabel(
-            "IR sensor gain is fixed at 50 (full). "
-            "Sensor gain only — not projector power; PiP display only."
-        )
-        note.setStyleSheet("color: #666; font-size: 11px; padding-top: 4px;")
-        note.setWordWrap(True)
-        root.addWidget(note)
-
         hint = QLabel("Keys:  [ ] conf   , . max people   M mirror   Esc close")
-        hint.setStyleSheet("color: #666; font-size: 11px;")
+        hint.setStyleSheet("color: #666; font-size: 11px; padding-top: 4px;")
         hint.setWordWrap(True)
         root.addWidget(hint)
 
