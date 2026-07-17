@@ -193,7 +193,7 @@ class SettingsDialog(QDialog):
         self.btn_drakevox_now = QPushButton("DrakeVox now")
         self.btn_drakevox_now.setObjectName("wide")
         self.btn_drakevox_now.setToolTip(
-            "Speak a word now (timestamped; recorded if REC is active)"
+            "Speak a word now (requires DrakeVox ON; recorded if REC is active)"
         )
         self.btn_drakevox_now.clicked.connect(self._drakevox_now)
         act.addWidget(self.btn_drakevox_now)
@@ -244,7 +244,9 @@ class SettingsDialog(QDialog):
         self.btn_autosnap.setText(
             "ON" if self.pipeline.s.auto_snap_on_detect else "OFF"
         )
-        self.btn_drakevox.setText("ON" if self.pipeline.s.drakevox_enabled else "OFF")
+        on = bool(self.pipeline.s.drakevox_enabled)
+        self.btn_drakevox.setText("ON" if on else "OFF")
+        self.btn_drakevox_now.setEnabled(on)
         mic = self.spectrum.device_name or "(no mic)"
         err = self.spectrum.error
         if self.spectrum.active:
@@ -450,12 +452,17 @@ class SlsMainWindow(QMainWindow):
         QTimer.singleShot(0, self._force_fullscreen)
 
     def set_drakevox_enabled(self, enabled: bool) -> None:
+        """ON = show panel + word generation; OFF = hide panel + stop generation."""
         self.pipeline.s.drakevox_enabled = bool(enabled)
         self.pipeline.s.save_persisted()
         self.drakevox.enabled = bool(enabled)
+        if self._settings_open():
+            self._settings_dlg._refresh()
 
     def _on_drakevox_word(self, word: str) -> None:
         """Log, speak (TTS), and inject PCM into any active recording."""
+        if not word:
+            return
         self.session.note_drakevox(word)
         # speak() also calls inject_tts via set_record_callback while REC
         self.tts.speak(word)
@@ -463,10 +470,13 @@ class SlsMainWindow(QMainWindow):
             self._settings_dlg._refresh()
 
     def drakevox_generate_now(self) -> None:
+        """Manual word (key O / Settings). Does nothing while DrakeVox is OFF."""
         if not self.pipeline.s.drakevox_enabled:
-            self.set_drakevox_enabled(True)
+            self.session._set_flash("DrakeVox is OFF", seconds=2.0)
+            return
         word = self.drakevox.generate_now()
-        self._on_drakevox_word(word)
+        if word:
+            self._on_drakevox_word(word)
 
     def _paint_spectrum_strip(self) -> None:
         """Always paint into the reserved strip (bars, retry, or idle)."""
