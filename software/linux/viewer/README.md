@@ -84,6 +84,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 | **Spectrum** | On/off; strip height always reserved (no layout jump) |
 | **Auto-snap on detect** | Off by default |
 | **DrakeVox** | **ON** = show panel + generate (timer/TTS/O); **OFF** = hide panel + stop all generation |
+| **DrakeVox on auto-snap** | Default **ON**; fires word+TTS into JPEG only on auto-snap (not manual Snap) |
 
 ## Captures
 
