@@ -44,11 +44,14 @@ Run: `cd software/linux/viewer && ./run.sh`
 - [x] Linux path scaffold + Ubuntu setup notes  
 - [x] freenect working on OptiPlex (`freenect-glview`)  
 - [x] Linux SLS viewer (depth + skeleton + IR PiP)  
-- [x] Spectrum + session Snap/Record  
+- [x] Spectrum + session Snap/Record (video-only AVI)  
 - [x] Kinect audio ALSA path documented (firmware / hash recovery)  
+- [ ] **Mux audio into Record** (Kinect/system mic + video) — see `docs/TODO.md`  
 - [ ] Hardware photos / wiring notes in `hardware/`  
 - [ ] Tablet appliance image / autostart  
 - [ ] Ovilus + sensor bridge  
+
+Backlog: [docs/TODO.md](TODO.md).  
 
 ## Definition of ready (updated)
 
