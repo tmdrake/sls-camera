@@ -13,7 +13,7 @@ WEB_ROOT = VIEWER_ROOT / "web"
 SETTINGS_PATH = VIEWER_ROOT / "user_settings.json"
 
 # User-tweakable prefs (IR brightness fixed at 50)
-PERSIST_KEYS = ("mirror", "pose_min_confidence")
+PERSIST_KEYS = ("mirror", "pose_min_confidence", "max_poses")
 
 
 @dataclass
@@ -37,8 +37,10 @@ class Settings:
     pose_conf_max: float = 0.99  # UI max
     pose_conf_step: float = 0.05
     pose_every_n_frames: int = 1
-    # Hard cap: simultaneous people (MediaPipe num_poses)
-    max_poses: int = 2
+    # Simultaneous people (MediaPipe num_poses); UI 1–6, default 4
+    max_poses: int = 4
+    max_poses_min: int = 1
+    max_poses_max: int = 6
     pose_min_joints: int = 6
     pose_hold_frames: int = 3
 
@@ -78,6 +80,7 @@ class Settings:
                 setattr(self, key, data[key])
         self.mirror = bool(self.mirror)
         self.clamp_pose_confidence()
+        self.clamp_max_poses()
         # Always force IR to fixed default (ignore old saved brightness)
         self.ir_brightness = 50
 
@@ -89,11 +92,17 @@ class Settings:
         # Drawing threshold tracks confidence (slightly looser so limbs still connect)
         self.skeleton_min_vis = max(0.20, self.pose_min_confidence - 0.10)
 
+    def clamp_max_poses(self) -> None:
+        lo, hi = int(self.max_poses_min), int(self.max_poses_max)
+        self.max_poses = int(max(lo, min(hi, int(self.max_poses))))
+
     def save_persisted(self, path: Path = SETTINGS_PATH) -> None:
         self.clamp_pose_confidence()
+        self.clamp_max_poses()
         data: Dict[str, Any] = {
             "mirror": bool(self.mirror),
             "pose_min_confidence": float(self.pose_min_confidence),
+            "max_poses": int(self.max_poses),
         }
         try:
             path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")

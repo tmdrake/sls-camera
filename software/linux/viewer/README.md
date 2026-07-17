@@ -51,11 +51,12 @@ On open the app will:
 
 | Limit | Value |
 |-------|--------|
-| **Max people at once** | **2** (`Detected:` is 0–2) |
+| **Max people at once** | **1–6** (default **4**), UI `Max −` / `Max +`, keys `,` `.` |
+| **Detected status** | `Detected:n/max` (e.g. `Detected:2/4`) |
 | **Confidence range** | **0.25 – 0.99** (default 0.70) |
 | **Confidence UI** | `Conf −` / `Conf +` (step 0.05), keys `[` `]` |
 
-Higher confidence rebuilds MediaPipe thresholds and tightens geometry filters (shoulder/torso size). At 0.90+ a stick must hold for several frames before it draws.  
+Higher confidence rebuilds MediaPipe thresholds and tightens geometry filters. Changing Max rebuilds MediaPipe `num_poses` so more (or fewer) sticks can be drawn.  
 
 Keys: **Esc / Q** quit · **M** mirror · **F** re-assert fullscreen  
 

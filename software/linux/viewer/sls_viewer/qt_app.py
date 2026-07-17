@@ -43,25 +43,25 @@ class SlsMainWindow(QMainWindow):
             QMainWindow, QWidget { background-color: #000000; color: #c8c8c8; }
             QLabel#video { background-color: #000000; }
             QLabel#status {
-                color: #aaaaaa; font-size: 14px; padding: 4px 8px;
+                color: #aaaaaa; font-size: 13px; padding: 4px 8px;
             }
             QLabel#title {
                 color: #00ffb4; font-size: 16px; font-weight: 700;
                 letter-spacing: 2px; padding: 4px 8px;
             }
-            QLabel#conflabel {
-                color: #00ffb4; font-size: 14px; font-weight: 600;
-                min-width: 88px;
+            QLabel#vallabel {
+                color: #00ffb4; font-size: 13px; font-weight: 600;
+                min-width: 72px;
             }
             QPushButton {
-                min-height: 48px; min-width: 48px;
+                min-height: 44px; min-width: 44px;
                 background-color: rgba(0, 40, 30, 220);
                 color: #00ffb4; border: 1px solid #00ffb4;
-                border-radius: 8px; font-size: 15px; font-weight: 600;
-                padding: 8px 14px;
+                border-radius: 8px; font-size: 14px; font-weight: 600;
+                padding: 6px 10px;
             }
             QPushButton#wide {
-                min-width: 110px;
+                min-width: 96px;
             }
             QPushButton:pressed { background-color: rgba(0, 80, 60, 240); }
             """
@@ -81,21 +81,33 @@ class SlsMainWindow(QMainWindow):
 
         bar = QWidget()
         bar_layout = QHBoxLayout(bar)
-        bar_layout.setContentsMargins(12, 8, 12, 12)
-        bar_layout.setSpacing(8)
+        bar_layout.setContentsMargins(10, 6, 10, 10)
+        bar_layout.setSpacing(6)
 
         self.title = QLabel("SLS CAMERA")
         self.title.setObjectName("title")
         self.status = QLabel("starting…")
         self.status.setObjectName("status")
 
-        # Pose confidence (higher = fewer false skeletons)
+        # Max people (1–6)
+        self.btn_max_down = QPushButton("Max −")
+        self.btn_max_down.setObjectName("wide")
+        self.btn_max_down.clicked.connect(lambda: self._nudge_max(-1))
+        self.max_label = QLabel()
+        self.max_label.setObjectName("vallabel")
+        self.max_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.btn_max_up = QPushButton("Max +")
+        self.btn_max_up.setObjectName("wide")
+        self.btn_max_up.clicked.connect(lambda: self._nudge_max(+1))
+        self._refresh_max_label()
+
+        # Pose confidence
         step = pipeline.s.pose_conf_step
         self.btn_conf_down = QPushButton("Conf −")
         self.btn_conf_down.setObjectName("wide")
         self.btn_conf_down.clicked.connect(lambda: self._nudge_conf(-step))
         self.conf_label = QLabel()
-        self.conf_label.setObjectName("conflabel")
+        self.conf_label.setObjectName("vallabel")
         self.conf_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.btn_conf_up = QPushButton("Conf +")
         self.btn_conf_up.setObjectName("wide")
@@ -113,6 +125,9 @@ class SlsMainWindow(QMainWindow):
 
         bar_layout.addWidget(self.title)
         bar_layout.addWidget(self.status, stretch=1)
+        bar_layout.addWidget(self.btn_max_down)
+        bar_layout.addWidget(self.max_label)
+        bar_layout.addWidget(self.btn_max_up)
         bar_layout.addWidget(self.btn_conf_down)
         bar_layout.addWidget(self.conf_label)
         bar_layout.addWidget(self.btn_conf_up)
@@ -132,6 +147,8 @@ class SlsMainWindow(QMainWindow):
         QShortcut(QKeySequence("M"), self, activated=self._toggle_mirror)
         QShortcut(QKeySequence("["), self, activated=lambda: self._nudge_conf(-step))
         QShortcut(QKeySequence("]"), self, activated=lambda: self._nudge_conf(+step))
+        QShortcut(QKeySequence(","), self, activated=lambda: self._nudge_max(-1))
+        QShortcut(QKeySequence("."), self, activated=lambda: self._nudge_max(+1))
 
         self._timer = QTimer(self)
         self._timer.setInterval(33)
@@ -143,9 +160,16 @@ class SlsMainWindow(QMainWindow):
     def _refresh_conf_label(self) -> None:
         self.conf_label.setText(f"Conf {self.pipeline.pose_confidence:.2f}")
 
+    def _refresh_max_label(self) -> None:
+        self.max_label.setText(f"Max {self.pipeline.max_poses}")
+
     def _nudge_conf(self, delta: float) -> None:
         self.pipeline.adjust_pose_confidence(delta)
         self._refresh_conf_label()
+
+    def _nudge_max(self, delta: int) -> None:
+        self.pipeline.adjust_max_poses(delta)
+        self._refresh_max_label()
 
     def _force_fullscreen(self) -> None:
         self.setWindowState(self.windowState() | Qt.WindowState.WindowFullScreen)
@@ -164,14 +188,16 @@ class SlsMainWindow(QMainWindow):
         )
 
     def _tick(self) -> None:
+        mx = self.pipeline.max_poses
         self.status.setText(
             f"{self.pipeline.status}  ·  {self.pipeline.fps:.1f} fps  ·  "
-            f"Detected:{self.pipeline.poses_count}"
+            f"Detected:{self.pipeline.poses_count}/{mx}"
         )
         self.btn_mirror.setText(
             "Mirror: ON" if self.pipeline.mirror else "Mirror: OFF"
         )
         self._refresh_conf_label()
+        self._refresh_max_label()
         frame = self.pipeline.get_bgr()
         if frame is None:
             return

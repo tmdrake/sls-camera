@@ -69,6 +69,22 @@ class FramePipeline:
     def adjust_pose_confidence(self, delta: float) -> float:
         return self.set_pose_confidence(self.pose_confidence + float(delta))
 
+    @property
+    def max_poses(self) -> int:
+        return int(self.s.max_poses)
+
+    def set_max_poses(self, value: int) -> int:
+        """UI max people 1–6; rebuilds MediaPipe num_poses."""
+        self.s.max_poses = int(value)
+        self.s.clamp_max_poses()
+        self.s.save_persisted()
+        if self._pose is not None:
+            self._pose.set_max_poses(self.s.max_poses)
+        return self.s.max_poses
+
+    def adjust_max_poses(self, delta: int) -> int:
+        return self.set_max_poses(self.max_poses + int(delta))
+
     def get_jpeg(self) -> Optional[bytes]:
         with self._lock:
             return self._jpeg
@@ -290,7 +306,7 @@ class FramePipeline:
                 if self._pose and (self._frame_i % max(1, self.s.pose_every_n_frames) == 0):
                     try:
                         self._last_poses = self._pose.estimate(depth_bgr)[
-                            : self.s.max_poses
+                            : int(self.s.max_poses)
                         ]
                     except Exception as e:
                         self._status = f"pose: {e}"

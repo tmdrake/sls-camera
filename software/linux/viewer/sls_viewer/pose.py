@@ -1,4 +1,4 @@
-"""MediaPipe Tasks Pose Landmarker — colorized depth, max 2 people."""
+"""MediaPipe Tasks Pose Landmarker — colorized depth, multi-person (1–6)."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ class PoseEstimator:
     """
     Pose on colorized depth.
 
-    max_poses: hard cap on simultaneous skeletons (default 2).
+    max_poses: simultaneous skeletons (default 4, UI up to 6).
     min_confidence: 0–1; applied to MediaPipe *and* geometry filters.
     """
 
@@ -59,7 +59,7 @@ class PoseEstimator:
         self,
         model_path: Path,
         min_confidence: float = 0.70,
-        max_poses: int = 2,
+        max_poses: int = 4,
         min_joints: int = 6,
         hold_frames: int = 3,
     ):
@@ -120,6 +120,16 @@ class PoseEstimator:
         if abs(value - self.min_confidence) < 0.001:
             return
         self.min_confidence = value
+        self._build_landmarker()
+        self._hold = 0
+        self._last_good = []
+
+    def set_max_poses(self, value: int) -> None:
+        """Update simultaneous person cap and rebuild MediaPipe."""
+        value = max(1, int(value))
+        if value == self.max_poses:
+            return
+        self.max_poses = value
         self._build_landmarker()
         self._hold = 0
         self._last_good = []
