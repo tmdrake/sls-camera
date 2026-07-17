@@ -31,14 +31,16 @@ class Settings:
     mirror: bool = False
 
     # Pose confidence (UI-adjustable). Higher = fewer false skeletons.
-    pose_min_confidence: float = 0.55
+    # Applied to MediaPipe thresholds + geometry filters (rebuilds model on change).
+    pose_min_confidence: float = 0.70
     pose_conf_min: float = 0.25
-    pose_conf_max: float = 0.90
+    pose_conf_max: float = 0.99  # UI max
     pose_conf_step: float = 0.05
     pose_every_n_frames: int = 1
+    # Hard cap: simultaneous people (MediaPipe num_poses)
     max_poses: int = 2
-    # Drop a pose unless this many core joints are confident
     pose_min_joints: int = 6
+    pose_hold_frames: int = 3
 
     depth_min: int = 500
     depth_max: int = 4500

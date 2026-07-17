@@ -57,11 +57,12 @@ class FramePipeline:
         return float(self.s.pose_min_confidence)
 
     def set_pose_confidence(self, value: float) -> float:
-        """UI confidence 0.25–0.90; applies immediately to pose filter + draw."""
+        """UI confidence 0.25–0.99; rebuilds MediaPipe so the value actually applies."""
         self.s.pose_min_confidence = float(value)
         self.s.clamp_pose_confidence()
         self.s.save_persisted()
         if self._pose is not None:
+            # Rebuilds landmarker with new thresholds (was a no-op bug before)
             self._pose.set_min_confidence(self.s.pose_min_confidence)
         return self.s.pose_min_confidence
 
@@ -157,6 +158,7 @@ class FramePipeline:
                 min_confidence=self.s.pose_min_confidence,
                 max_poses=self.s.max_poses,
                 min_joints=self.s.pose_min_joints,
+                hold_frames=self.s.pose_hold_frames,
             )
 
     def _compose(self, depth_bgr: np.ndarray, ir_bgr: np.ndarray) -> np.ndarray:

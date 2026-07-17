@@ -47,10 +47,15 @@ On open the app will:
 4. Set **IR sensor brightness fixed at 50/50** (no UI control for now)  
 5. Stream live depth (main) + IR (PiP); skeletons from **colorized depth** pose (max 2)  
 
-**Skeletons:** colorized-depth pose only, max **2** people. Status shows `Detected:#`.
+**Skeletons:** colorized-depth pose only.
 
-**Confidence (UI):** bottom bar `Conf −` / `Conf 0.55` / `Conf +` (range 0.25–0.90, step 0.05).  
-Higher = fewer false sticks. Saved in `user_settings.json`. Keys: `[` `]`.  
+| Limit | Value |
+|-------|--------|
+| **Max people at once** | **2** (`Detected:` is 0–2) |
+| **Confidence range** | **0.25 – 0.99** (default 0.70) |
+| **Confidence UI** | `Conf −` / `Conf +` (step 0.05), keys `[` `]` |
+
+Higher confidence rebuilds MediaPipe thresholds and tightens geometry filters (shoulder/torso size). At 0.90+ a stick must hold for several frames before it draws.  
 
 Keys: **Esc / Q** quit · **M** mirror · **F** re-assert fullscreen  
 
