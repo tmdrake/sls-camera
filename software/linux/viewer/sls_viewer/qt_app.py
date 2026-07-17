@@ -49,12 +49,19 @@ class SlsMainWindow(QMainWindow):
                 color: #00ffb4; font-size: 16px; font-weight: 700;
                 letter-spacing: 2px; padding: 4px 8px;
             }
+            QLabel#conflabel {
+                color: #00ffb4; font-size: 14px; font-weight: 600;
+                min-width: 88px;
+            }
             QPushButton {
-                min-height: 48px; min-width: 110px;
+                min-height: 48px; min-width: 48px;
                 background-color: rgba(0, 40, 30, 220);
                 color: #00ffb4; border: 1px solid #00ffb4;
                 border-radius: 8px; font-size: 15px; font-weight: 600;
                 padding: 8px 14px;
+            }
+            QPushButton#wide {
+                min-width: 110px;
             }
             QPushButton:pressed { background-color: rgba(0, 80, 60, 240); }
             """
@@ -82,15 +89,33 @@ class SlsMainWindow(QMainWindow):
         self.status = QLabel("starting…")
         self.status.setObjectName("status")
 
+        # Pose confidence (higher = fewer false skeletons)
+        step = pipeline.s.pose_conf_step
+        self.btn_conf_down = QPushButton("Conf −")
+        self.btn_conf_down.setObjectName("wide")
+        self.btn_conf_down.clicked.connect(lambda: self._nudge_conf(-step))
+        self.conf_label = QLabel()
+        self.conf_label.setObjectName("conflabel")
+        self.conf_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.btn_conf_up = QPushButton("Conf +")
+        self.btn_conf_up.setObjectName("wide")
+        self.btn_conf_up.clicked.connect(lambda: self._nudge_conf(+step))
+        self._refresh_conf_label()
+
         self.btn_mirror = QPushButton(
             "Mirror: ON" if pipeline.mirror else "Mirror: OFF"
         )
+        self.btn_mirror.setObjectName("wide")
         self.btn_mirror.clicked.connect(self._toggle_mirror)
         self.btn_quit = QPushButton("Quit")
+        self.btn_quit.setObjectName("wide")
         self.btn_quit.clicked.connect(self.close)
 
         bar_layout.addWidget(self.title)
         bar_layout.addWidget(self.status, stretch=1)
+        bar_layout.addWidget(self.btn_conf_down)
+        bar_layout.addWidget(self.conf_label)
+        bar_layout.addWidget(self.btn_conf_up)
         bar_layout.addWidget(self.btn_mirror)
         bar_layout.addWidget(self.btn_quit)
         layout.addWidget(bar)
@@ -105,6 +130,8 @@ class SlsMainWindow(QMainWindow):
         QShortcut(QKeySequence("Q"), self, activated=self.close)
         QShortcut(QKeySequence("F"), self, activated=self._force_fullscreen)
         QShortcut(QKeySequence("M"), self, activated=self._toggle_mirror)
+        QShortcut(QKeySequence("["), self, activated=lambda: self._nudge_conf(-step))
+        QShortcut(QKeySequence("]"), self, activated=lambda: self._nudge_conf(+step))
 
         self._timer = QTimer(self)
         self._timer.setInterval(33)
@@ -112,6 +139,13 @@ class SlsMainWindow(QMainWindow):
         self._timer.start()
 
         QTimer.singleShot(0, self._force_fullscreen)
+
+    def _refresh_conf_label(self) -> None:
+        self.conf_label.setText(f"Conf {self.pipeline.pose_confidence:.2f}")
+
+    def _nudge_conf(self, delta: float) -> None:
+        self.pipeline.adjust_pose_confidence(delta)
+        self._refresh_conf_label()
 
     def _force_fullscreen(self) -> None:
         self.setWindowState(self.windowState() | Qt.WindowState.WindowFullScreen)
@@ -137,6 +171,7 @@ class SlsMainWindow(QMainWindow):
         self.btn_mirror.setText(
             "Mirror: ON" if self.pipeline.mirror else "Mirror: OFF"
         )
+        self._refresh_conf_label()
         frame = self.pipeline.get_bgr()
         if frame is None:
             return

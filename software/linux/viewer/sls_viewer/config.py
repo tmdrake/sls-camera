@@ -12,8 +12,8 @@ MODEL_PATH = VIEWER_ROOT / "models" / "pose_landmarker_lite.task"
 WEB_ROOT = VIEWER_ROOT / "web"
 SETTINGS_PATH = VIEWER_ROOT / "user_settings.json"
 
-# Only mirror is user-tweakable for now (IR brightness fixed at 50)
-PERSIST_KEYS = ("mirror",)
+# User-tweakable prefs (IR brightness fixed at 50)
+PERSIST_KEYS = ("mirror", "pose_min_confidence")
 
 
 @dataclass
@@ -30,8 +30,11 @@ class Settings:
 
     mirror: bool = False
 
-    # Stricter pose to cut false skeletons on colorized depth
+    # Pose confidence (UI-adjustable). Higher = fewer false skeletons.
     pose_min_confidence: float = 0.55
+    pose_conf_min: float = 0.25
+    pose_conf_max: float = 0.90
+    pose_conf_step: float = 0.05
     pose_every_n_frames: int = 1
     max_poses: int = 2
     # Drop a pose unless this many core joints are confident
@@ -72,11 +75,24 @@ class Settings:
             if key in data:
                 setattr(self, key, data[key])
         self.mirror = bool(self.mirror)
+        self.clamp_pose_confidence()
         # Always force IR to fixed default (ignore old saved brightness)
         self.ir_brightness = 50
 
+    def clamp_pose_confidence(self) -> None:
+        lo, hi = float(self.pose_conf_min), float(self.pose_conf_max)
+        self.pose_min_confidence = float(
+            max(lo, min(hi, round(float(self.pose_min_confidence), 2)))
+        )
+        # Drawing threshold tracks confidence (slightly looser so limbs still connect)
+        self.skeleton_min_vis = max(0.20, self.pose_min_confidence - 0.10)
+
     def save_persisted(self, path: Path = SETTINGS_PATH) -> None:
-        data: Dict[str, Any] = {"mirror": bool(self.mirror)}
+        self.clamp_pose_confidence()
+        data: Dict[str, Any] = {
+            "mirror": bool(self.mirror),
+            "pose_min_confidence": float(self.pose_min_confidence),
+        }
         try:
             path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
         except OSError:

@@ -66,20 +66,26 @@ class PoseEstimator:
 
         self.max_poses = max(1, int(max_poses))
         self.min_joints = max(1, int(min_joints))
+        # Runtime filter (UI); MediaPipe uses a lower floor so raising conf is snappy
         self.min_confidence = float(min_confidence)
+        detect_floor = min(0.30, self.min_confidence)
         base_options = mp_python.BaseOptions(model_asset_path=str(model_path))
         options = vision.PoseLandmarkerOptions(
             base_options=base_options,
             running_mode=vision.RunningMode.VIDEO,
             num_poses=self.max_poses,
-            min_pose_detection_confidence=self.min_confidence,
-            min_pose_presence_confidence=self.min_confidence,
-            min_tracking_confidence=self.min_confidence,
+            min_pose_detection_confidence=detect_floor,
+            min_pose_presence_confidence=detect_floor,
+            min_tracking_confidence=detect_floor,
         )
         self._landmarker = vision.PoseLandmarker.create_from_options(options)
         self._MpImage = MpImage
         self._ImageFormat = ImageFormat
         self._frame_ts_ms = 0
+
+    def set_min_confidence(self, value: float) -> None:
+        """Update live filter threshold (no MediaPipe re-init)."""
+        self.min_confidence = float(value)
 
     def _landmark_score(self, lm) -> float:
         vis = float(getattr(lm, "visibility", 0.0) or 0.0)

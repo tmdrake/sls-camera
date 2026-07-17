@@ -47,7 +47,10 @@ On open the app will:
 4. Set **IR sensor brightness fixed at 50/50** (no UI control for now)  
 5. Stream live depth (main) + IR (PiP); skeletons from **colorized depth** pose (max 2)  
 
-**Skeletons:** colorized-depth pose only, max **2** people, stricter confidence to reduce false positives. Status shows `Detected:#`.  
+**Skeletons:** colorized-depth pose only, max **2** people. Status shows `Detected:#`.
+
+**Confidence (UI):** bottom bar `Conf −` / `Conf 0.55` / `Conf +` (range 0.25–0.90, step 0.05).  
+Higher = fewer false sticks. Saved in `user_settings.json`. Keys: `[` `]`.  
 
 Keys: **Esc / Q** quit · **M** mirror · **F** re-assert fullscreen  
 

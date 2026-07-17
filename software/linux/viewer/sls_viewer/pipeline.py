@@ -52,6 +52,22 @@ class FramePipeline:
         self.s.mirror = bool(value)
         self.s.save_persisted()
 
+    @property
+    def pose_confidence(self) -> float:
+        return float(self.s.pose_min_confidence)
+
+    def set_pose_confidence(self, value: float) -> float:
+        """UI confidence 0.25–0.90; applies immediately to pose filter + draw."""
+        self.s.pose_min_confidence = float(value)
+        self.s.clamp_pose_confidence()
+        self.s.save_persisted()
+        if self._pose is not None:
+            self._pose.set_min_confidence(self.s.pose_min_confidence)
+        return self.s.pose_min_confidence
+
+    def adjust_pose_confidence(self, delta: float) -> float:
+        return self.set_pose_confidence(self.pose_confidence + float(delta))
+
     def get_jpeg(self) -> Optional[bytes]:
         with self._lock:
             return self._jpeg
