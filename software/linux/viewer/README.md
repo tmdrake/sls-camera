@@ -51,12 +51,14 @@ On open the app will:
 
 | Limit | Value |
 |-------|--------|
-| **Max people at once** | **1–6** (default **4**), UI `Max −` / `Max +`, keys `,` `.` |
-| **Detected status** | `Detected:n/max` (e.g. `Detected:2/4`) |
-| **Confidence range** | **0.25 – 0.99** (default 0.70) |
-| **Confidence UI** | `Conf −` / `Conf +` (step 0.05), keys `[` `]` |
+| **Max people** | **1–6** (default **4**) — in **Settings** popup |
+| **Detected status** | `Detected:n/max` on the main status bar |
+| **Confidence** | **0.25 – 0.99** (default 0.70) — in Settings |
+| **Mirror** | in Settings |
+| **Skeleton lines** | thin (1px bones, small joints) |
 
-Higher confidence rebuilds MediaPipe thresholds and tightens geometry filters. Changing Max rebuilds MediaPipe `num_poses` so more (or fewer) sticks can be drawn.  
+Bottom bar: **Settings** · **Quit**. Open Settings for Max / Conf / Mirror.  
+Keys: `S` settings · `[` `]` conf · `,` `.` max people · `M` mirror · `Esc` closes Settings then quits.  
 
 Keys: **Esc / Q** quit · **M** mirror · **F** re-assert fullscreen  
 

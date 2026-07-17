@@ -49,8 +49,9 @@ class Settings:
 
     bone_color: tuple[int, int, int] = (0, 255, 180)
     joint_color: tuple[int, int, int] = (0, 255, 255)
-    bone_thickness: int = 3
-    joint_radius: int = 5
+    # Thin SLS sticks (was 3 / 5)
+    bone_thickness: int = 1
+    joint_radius: int = 3
     skeleton_min_vis: float = 0.45
 
     frame_width: int = 1280

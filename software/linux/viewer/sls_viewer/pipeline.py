@@ -328,8 +328,8 @@ class FramePipeline:
                     poses,
                     bone_color=self.s.bone_color,
                     joint_color=self.s.joint_color,
-                    bone_thickness=max(2, self.s.bone_thickness - 1),
-                    joint_radius=max(3, self.s.joint_radius - 1),
+                    bone_thickness=max(1, self.s.bone_thickness),
+                    joint_radius=max(2, self.s.joint_radius - 1),
                     min_vis=self.s.skeleton_min_vis,
                 )
 
