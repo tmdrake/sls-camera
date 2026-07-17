@@ -87,7 +87,8 @@ class Settings:
 
     # Session tools
     auto_snap_on_detect: bool = False
-    record_fps: float = 15.0
+    # Match live pipeline target so AVI timing matches what you see on screen
+    record_fps: float = 20.0
 
     # DrakeVox (random word every 5–15 min; timestamped + TTS)
     drakevox_enabled: bool = True
