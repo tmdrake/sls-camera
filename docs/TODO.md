@@ -31,8 +31,8 @@ policy come later.
 
 ## Product features (later)
 
-- [x] DrakeVox word panel (5–15 min timer, timestamped; Settings + key `O`; session log)
-- [ ] DrakeVox external triggers (detect / audio / MCU)
+- [x] DrakeVox word panel (5–15 min timer, TTS, auto-snap option; key `O`)
+- [ ] DrakeVox external triggers beyond auto-snap (audio spike / MCU)
 - [ ] Arduino / MCU sensor bridge
 - [ ] Optional RGB view or color swap (Windows parity)
 

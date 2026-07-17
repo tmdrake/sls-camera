@@ -55,9 +55,9 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 
 | Control | Action |
 |---------|--------|
-| **Snap** | Save current composite frame |
-| **Record** | Start/stop recording; button becomes `Stop M:SS` |
-| **Settings** | Max people, Conf, Mirror, Spectrum, Auto-snap, DrakeVox, Brightness, Defaults (confirm), Clear captures (confirm) |
+| **Snap** | Save composite JPEG (no forced DrakeVox word); LED red→green |
+| **Record** | Start/stop AVI; LED red while active |
+| **Settings** | See Settings details below |
 
 ### Keyboard
 
@@ -80,12 +80,14 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 |---------|-----------------|
 | **Max people** | 1–6; MediaPipe default **1** |
 | **Confidence** | 0.25–0.99; MediaPipe default **0.5** |
-| **Defaults** | Resets Max=1 and Conf=0.5 ([PoseLandmarkerOptions](https://ai.google.dev/edge/api/mediapipe/python/mp/tasks/vision/PoseLandmarkerOptions)) |
+| **Defaults** | Confirm, then Max=1 and Conf=0.5 ([PoseLandmarkerOptions](https://ai.google.dev/edge/api/mediapipe/python/mp/tasks/vision/PoseLandmarkerOptions)) |
+| **Clear captures** | Confirm, then delete files under `captures/` (blocked while REC) |
 | **Mirror** | Off by default |
 | **Spectrum** | On/off; strip height always reserved (no layout jump) |
-| **Auto-snap on detect** | Off by default |
-| **DrakeVox** | **ON** = show panel + generate (timer/TTS/O); **OFF** = hide panel + stop all generation |
-| **DrakeVox on auto-snap** | Default **ON**; fires word+TTS into JPEG only on auto-snap (not manual Snap) |
+| **Auto-snap on detect** | Off by default (pose appear → Snap) |
+| **DrakeVox** | **ON** = panel + timer/TTS/O; **OFF** = hide panel + stop generation |
+| **DrakeVox on auto-snap** | Default **ON**; only when auto-snap fires (not manual Snap) |
+| **Brightness** | ±10%; n/a if no backlight/xrandr |
 
 ## Captures
 
@@ -137,21 +139,32 @@ The app **does not set** ALSA or Pulse capture gain. Levels come from the OS/dev
 
 ## DrakeVox
 
-Spirit-box style word generator (Linux name; not “Ovilus”). Word list matches the classic Windows explorer vocabulary.
+Spirit-box style word generator (not “Ovilus”). Default bank is the Digital Dowsing published list.
 
 | Item | Detail |
 |------|--------|
-| **Words** | Digital Dowsing list (`data/drakevox_words_digitaldowsing.txt`, ~2k words); fallback 20 classic words if file missing |
-| **Timer** | Random **5–15 minutes** between words |
-| **UI** | Taller panel **under the IR PiP**; **last 5** as `HH:MM:SS WORD` (newest first) |
-| **TTS** | Speaks each word (`libespeak-ng` / `espeak-ng` / `espeak`; live fallback `spd-say`) |
-| **History** | Last 5 on overlay; last 12 in Settings; `session_*.jsonl` event `drakevox` |
-| **Manual** | Settings **DrakeVox now** or key **`O`** |
-| **Recording** | Overlay **burned into AVI video**; spoken audio **mixed into AVI** with mic |
+| **Words** | `data/drakevox_words_digitaldowsing.txt` (~2035); fallback 20 classic words if missing |
+| **Timer** | Random **300–900 s** (5–15 min) between words |
+| **UI** | Panel **under the IR PiP**; last **5** as `HH:MM:SS WORD` |
+| **TTS** | `libespeak-ng` / espeak / spd-say fallback |
+| **Manual** | **DrakeVox now** or key **`O`** |
+| **Auto-snap** | If **DrakeVox on auto-snap** + **Auto-snap on detect**: generate word + TTS and burn into JPEG |
+| **Manual Snap** | Does **not** force a new word (may still show current panel on JPEG) |
+| **Recording** | Overlay burned into AVI; TTS mixed into audio with mic |
+
+## Kinect LED cues
+
+| State | LED (freenect) |
+|-------|----------------|
+| Idle | **Green** (or off with `--led-off`) |
+| Recording | Solid **red** |
+| After Snap / auto-snap | Brief **red**, then restore (green, or red if still REC) |
+
+No true orange on the Kinect; yellow is available in freenect but snap uses red→restore for a clear cue.
 
 ## Kinect reconnect
 
-If freenect loses the camera (unplug, BUSY, power brick), the main view shows **RECONNECTING TO KINECT…** and retries forever until the device returns (LED green + auto-level on success).
+If freenect loses the camera (unplug, BUSY, power brick), the main view shows **Reconnecting to SLS Camera** and retries forever until the device returns (LED green + auto-level on success).
 
 | Timing | Value | Meaning |
 |--------|-------|---------|
@@ -207,12 +220,18 @@ viewer/
     main.py               # entry
     qt_app.py             # UI + Settings
     pipeline.py           # capture → pose → composite + reconnect
-    freenect_io.py
+    freenect_io.py        # depth/IR + LED + reconnect
     colorize.py
     pose.py
     skeleton.py
     spectrum.py           # FFT + mic retry + PCM sinks
-    session_io.py         # Snap / Record + A/V mux
+    session_io.py         # Snap / Record + A/V mux + clear captures
+    drakevox.py
+    tts.py
+    battery.py
+    backlight.py
+    audio_device.py
+    data/                 # DrakeVox word list (Digital Dowsing extract)
     drakevox.py             # random word 5–15 min, timestamped overlay
     tts.py                  # espeak TTS for DrakeVox + AVI mix
     audio_device.py       # Kinect mic picker
