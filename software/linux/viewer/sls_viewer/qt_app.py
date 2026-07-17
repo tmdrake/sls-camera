@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -292,15 +293,26 @@ class SlsMainWindow(QMainWindow):
         self.video.setObjectName("video")
         self.video.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.video.setScaledContents(False)
+        self.video.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         layout.addWidget(self.video, stretch=1)
 
+        # Always reserve strip height so show/hide never resizes the window
+        # (toggling setVisible was shrinking fullscreen and clipping Quit).
         self.spectrum_label = QLabel()
         self.spectrum_label.setObjectName("spectrum")
         self.spectrum_label.setFixedHeight(pipeline.s.spectrum_height)
+        self.spectrum_label.setMinimumHeight(pipeline.s.spectrum_height)
+        self.spectrum_label.setMaximumHeight(pipeline.s.spectrum_height)
+        self.spectrum_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
         self.spectrum_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.spectrum_label)
 
         bar = QWidget()
+        bar.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         bar_layout = QHBoxLayout(bar)
         bar_layout.setContentsMargins(10, 6, 10, 10)
         bar_layout.setSpacing(8)
@@ -347,7 +359,7 @@ class SlsMainWindow(QMainWindow):
 
         if pipeline.s.spectrum_enabled:
             self.spectrum.start()
-        self._sync_spectrum_visibility()
+        self._paint_spectrum_strip()
 
         QTimer.singleShot(0, self._force_fullscreen)
 
@@ -359,13 +371,44 @@ class SlsMainWindow(QMainWindow):
                 self.spectrum.start()
         else:
             self.spectrum.stop()
-        self._sync_spectrum_visibility()
+        # Keep strip geometry stable; only mic capture toggles.
+        self._paint_spectrum_strip()
+        # Re-assert fullscreen in case the WM reacted to layout churn
+        QTimer.singleShot(0, self._force_fullscreen)
 
-    def _sync_spectrum_visibility(self) -> None:
-        on = bool(self.pipeline.s.spectrum_enabled)
-        self.spectrum_label.setVisible(on)
-        if on:
-            self.spectrum_label.setFixedHeight(self.pipeline.s.spectrum_height)
+    def _paint_spectrum_strip(self) -> None:
+        """Always paint into the reserved strip (bars or idle)."""
+        w = max(64, self.spectrum_label.width() or self.width() or 640)
+        h = int(self.pipeline.s.spectrum_height)
+        if self.pipeline.s.spectrum_enabled and self.spectrum.active:
+            strip = self.spectrum.paint_bgr(w, h)
+        else:
+            # Idle strip — same height, no layout jump
+            strip = np.zeros((h, w, 3), dtype=np.uint8)
+            strip[:] = (12, 12, 12)
+            if not self.pipeline.s.spectrum_enabled:
+                cv2.putText(
+                    strip,
+                    "spectrum off",
+                    (8, max(14, h // 2 + 4)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.4,
+                    (70, 70, 70),
+                    1,
+                    cv2.LINE_AA,
+                )
+            elif self.spectrum.error:
+                cv2.putText(
+                    strip,
+                    "spectrum unavailable",
+                    (8, max(14, h // 2 + 4)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.4,
+                    (70, 70, 70),
+                    1,
+                    cv2.LINE_AA,
+                )
+        self.spectrum_label.setPixmap(bgr_to_qpixmap(strip))
 
     def _settings_open(self) -> bool:
         return self._settings_dlg is not None and self._settings_dlg.isVisible()
@@ -405,6 +448,11 @@ class SlsMainWindow(QMainWindow):
             self._settings_dlg._refresh()
 
     def _force_fullscreen(self) -> None:
+        screen = self.screen() or QApplication.primaryScreen()
+        if screen is not None:
+            geo = screen.geometry()
+            self.setMinimumSize(geo.size())
+            self.setGeometry(geo)
         self.setWindowState(self.windowState() | Qt.WindowState.WindowFullScreen)
         self.showFullScreen()
         self.raise_()
@@ -443,11 +491,7 @@ class SlsMainWindow(QMainWindow):
                 )
                 self.video.setPixmap(scaled)
 
-        if self.pipeline.s.spectrum_enabled and self.spectrum_label.isVisible():
-            w = max(64, self.spectrum_label.width())
-            h = self.pipeline.s.spectrum_height
-            strip = self.spectrum.paint_bgr(w, h)
-            self.spectrum_label.setPixmap(bgr_to_qpixmap(strip))
+        self._paint_spectrum_strip()
 
     def closeEvent(self, event) -> None:
         self._timer.stop()
