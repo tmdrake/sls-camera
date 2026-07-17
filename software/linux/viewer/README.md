@@ -41,20 +41,20 @@ On open the app will:
 1. Claim the Kinect (depth + IR)  
 2. Set the **LED to green**  
 3. **Auto-level** the tilt motor to **0°**  
-4. Set **IR sensor gain to 30** (freenect-style default; fixed, not in UI)  
+4. Set **IR sensor gain to 50** (full freenect range; fixed, not in UI)  
 5. Stream live depth (main) + IR (PiP); skeletons from colorized-depth pose  
 
 ## IR sensor gain (fixed)
 
 | Item | Detail |
 |------|--------|
-| **Value** | **30** (range available in freenect is 1–50) |
+| **Value** | **50** (full; freenect range is 1–50) |
 | **What it is** | IR **camera sensor gain** only |
 | **What it is not** | IR **projector** power (projector stays on for depth; not software-adjustable here) |
-| **UI** | **None** — fixed at 30; noted in Settings as read-only text |
-| **Why 30** | Matches freenect’s usual library default; good enough without extra controls |
+| **UI** | **None** — fixed at 50; noted in Settings as read-only text |
+| **Processing** | Affects **IR PiP look only** — pose/skeletons use colorized depth, not IR gain |
 
-Status bar shows `IR gain 30` when live.
+Status bar shows `IR gain 50` when live.
 
 ## Skeletons / Settings
 

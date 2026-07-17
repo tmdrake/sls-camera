@@ -140,21 +140,21 @@ class FramePipeline:
         """Open live freenect stream: green LED + auto-level tilt, then depth+IR."""
         try:
             self._status = "opening kinect (LED green, auto-level)…"
-            # IR sensor gain fixed at 30 (freenect library-style default); not in UI
-            self.s.ir_brightness = 30
+            # IR sensor gain fixed at 50 (full); not in UI — PiP only, not pose
+            self.s.ir_brightness = 50
             self._kinect = freenect_io.FreenectSync(
                 index=self.s.device_index,
                 video_mode="ir",
                 led=freenect_io.LED_GREEN if self.s.led_green else freenect_io.LED_OFF,
                 tilt_degs=self.s.tilt_degs,
                 auto_level=self.s.auto_level,
-                ir_brightness=30,
+                ir_brightness=50,
             )
-            self._kinect.prepare()  # LED green + tilt 0° + IR gain 30 + streams
+            self._kinect.prepare()  # LED green + tilt 0° + IR gain 50 + streams
             depth, ir = self._kinect.get_depth_and_ir()
             self._status = (
                 f"live · {depth.shape[1]}x{depth.shape[0]} · "
-                f"LED green · tilt 0° · IR gain 30"
+                f"LED green · tilt 0° · IR gain 50"
             )
             return True
         except Exception as e:

@@ -138,8 +138,8 @@ class SettingsDialog(QDialog):
         root.addLayout(grid)
 
         note = QLabel(
-            "IR sensor gain is fixed at 30 (freenect default). "
-            "That is sensor gain only, not IR projector power."
+            "IR sensor gain is fixed at 50 (full). "
+            "Sensor gain only — not projector power; PiP display only."
         )
         note.setStyleSheet("color: #666; font-size: 11px; padding-top: 4px;")
         note.setWordWrap(True)

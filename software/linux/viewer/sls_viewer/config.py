@@ -25,9 +25,9 @@ class Settings:
     led_green: bool = True
     auto_level: bool = True
     tilt_degs: int = 0
-    # IR *sensor* gain only (not projector). freenect range 1–50; library default ~30.
+    # IR *sensor* gain only (not projector). freenect range 1–50; full gain = 50.
     # Fixed — no Settings UI. See software/linux/viewer/README.md.
-    ir_brightness: int = 30
+    ir_brightness: int = 50
 
     mirror: bool = False
 
