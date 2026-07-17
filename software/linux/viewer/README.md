@@ -136,7 +136,7 @@ Spirit-box style word generator (Linux name; not “Ovilus”). Word list matche
 
 | Item | Detail |
 |------|--------|
-| **Words** | SPIRIT, GHOST, SHADOW, CHILD, WOMAN, MAN, DEMON, ANGEL, LEAVE, STAY, HELP, HERE, COLD, ENERGY, YES, NO, DARK, LIGHT, FOLLOW, GO |
+| **Words** | Digital Dowsing list (`data/drakevox_words_digitaldowsing.txt`, ~2k words); fallback 20 classic words if file missing |
 | **Timer** | Random **5–15 minutes** between words |
 | **UI** | Taller panel **under the IR PiP**; **last 5** as `HH:MM:SS WORD` (newest first) |
 | **TTS** | Speaks each word (`libespeak-ng` / `espeak-ng` / `espeak`; live fallback `spd-say`) |

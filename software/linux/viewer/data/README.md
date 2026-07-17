@@ -18,4 +18,6 @@ PDF title: *Ovilus X, Ovilus II, PX word List Alphabetical*.
 
 - Downloaded for local DrakeVox development/reference. **Ovilus** is Digital Dowsing’s product name; our UI uses **DrakeVox**.
 - Check Digital Dowsing’s terms before redistributing in a commercial product.
-- The Linux app’s default bank is still the small 20-word classic list in `drakevox.py` until you wire this file as the active dictionary.
+- **Active bank:** DrakeVox loads `drakevox_words_digitaldowsing.txt` by default
+  (`sls_viewer/drakevox.py` → `load_wordlist`). If the file is missing, it falls
+  back to the small 20-word classic list in `drakevox.py`.

@@ -260,16 +260,19 @@ class SettingsDialog(QDialog):
         if self.pipeline.s.drakevox_enabled:
             hist0 = self.drakevox.history()
             tts = tts_backend_name()
+            bank = self.drakevox.word_source
             if hist0:
                 self.drakevox_label.setText(
-                    f"DrakeVox: {hist0[0].label()}  ·  TTS: {tts}"
+                    f"DrakeVox: {hist0[0].label()}  ·  {bank}  ·  TTS: {tts}"
                 )
             else:
                 self.drakevox_label.setText(
-                    f"DrakeVox: (waiting)  ·  TTS: {tts}"
+                    f"DrakeVox: (waiting)  ·  {bank}  ·  TTS: {tts}"
                 )
         else:
-            self.drakevox_label.setText("DrakeVox: off")
+            self.drakevox_label.setText(
+                f"DrakeVox: off  ·  {self.drakevox.word_source}"
+            )
         hist = self.drakevox.history_lines(8)
         self.drakevox_history.setText(
             "History:\n" + "\n".join(hist) if hist else "History: (none yet)"

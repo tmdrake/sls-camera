@@ -2,6 +2,9 @@
 
 Renamed from the old Windows "Ovilus" label for trademark safety.
 Timer: random 5–15 min between words; each hit is timestamped.
+
+Default bank: Digital Dowsing published list under viewer/data/
+(fallback: small built-in classic list if the file is missing).
 """
 
 from __future__ import annotations
@@ -11,9 +14,18 @@ import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
-DEFAULT_WORDS: Tuple[str, ...] = (
+from .config import VIEWER_ROOT
+
+# Published Digital Dowsing Ovilus X / II / PX alphabetical list (extracted PDF)
+DEFAULT_WORDLIST_PATH = (
+    VIEWER_ROOT / "data" / "drakevox_words_digitaldowsing.txt"
+)
+
+# Fallback if the data file is missing (classic Windows SLS explorer set)
+FALLBACK_WORDS: Tuple[str, ...] = (
     "SPIRIT",
     "GHOST",
     "SHADOW",
@@ -36,10 +48,43 @@ DEFAULT_WORDS: Tuple[str, ...] = (
     "GO",
 )
 
+# Back-compat alias
+DEFAULT_WORDS = FALLBACK_WORDS
+
 MIN_INTERVAL_S = 5 * 60
 MAX_INTERVAL_S = 15 * 60
 HISTORY_MAX = 12
 OVERLAY_HISTORY_N = 5
+
+
+def load_wordlist(path: Optional[Path] = None) -> Tuple[Tuple[str, ...], str]:
+    """
+    Load words from a text file (one word per line; # comments ignored).
+
+    Returns (words_tuple, source_label).
+    """
+    p = Path(path) if path is not None else DEFAULT_WORDLIST_PATH
+    words: List[str] = []
+    try:
+        text = p.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return FALLBACK_WORDS, f"fallback ({len(FALLBACK_WORDS)} words; missing {p.name})"
+
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        # allow "WORD" or "WORD extra" → first token
+        tok = line.split()[0].upper()
+        if tok and tok not in words:
+            # keep simple tokens (letters/digits/apostrophe)
+            if all(c.isalnum() or c in ("'", "-") for c in tok):
+                words.append(tok)
+
+    if not words:
+        return FALLBACK_WORDS, f"fallback ({len(FALLBACK_WORDS)} words; empty {p.name})"
+
+    return tuple(words), f"{p.name} ({len(words)} words)"
 
 
 @dataclass
@@ -59,13 +104,23 @@ class DrakeVoxEngine:
 
     def __init__(
         self,
-        words: Sequence[str] = DEFAULT_WORDS,
+        words: Optional[Sequence[str]] = None,
         min_interval_s: float = MIN_INTERVAL_S,
         max_interval_s: float = MAX_INTERVAL_S,
         history_max: int = HISTORY_MAX,
         enabled: bool = True,
+        wordlist_path: Optional[Path] = None,
     ):
-        self.words = tuple(w.upper() for w in words if w.strip())
+        if words is None:
+            loaded, source = load_wordlist(wordlist_path)
+            self.words = loaded
+            self.word_source = source
+        else:
+            self.words = tuple(w.upper() for w in words if str(w).strip())
+            self.word_source = f"custom ({len(self.words)} words)"
+        if not self.words:
+            self.words = FALLBACK_WORDS
+            self.word_source = f"fallback ({len(self.words)} words)"
         self.min_interval_s = float(min_interval_s)
         self.max_interval_s = float(max_interval_s)
         self.history_max = int(history_max)
@@ -76,6 +131,10 @@ class DrakeVoxEngine:
         self._next_at = 0.0
         self._last_fire_at = 0.0
         self._schedule_next_unlocked(from_now=True)
+
+    @property
+    def word_count(self) -> int:
+        return len(self.words)
 
     @property
     def enabled(self) -> bool:
