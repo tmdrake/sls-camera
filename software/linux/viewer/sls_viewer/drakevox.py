@@ -114,8 +114,13 @@ class DrakeVoxEngine:
                 return None
             return self._generate_unlocked()
 
-    def generate_now(self) -> str:
+    def generate_now(self) -> Optional[str]:
+        """Manual fire. No-op when disabled (OFF = no generation)."""
+        if not self.enabled:
+            return None
         with self._lock:
+            if not self._enabled:
+                return None
             return self._generate_unlocked()
 
     def flash_active(self, hold_s: float = 8.0) -> bool:
@@ -198,20 +203,16 @@ def paint_drakevox_bgr(
     alpha = 0.78 if flash else 0.62
     cv2.addWeighted(overlay, alpha, bgr, 1.0 - alpha, 0, bgr)
 
-    title = "DRAKEVOX" if enabled else "DRAKEVOX OFF"
     cv2.putText(
         bgr,
-        title,
+        "DRAKEVOX",
         (x0 + 8, y0 + 16),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.42,
-        (0, 90, 220) if enabled else (90, 90, 90),
+        (0, 90, 220),
         1,
         cv2.LINE_AA,
     )
-
-    if not enabled:
-        return
 
     text_y = y0 + title_h + pad_y
     if not events:

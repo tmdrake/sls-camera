@@ -173,7 +173,7 @@ class SettingsDialog(QDialog):
         self.btn_drakevox = QPushButton()
         self.btn_drakevox.setObjectName("wide")
         self.btn_drakevox.setToolTip(
-            "ON: show panel + timer/TTS · OFF: hide panel and pause DrakeVox"
+            "ON: show panel + generate words (timer/TTS) · OFF: hide panel and stop generation"
         )
         self.btn_drakevox.clicked.connect(self._toggle_drakevox)
         grid.addWidget(self.btn_drakevox, row, 1, 1, 3)
@@ -609,20 +609,21 @@ class SlsMainWindow(QMainWindow):
                 self.pipeline.s.auto_snap_on_detect,
                 frame,
             )
-            # Composite DrakeVox overlay, then record + display the same frame
+            # Composite DrakeVox overlay (hidden when OFF), then record + display
             display = frame.copy()
             s = self.pipeline.s
-            paint_drakevox_bgr(
-                display,
-                enabled=s.drakevox_enabled,
-                flash=self.drakevox.flash_active(),
-                history=self.drakevox.history()[:5],
-                pip_w=s.ir_pip_width,
-                pip_h=s.ir_pip_height,
-                pip_margin=s.ir_pip_margin,
-                pip_corner=s.ir_pip_corner,
-                history_n=5,
-            )
+            if s.drakevox_enabled:
+                paint_drakevox_bgr(
+                    display,
+                    enabled=True,
+                    flash=self.drakevox.flash_active(),
+                    history=self.drakevox.history()[:5],
+                    pip_w=s.ir_pip_width,
+                    pip_h=s.ir_pip_height,
+                    pip_margin=s.ir_pip_margin,
+                    pip_corner=s.ir_pip_corner,
+                    history_n=5,
+                )
             if self.session.recording:
                 self.session.write_frame(display)
             pix = bgr_to_qpixmap(display)
