@@ -19,6 +19,11 @@ class Settings:
     # Kinect index (first device)
     device_index: int = 0
 
+    # Hardware defaults on open
+    led_green: bool = True  # freenect LED_GREEN while running
+    auto_level: bool = True  # tilt motor to 0° (level) on start
+    tilt_degs: int = 0  # used only if auto_level is False
+
     # Mirror ON by default (operator behind camera sees familiar left/right).
     # Use --no-mirror or UI toggle to turn off.
     mirror: bool = True

@@ -32,6 +32,16 @@ def parse_args(argv=None):
         action="store_true",
         help="Allow synthetic frames if Kinect cannot open",
     )
+    p.add_argument(
+        "--no-auto-level",
+        action="store_true",
+        help="Do not tilt motor to 0° on start",
+    )
+    p.add_argument(
+        "--led-off",
+        action="store_true",
+        help="Leave Kinect LED off (default: green while running)",
+    )
     p.add_argument("--device", type=int, default=0)
     return p.parse_args(argv)
 
@@ -124,10 +134,15 @@ def main(argv=None):
     settings.mirror = not bool(args.no_mirror)
     settings.device_index = args.device
     settings.allow_demo_without_kinect = bool(args.demo)
+    settings.auto_level = not bool(args.no_auto_level)
+    settings.led_green = not bool(args.led_off)
 
     pipeline = FramePipeline(settings)
     pipeline.start()
-    print(f"UI={args.ui} mirror={settings.mirror} demo={settings.allow_demo_without_kinect}")
+    print(
+        f"UI={args.ui} mirror={settings.mirror} demo={settings.allow_demo_without_kinect} "
+        f"led_green={settings.led_green} auto_level={settings.auto_level}"
+    )
 
     try:
         if args.ui == "web":

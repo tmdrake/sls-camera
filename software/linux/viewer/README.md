@@ -28,21 +28,32 @@ For a bulletproof “this is the app” experience: **Qt fullscreen always-on-to
 
 Kinect streams **depth + IR** (not RGB+IR at once). Pose runs on **IR**.
 
-## Quick start
+## Quick start (live Kinect)
 
 ```bash
-sudo modprobe -r gspca_kinect   # if needed
+# if freenect says BUSY / cannot open:
+sudo modprobe -r gspca_kinect
+# or: ../scripts/fix-kinect-access.sh
+
 cd software/linux/viewer
 ./run.sh
 ```
 
+On open the app will:
+
+1. Claim the Kinect (depth + IR)  
+2. Set the **LED to green**  
+3. **Auto-level** the tilt motor to **0°**  
+4. Stream live depth (main) + IR (PiP) with skeletons  
+
 Keys: **Esc / Q** quit · **M** mirror · **F** re-assert fullscreen  
-Touch: **Mirror** / **Quit** buttons on the bottom bar.
 
 ```bash
-./run.sh --demo           # no Kinect (UI test)
-./run.sh --no-mirror      # turn default mirror off
-./run.sh --ui web         # optional browser UI on :8765
+./run.sh --demo            # synthetic UI test (no Kinect)
+./run.sh --no-mirror       # mirror off
+./run.sh --no-auto-level   # leave tilt where it is
+./run.sh --led-off         # no green LED
+./run.sh --ui web          # optional browser UI
 ```
 
 ## Stack

@@ -103,21 +103,27 @@ class FramePipeline:
         return depth, ir
 
     def _open_kinect(self) -> bool:
-        if freenect_io.gspca_loaded():
-            self._status = "gspca_kinect loaded — run: sudo modprobe -r gspca_kinect"
-            return False
+        """Open live freenect stream: green LED + auto-level tilt, then depth+IR."""
         try:
+            self._status = "opening kinect (LED green, auto-level)…"
             self._kinect = freenect_io.FreenectSync(
-                index=self.s.device_index, video_mode="ir"
+                index=self.s.device_index,
+                video_mode="ir",
+                led=freenect_io.LED_GREEN if self.s.led_green else freenect_io.LED_OFF,
+                tilt_degs=self.s.tilt_degs,
+                auto_level=self.s.auto_level,
             )
-            # Probe one frame
-            self._kinect.get_depth_and_ir()
-            self._status = "kinect ok"
+            self._kinect.prepare()  # LED green + tilt 0° + first depth claim
+            depth, ir = self._kinect.get_depth_and_ir()
+            self._status = f"live · {depth.shape[1]}x{depth.shape[0]} depth+IR · LED green · tilt 0°"
             return True
         except Exception as e:
             self._status = f"kinect error: {e}"
             if self._kinect:
-                self._kinect.stop()
+                try:
+                    self._kinect.stop()
+                except Exception:
+                    pass
             self._kinect = None
             return False
 
@@ -202,11 +208,11 @@ class FramePipeline:
             )
             for i, line in enumerate(
                 [
-                    msg,
-                    "1) Kinect power brick ON",
-                    "2) sudo modprobe -r gspca_kinect",
+                    msg[:90],
+                    "1) Kinect power brick ON + USB plugged in",
+                    "2) sudo modprobe -r gspca_kinect  (if busy)",
                     "3) ./software/linux/scripts/fix-kinect-access.sh",
-                    "4) restart this app",
+                    "4) Close other freenect apps; restart this app",
                 ]
             ):
                 cv2.putText(
