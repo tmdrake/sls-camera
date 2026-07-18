@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import threading
@@ -37,6 +38,14 @@ AUDIO_SAMPLE_RATE = 16000
 AUDIO_CHANNELS = 1
 
 
+def default_local_captures_dir() -> Path:
+    """Local snaps/records dir; honor SLS_CAPTURES_DIR (firmware permanent media)."""
+    env = (os.environ.get("SLS_CAPTURES_DIR") or "").strip()
+    if env:
+        return Path(env)
+    return CAPTURES_DIR
+
+
 def _find_ffmpeg() -> Optional[str]:
     path = shutil.which("ffmpeg")
     if path:
@@ -50,7 +59,9 @@ def _find_ffmpeg() -> Optional[str]:
 
 
 class SessionRecorder:
-    def __init__(self, captures_dir: Path = CAPTURES_DIR):
+    def __init__(self, captures_dir: Optional[Path] = None):
+        if captures_dir is None:
+            captures_dir = default_local_captures_dir()
         self._local_captures_dir = Path(captures_dir)
         self.captures_dir = Path(captures_dir)
         self._captures_label = "local"

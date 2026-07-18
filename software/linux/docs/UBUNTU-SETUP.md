@@ -40,7 +40,22 @@ sudo apt install -y freenect libfreenect-bin libfreenect-dev \
   v4l-utils guvcview
 ```
 
-Or from this repo:
+Or from this repo (preferred for field app + offline cache):
+
+```bash
+# Full seed list (freenect, portaudio, espeak, python3-venv, ffmpeg, …)
+./software/linux/scripts/install-apt-deps.sh
+# or via installer:
+./software/linux/scripts/install-field-app.sh --with-apt-deps
+
+# Offline: use firmware recursive deb pack (never dpkg -i *.deb)
+./software/linux/scripts/install-apt-deps.sh \
+  --deb-cache ~/sls-camera-firmware/vendor/debs
+```
+
+See [FIELD-INSTALL.md](FIELD-INSTALL.md) and issues [#2](https://github.com/tmdrake/sls-camera/issues/2) / [#3](https://github.com/tmdrake/sls-camera/issues/3).
+
+Legacy freenect-only helper:
 
 ```bash
 ./software/linux/scripts/install-freenect.sh

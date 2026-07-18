@@ -1,0 +1,42 @@
+# Seed apt packages for the SLS Linux field app (Ubuntu/Lubuntu x86_64).
+#
+# Used by:
+#   software/linux/scripts/install-apt-deps.sh
+#   install-field-app.sh --with-apt-deps
+#
+# Seeds only — install-apt-deps.sh never blanket-dpkgs recursive debs.
+# When a local deb cache is present (firmware vendor/debs or --deb-cache),
+# debs are copied into /var/cache/apt/archives and apt installs these seeds
+# with --no-download so transitive deps resolve without OR-alternative
+# conflicts (see GitHub #2 / #3).
+#
+# Keep in sync with sls-camera-firmware/packages/apt-packages.txt (firmware
+# may omit espeak-ng if TTS is optional there; field app wants it).
+#
+# Note: Ubuntu 24.04+ uses t64 transition names (libfreenect0.5t64).
+# install-apt-deps.sh resolves both t64 and pre-t64 names.
+
+freenect
+libfreenect-bin
+libfreenect0.5t64
+libfreenect-dev
+libportaudio2
+alsa-utils
+espeak-ng
+python3
+python3-venv
+python3-pip
+python3-dev
+# Qt / GUI runtime (PySide6 wheels often need these)
+libgl1
+libxkbcommon0
+libegl1
+libxcb-cursor0
+libdbus-1-3
+# Field tools
+curl
+ca-certificates
+usbutils
+v4l-utils
+# Optional host ffmpeg (app also vendors imageio-ffmpeg wheel)
+ffmpeg

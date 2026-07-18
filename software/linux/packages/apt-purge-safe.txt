@@ -1,0 +1,13 @@
+# Packages safe to remove with uninstall-field-app.sh --purge-apt-deps.
+# Do NOT list base system packages (python3, ca-certificates, curl, libgl1, …).
+#
+# Only seeds that are clearly SLS/field-camera oriented.
+
+freenect
+libfreenect-bin
+libfreenect0.5t64
+libfreenect0.5
+libfreenect-dev
+libportaudio2
+espeak-ng
+v4l-utils

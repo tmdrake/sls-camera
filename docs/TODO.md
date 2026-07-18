@@ -25,8 +25,8 @@ policy come later.
 
 | Issue | Topic |
 |-------|--------|
-| [#2](https://github.com/tmdrake/sls-camera/issues/2) | Offline recursive apt deps + cache-based install |
-| [#3](https://github.com/tmdrake/sls-camera/issues/3) | apt/Python OR-alternatives, downgrades, version conflicts |
+| [#2](https://github.com/tmdrake/sls-camera/issues/2) | Offline apt seeds + cache install — **closed** (`install-apt-deps.sh`) |
+| [#3](https://github.com/tmdrake/sls-camera/issues/3) | OR-alternatives / conflicts — **tracking** (mitigated; new finds → comment) |
 | [#4](https://github.com/tmdrake/sls-camera/issues/4) | Optional system shutdown on Quit — **closed** (Settings + exit 10) |
 | [#5](https://github.com/tmdrake/sls-camera/issues/5) | Captures → removable media / SD — **closed (v1)**; Auto default, SD then USB |
 
@@ -36,6 +36,10 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
   - `software/linux/scripts/install-field-app.sh`
   - `software/linux/scripts/uninstall-field-app.sh`
   - Docs: `software/linux/docs/FIELD-INSTALL.md`
+- [x] **Offline-safe apt install (#2)** — seed list + `install-apt-deps.sh` (cache → `/var/cache/apt/archives` + `--no-download`; never blanket `dpkg -i`); `--with-apt-deps` / `--deb-cache` / `SLS_OFFLINE=1`; uninstall `--purge-apt-deps` (safe seeds only); honors `SLS_CAPTURES_DIR`.
+  - `software/linux/packages/apt-packages.txt`, `apt-purge-safe.txt`
+  - Align with firmware `vendor/debs` + [OFFLINE-MIRROR.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/OFFLINE-MIRROR.md)
+  - Closed: [GitHub #2](https://github.com/tmdrake/sls-camera/issues/2); conflicts tracking: [#3](https://github.com/tmdrake/sls-camera/issues/3)
 - [ ] **Clean the desktop before a firmware package install** — strip / replace stock Lubuntu (or similar) session chrome so a tablet does not ship a cluttered desktop; only then layer a firmware/image package.
 - [ ] **Tablet firmware / image package** — sibling **`sls-camera-firmware`**. Offline debs/wheels + appliance install + future ISO. Deps/conflicts → issues #2 / #3.
 - [ ] **gspca/udev one-shot** — fold or harden `fix-kinect-access.sh` into install path for true zero-touch bring-up.
