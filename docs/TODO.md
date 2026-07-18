@@ -27,7 +27,7 @@ policy come later.
 | [#2](https://github.com/tmdrake/sls-camera/issues/2) | Offline recursive apt deps + cache-based install |
 | [#3](https://github.com/tmdrake/sls-camera/issues/3) | apt/Python OR-alternatives, downgrades, version conflicts |
 | [#4](https://github.com/tmdrake/sls-camera/issues/4) | Optional system shutdown (or exit intent) on Quit |
-| [#5](https://github.com/tmdrake/sls-camera/issues/5) | Captures → removable media / SD (auto-detect) |
+| [#5](https://github.com/tmdrake/sls-camera/issues/5) | Captures → removable media / SD — **closed (v1)**; Auto default, SD then USB |
 
 Firmware may implement offline mirrors; **product install-path and app-behavior decisions stay tracked here**.
 

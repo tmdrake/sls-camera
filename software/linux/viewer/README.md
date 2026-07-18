@@ -88,21 +88,35 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 | **DrakeVox** | **ON** = panel + timer/TTS/O; **OFF** = hide panel + stop generation |
 | **DrakeVox on auto-snap** | Default **ON**; only when auto-snap fires (not manual Snap) |
 | **Brightness** | ±10%; n/a if no backlight/xrandr |
-| **Captures to** | **Auto** (default: USB/SD → `…/sls-captures/`, else local) or **Local** only |
-| **Copy local→media** | Shown only when USB/SD is mounted; copies local → media (confirm) |
+| **Captures to** | **Auto** (default) or **Local** — see [Captures](#captures) |
+| **Copy local→media** | Only visible when USB/SD is mounted; confirm then copy |
 
 ## Captures
+
+Field rule of thumb: **tablets will usually use an SD card**; pen drives are fine for desk testing. Default **Auto** is built for that.
 
 ### Easy mental model
 
 | Situation | What happens |
 |-----------|----------------|
-| **No stick/card** | New snaps/records go to **local** `viewer/captures/` |
-| **SD and/or USB mounted**, Captures=**Auto** (default) | New files → **SD first**, else USB → **`<mount>/sls-captures/`** |
-| **Captures=Local** | Always local, even if media is plugged in |
-| **Shot local, then plug media** | Settings → **Copy local→media** (keeps local copies) |
+| **No stick/card** | New snaps/records → **local** `viewer/captures/` |
+| **Captures = Auto** (default) + media mounted | New files → **`<mount>/sls-captures/`** |
+| **Both SD and USB mounted** | **SD wins** (priority); then USB; then other removable |
+| **Captures = Local** | Always local, even if media is plugged in |
+| **Shot local, then plug media** | Settings → **Copy local→media** (keeps local files; skips same-name same-size) |
+| **Defaults** button | Also sets **Captures to Auto** (and Max=1, Conf=0.5) |
 
-We do **not** auto-copy old local files when you plug media (avoids surprise full disks / duplicates). One explicit button is easier to understand.
+We do **not** auto-copy old local files when you plug media (avoids surprise full disks / duplicates). One explicit button is easier in the field.
+
+### Auto priority (when several volumes are mounted)
+
+| Order | Kind | How detected (typical) |
+|------:|------|-------------------------|
+| 1 | **SD** | `mmcblk*` (tablet internal/external SD) |
+| 2 | **USB** | removable/hotplug `sd*` (pen drive) |
+| 3 | Other removable | other RM/HOTPLUG mounts |
+
+Within the same kind: more free space, then label name. Status bar shows which was chosen (`CAP:SD:…` vs `CAP:USB:…`).
 
 ### Paths
 
@@ -113,15 +127,25 @@ viewer/captures/
   sls_YYYYMMDD_HHMMSS.avi
   session_*.jsonl
 
-# on USB pen drive or tablet SD (when Auto + media mounted)
+# on USB pen drive or tablet SD (Auto + media mounted)
 <mount>/sls-captures/
   …same filenames…
 ```
 
-Detection: `lsblk` (USB + **mmcblk SD**) and `/media/$USER`, `/run/media/$USER`.  
-Status: `CAP:USB:…` / `CAP:SD:…` / `CAP:local` / `CAP:local (no media)`.
+**Detection:** `lsblk` (USB RM/HOTPLUG + SD `mmcblk*`) and desktop automounts under `/media/$USER` and `/run/media/$USER`.  
+**Status:** `CAP:SD:Label · xG free` / `CAP:USB:…` / `CAP:local` / `CAP:local (no media)`.
 
-Local `viewer/captures/` is gitignored.
+**Copy local→media** is hidden until media is mounted (nothing to copy to).
+
+Local `viewer/captures/` is gitignored. Revisit priority/UX later if field use says USB-first is better; file management UI is a later TODO.
+
+### Quick pen-drive test (dev PC)
+
+1. `./run.sh` (Captures default **Auto**, or hit **Defaults**)  
+2. Plug pen drive; wait for OS mount  
+3. Status should show `CAP:USB:…`  
+4. **Snap** → check stick `sls-captures/sls_….jpg`  
+5. Optional: shoot local with **Captures=Local**, plug media, **Copy local→media**
 
 ### Record audio
 
