@@ -254,8 +254,10 @@ def paint_drakevox_bgr(
     x1, y1 = x0 + box_w, y0 + box_h
 
     overlay = bgr.copy()
-    # SLS green (BGR) — easier to read than red on depth
+    # SLS green (BGR) — words / panel chrome
     green = (0, 255, 180)
+    # Title: bright LED magenta (mix blue + red → pinkish purple)
+    title_color = (255, 40, 255)
     color_bg = (10, 28, 20) if flash else (10, 16, 14)
     cv2.rectangle(overlay, (x0, y0), (x1, y1), color_bg, -1)
     border = green if flash else (40, 80, 60)
@@ -266,11 +268,11 @@ def paint_drakevox_bgr(
 
     cv2.putText(
         bgr,
-        "DRAKEVOX",
+        "***DRAKEVOX***",
         (x0 + 8, y0 + 16),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.42,
-        green,
+        0.40,
+        title_color,
         1,
         cv2.LINE_AA,
     )

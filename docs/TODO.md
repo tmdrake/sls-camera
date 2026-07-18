@@ -12,8 +12,9 @@ policy come later.
 - [x] **Mux audio into recordings** — Record writes MJPG video + parallel mic WAV, then muxes into a single AVI (PCM audio) via system `ffmpeg` or `imageio-ffmpeg`. Prefers Kinect USB Audio; shares spectrum stream to avoid exclusive-open conflicts. Fallback: video AVI + sidecar WAV if mux fails.
   - Related: `software/linux/viewer/sls_viewer/session_io.py`, `spectrum.py`, `audio_device.py`
   - Closed: [GitHub #1](https://github.com/tmdrake/sls-camera/issues/1)
-- [x] **Captures → removable media / SD (auto-detect)** — Settings **Captures to: Local | Auto** (default **Auto**); auto prefers **SD** then USB; writes `sls-captures/` on media; **Copy local→media** for one-shot dump; status `CAP:…`; fall back to local.
-  - Issue: [#5](https://github.com/tmdrake/sls-camera/issues/5) — closed (v1); revisit priority/UX if field testing says otherwise
+- [x] **Captures → removable media / SD (auto-detect)** — Settings **Captures to: Local | Auto** (default **Auto**); auto prefers **SD** then USB (tablets expected SD-primary; pen drive OK for desk tests); writes `sls-captures/` on media; **Copy local→media** only when media mounted (no silent copy on insert); status `CAP:…`; fall back to local; **Defaults** resets Captures to Auto.
+  - Issue: [#5](https://github.com/tmdrake/sls-camera/issues/5) — **closed (v1)**; keep Auto/SD-first unless field use says otherwise
+  - Docs: [viewer/README.md § Captures](../software/linux/viewer/README.md#captures), [hardware/README.md](../hardware/README.md)
   - Code: `remedia.py`, `session_io`, Settings
   - Related: permanent captures on locked firmware image (below)
 - [ ] **File management UI** — later Settings/menu to browse, delete, or move captures (local ↔ media) without shell access; optional free-space warning. Not required for v1 Auto path.
@@ -51,6 +52,7 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 ## Product features (later)
 
 - [x] DrakeVox word panel (5–15 min timer, TTS, auto-snap option; key `O`)
+- [ ] **Branding** — configurable product/overlay names (e.g. replace `***DrakeVox***` title, app chrome) without hardcoding
 - [ ] DrakeVox external triggers beyond auto-snap (audio spike / MCU)
 - [ ] Arduino / MCU sensor bridge
 - [ ] Optional RGB view or color swap (Windows parity)
