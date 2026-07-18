@@ -32,7 +32,7 @@ def parse_args(argv=None):
     p.add_argument(
         "--demo",
         action="store_true",
-        help="Allow synthetic frames if Kinect cannot open",
+        help="Force synthetic depth/IR frames (skip freenect; UI test without Kinect)",
     )
     p.add_argument(
         "--no-auto-level",

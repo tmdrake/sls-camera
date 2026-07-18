@@ -239,7 +239,7 @@ viewer/
 ## CLI
 
 ```bash
-./run.sh --demo            # synthetic UI (no Kinect)
+./run.sh --demo            # force synthetic depth/IR (skip freenect entirely)
 ./run.sh --mirror          # mirror on
 ./run.sh --no-auto-level   # leave tilt as-is
 ./run.sh --led-off         # no green LED
