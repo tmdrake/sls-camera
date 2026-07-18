@@ -239,12 +239,17 @@ viewer/
 ## CLI
 
 ```bash
-./run.sh --demo            # force synthetic depth/IR (skip freenect entirely)
-./run.sh --mirror          # mirror on
+./run.sh --help            # full argparse help
+./run.sh                   # live Kinect (reconnects if missing)
+./run.sh --demo            # if Kinect will not open, use synthetic frames
+./run.sh --mirror          # horizontal mirror
 ./run.sh --no-auto-level   # leave tilt as-is
-./run.sh --led-off         # no green LED
-./run.sh --ui web          # browser UI on :8765
+./run.sh --led-off         # no green idle LED
+./run.sh --ui web          # browser UI on --host/--port (default :8765)
+./run.sh --device 0        # freenect index when multiple devices
 ```
+
+`--demo` is a **fallback** when freenect cannot open the camera; it does not ignore a working Kinect.
 
 ## Troubleshooting
 

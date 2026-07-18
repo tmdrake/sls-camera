@@ -14,37 +14,74 @@ from .pipeline import FramePipeline
 
 def parse_args(argv=None):
     p = argparse.ArgumentParser(
-        description="SLS Linux viewer (depth + IR + skeleton, fullscreen)"
+        prog="sls_viewer",
+        description=(
+            "SLS Linux field viewer — Xbox 360 Kinect depth + IR PiP + "
+            "skeleton sticks (MediaPipe), fullscreen Qt by default."
+        ),
+        epilog=(
+            "Examples:\n"
+            "  ./run.sh\n"
+            "  ./run.sh --mirror\n"
+            "  ./run.sh --demo\n"
+            "  ./run.sh --ui web --host 0.0.0.0 --port 8765\n"
+            "  ./run.sh --led-off --no-auto-level --device 0\n"
+            "\n"
+            "Keyboard (Qt): S settings · C snap · R record · O DrakeVox · "
+            "Q quit · Esc close settings then quit · F fullscreen · M mirror"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument(
         "--ui",
         choices=("qt", "web"),
         default="qt",
-        help="UI backend: qt = fullscreen always-on-top (default); web = browser kiosk",
+        help="UI backend: qt = fullscreen always-on-top (default); "
+        "web = browser UI on --host/--port",
     )
-    p.add_argument("--host", default=settings.host)
-    p.add_argument("--port", type=int, default=settings.port)
+    p.add_argument(
+        "--host",
+        default=settings.host,
+        metavar="ADDR",
+        help=f"Web UI bind address (default: {settings.host})",
+    )
+    p.add_argument(
+        "--port",
+        type=int,
+        default=settings.port,
+        metavar="N",
+        help=f"Web UI port (default: {settings.port})",
+    )
     p.add_argument(
         "--mirror",
         action="store_true",
-        help="Enable horizontal mirror (default: off)",
+        help="Mirror depth/IR horizontally (default: off)",
     )
     p.add_argument(
         "--demo",
         action="store_true",
-        help="Force synthetic depth/IR frames (skip freenect; UI test without Kinect)",
+        help=(
+            "If freenect cannot open the Kinect, use synthetic depth/IR "
+            "instead of reconnecting forever (does not skip a working camera)"
+        ),
     )
     p.add_argument(
         "--no-auto-level",
         action="store_true",
-        help="Do not tilt motor to 0° on start",
+        help="Do not auto-level tilt motor to 0° on start (default: auto-level on)",
     )
     p.add_argument(
         "--led-off",
         action="store_true",
-        help="Leave Kinect LED off (default: green while running)",
+        help="Leave Kinect LED off (default: green while idle)",
     )
-    p.add_argument("--device", type=int, default=0)
+    p.add_argument(
+        "--device",
+        type=int,
+        default=0,
+        metavar="INDEX",
+        help="Freenect device index when multiple Kinects are present (default: 0)",
+    )
     return p.parse_args(argv)
 
 

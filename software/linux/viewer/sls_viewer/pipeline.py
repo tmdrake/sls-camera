@@ -382,36 +382,34 @@ class FramePipeline:
         return fps_smooth
 
     def _loop(self) -> None:
-        # --demo: force synthetic frames (skip freenect entirely)
         demo = bool(self.s.allow_demo_without_kinect)
 
         # Splash immediately so startup is not a blank screen
         self._status = "starting…"
         self._paint_splash("Starting SLS Camera", "Loading…")
 
-        # Pose model can load while user sees splash
+        # Pose model can load while user sees splash (before freenect open)
         try:
             self._ensure_pose()
+            self._paint_splash("Starting SLS Camera", "Opening camera…")
         except Exception as e:
             self._status = f"pose model error: {e}"
             self._paint_splash("Starting SLS Camera", f"pose: {e}")
 
-        use_kinect = False
-        if demo:
-            self._status = "demo mode (synthetic frames)"
-            self._paint_splash("Starting SLS Camera", "Demo mode — no Kinect")
-        else:
-            self._paint_splash("Starting SLS Camera", "Opening camera…")
+        use_kinect = self._open_kinect()
+
+        # Infinite reconnect until first success (unless --demo allows fallback)
+        while self._running and not use_kinect and not demo:
+            self._reconnect_attempt += 1
+            self._status = (
+                f"reconnecting… attempt {self._reconnect_attempt}"
+            )
+            self._paint_reconnect(self._status)
+            time.sleep(self.RECONNECT_SLEEP_S)
             use_kinect = self._open_kinect()
-            # Infinite reconnect until first success
-            while self._running and not use_kinect:
-                self._reconnect_attempt += 1
-                self._status = (
-                    f"reconnecting… attempt {self._reconnect_attempt}"
-                )
-                self._paint_reconnect(self._status)
-                time.sleep(self.RECONNECT_SLEEP_S)
-                use_kinect = self._open_kinect()
+
+        if not use_kinect and demo:
+            self._status = "demo mode (no camera)"
 
         fps_smooth = 0.0
 
@@ -426,11 +424,8 @@ class FramePipeline:
                     depth_u16, ir_u8 = self._kinect.get_depth_and_ir()
                 else:
                     depth_u16, ir_u8 = self._demo_frames()
-                    self._status = (
-                        "demo mode (synthetic frames)"
-                        if demo
-                        else "demo mode (no camera)"
-                    )
+                    if not use_kinect:
+                        self._status = "demo mode (no kinect)"
 
                 fps_smooth = self._process_frames(depth_u16, ir_u8, fps_smooth)
                 dt = time.time() - t0
