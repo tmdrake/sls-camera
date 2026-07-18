@@ -31,6 +31,8 @@ class FramePipeline:
         self._frame_i = 0
         self._last_poses = []
         self._reconnect_attempt = 0
+        self._force_reopen = False
+        self._pip_label = "IR + SLS"
 
     @property
     def status(self) -> str:
@@ -143,6 +145,29 @@ class FramePipeline:
         """Yellow flash for snapshot (caller restores after delay)."""
         return self.set_led(freenect_io.LED_YELLOW)
 
+    def request_reopen(self) -> None:
+        """Ask the capture thread to close/reopen freenect (e.g. PiP mode change)."""
+        self._force_reopen = True
+
+    def set_video_pip_mode(self, mode: str) -> str:
+        """ir | rgb | rgb_high. Depth/SLS stay 640x480. Triggers freenect reopen."""
+        mode = (mode or "ir").lower().strip()
+        if mode not in freenect_io.VIDEO_PIP_MODES:
+            mode = "ir"
+        self.s.video_pip_mode = mode
+        self.s.save_persisted()
+        self.request_reopen()
+        return mode
+
+    def cycle_video_pip_mode(self) -> str:
+        modes = list(freenect_io.VIDEO_PIP_MODES)
+        cur = (self.s.video_pip_mode or "ir").lower()
+        try:
+            i = modes.index(cur)
+        except ValueError:
+            i = 0
+        return self.set_video_pip_mode(modes[(i + 1) % len(modes)])
+
     def _set_frame(self, bgr: np.ndarray) -> None:
         ok, buf = cv2.imencode(
             ".jpg",
@@ -249,19 +274,28 @@ class FramePipeline:
         try:
             self._status = "opening SLS camera…"
             self.s.ir_brightness = 50
+            pip_mode = (self.s.video_pip_mode or "ir").lower().strip()
             self._kinect = freenect_io.FreenectSync(
                 index=self.s.device_index,
-                video_mode="ir",
+                video_mode=pip_mode,
                 led=freenect_io.LED_GREEN if self.s.led_green else freenect_io.LED_OFF,
                 tilt_degs=self.s.tilt_degs,
                 auto_level=self.s.auto_level,
                 ir_brightness=50,
             )
             self._kinect.prepare()
-            depth, ir = self._kinect.get_depth_and_ir()
+            depth, video = self._kinect.get_depth_and_ir()
             self._reconnect_attempt = 0
+            # PiP label reflects secondary stream (depth always 640x480 for SLS)
+            if self._kinect.video_mode == "ir":
+                self._pip_label = "IR + SLS"
+            elif self._kinect.video_mode == "rgb_high":
+                self._pip_label = "RGB-Hi + SLS"
+            else:
+                self._pip_label = "RGB + SLS"
+            vnote = self._kinect.video_label()
             self._status = (
-                f"live · {depth.shape[1]}x{depth.shape[0]} · LED green · tilt 0°"
+                f"live · depth {depth.shape[1]}x{depth.shape[0]} · {vnote}"
             )
             return True
         except Exception as e:
@@ -300,7 +334,7 @@ class FramePipeline:
         pip = cv2.resize(ir_bgr, (pip_w, pip_h), interpolation=cv2.INTER_AREA)
         cv2.putText(
             pip,
-            "IR + SLS",
+            getattr(self, "_pip_label", "IR + SLS"),
             (8, 22),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.55,
@@ -416,6 +450,16 @@ class FramePipeline:
         while self._running:
             t0 = time.time()
             try:
+                if self._force_reopen:
+                    self._force_reopen = False
+                    self._status = "reopening camera (PiP mode)…"
+                    self._paint_splash(
+                        "Starting SLS Camera", "Changing video mode…"
+                    )
+                    self._close_kinect()
+                    use_kinect = self._open_kinect()
+                    continue
+
                 if use_kinect and self._kinect:
                     if self._kinect.is_dead():
                         raise freenect_io.FreenectError(

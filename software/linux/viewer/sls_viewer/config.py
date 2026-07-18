@@ -28,6 +28,7 @@ PERSIST_KEYS = (
     "drakevox_enabled",
     "drakevox_on_autosnap",
     "display_brightness",
+    "video_pip_mode",
 )
 
 
@@ -98,6 +99,10 @@ class Settings:
     # Display brightness 5–100 (None = leave OS default / don't force at start)
     display_brightness: Optional[int] = None
 
+    # Secondary freenect stream for PiP: ir | rgb | rgb_high (depth always 640x480)
+    # rgb_high = 1280x1024 @ ~10 FPS color test; SLS pose still on depth
+    video_pip_mode: str = "ir"
+
     model_path: Path = field(default_factory=lambda: MODEL_PATH)
     allow_demo_without_kinect: bool = False
 
@@ -121,6 +126,10 @@ class Settings:
         self.auto_snap_on_detect = bool(self.auto_snap_on_detect)
         self.drakevox_enabled = bool(self.drakevox_enabled)
         self.drakevox_on_autosnap = bool(self.drakevox_on_autosnap)
+        mode = str(getattr(self, "video_pip_mode", "ir") or "ir").lower().strip()
+        if mode not in ("ir", "rgb", "rgb_high"):
+            mode = "ir"
+        self.video_pip_mode = mode
         if self.display_brightness is not None:
             try:
                 self.display_brightness = int(self.display_brightness)
@@ -168,6 +177,7 @@ class Settings:
                 if self.display_brightness is not None
                 else None
             ),
+            "video_pip_mode": str(self.video_pip_mode or "ir"),
         }
         try:
             path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")

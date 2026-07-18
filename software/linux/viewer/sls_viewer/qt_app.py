@@ -213,6 +213,18 @@ class SettingsDialog(QDialog):
         grid.addWidget(self.btn_drakevox_autosnap, row, 1, 1, 3)
         row += 1
 
+        # PiP video stream (depth/SLS always 640x480)
+        grid.addWidget(QLabel("Color PiP"), row, 0)
+        self.btn_pip_mode = QPushButton()
+        self.btn_pip_mode.setObjectName("wide")
+        self.btn_pip_mode.setToolTip(
+            "Cycle PiP: IR (default) → RGB 640×480@30 → RGB-Hi 1280×1024@10. "
+            "Depth + stick figures stay 640×480. Reopens freenect."
+        )
+        self.btn_pip_mode.clicked.connect(self._cycle_pip_mode)
+        grid.addWidget(self.btn_pip_mode, row, 1, 1, 3)
+        row += 1
+
         # Display brightness (sysfs backlight / brightnessctl / xrandr)
         grid.addWidget(QLabel("Brightness"), row, 0)
         self.btn_bright_down = QPushButton("−")
@@ -309,6 +321,14 @@ class SettingsDialog(QDialog):
         )
         self.btn_drakevox_autosnap.setEnabled(on)
 
+        pip = (self.pipeline.s.video_pip_mode or "ir").lower()
+        pip_labels = {
+            "ir": "IR 640",
+            "rgb": "RGB 640@30",
+            "rgb_high": "RGB-Hi 1280@10",
+        }
+        self.btn_pip_mode.setText(pip_labels.get(pip, pip))
+
         bri = get_brightness()
         if bri.available and bri.percent is not None:
             self.bright_label.setText(f"{bri.percent}%")
@@ -394,6 +414,12 @@ class SettingsDialog(QDialog):
             parent.set_drakevox_on_autosnap(
                 not self.pipeline.s.drakevox_on_autosnap
             )
+        self._refresh()
+
+    def _cycle_pip_mode(self) -> None:
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "cycle_video_pip_mode"):
+            parent.cycle_video_pip_mode()
         self._refresh()
 
     def _nudge_brightness(self, delta: int) -> None:
@@ -595,6 +621,18 @@ class SlsMainWindow(QMainWindow):
         """When ON, auto-snap on detect also generates DrakeVox into the JPEG."""
         self.pipeline.s.drakevox_on_autosnap = bool(enabled)
         self.pipeline.s.save_persisted()
+        if self._settings_open():
+            self._settings_dlg._refresh()
+
+    def cycle_video_pip_mode(self) -> None:
+        """IR → RGB → RGB-Hi (depth/SLS unchanged). Reopens freenect."""
+        mode = self.pipeline.cycle_video_pip_mode()
+        labels = {
+            "ir": "IR 640",
+            "rgb": "RGB 640@30",
+            "rgb_high": "RGB-Hi 1280@10",
+        }
+        self.session._set_flash(f"PiP → {labels.get(mode, mode)}")
         if self._settings_open():
             self._settings_dlg._refresh()
 
