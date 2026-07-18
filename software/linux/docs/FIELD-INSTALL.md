@@ -50,6 +50,16 @@ Does **not** copy the tree system-wide. Moving/renaming the repo breaks the wrap
 
 Leaves: git repo, `viewer/.venv`, captures, apt packages, gspca blacklist (if you used `--with-kinect-access`).
 
+## Screenshots (appliance VM smoke test)
+
+Phase 1 packaging was proven on a **Lubuntu 26.04** KVM guest with the sibling firmware installer; demo mode needs no Kinect.
+
+| Desktop | SLS Camera (`--demo`) |
+|---------|------------------------|
+| ![Lubuntu desktop](images/01-guest-desktop.png) | ![SLS demo UI](images/02-sls-demo-app.png) |
+
+See [`images/README.md`](images/README.md) for capture notes and a second HUD frame. Firmware first-boot notes: sibling repo `sls-camera-firmware` → `docs/FIRST-BOOT.md`.
+
 ## Still manual / separate
 
 | Item | Notes |
