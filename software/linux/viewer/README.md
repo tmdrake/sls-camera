@@ -89,7 +89,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 | **DrakeVox on auto-snap** | Default **ON**; only when auto-snap fires (not manual Snap) |
 | **Brightness** | ±10%; n/a if no backlight/xrandr |
 | **Captures to** | **Auto** (default: USB/SD → `…/sls-captures/`, else local) or **Local** only |
-| **Copy local→media** | One-shot copy of existing local files onto mounted USB/SD (confirm) |
+| **Copy local→media** | Shown only when USB/SD is mounted; copies local → media (confirm) |
 
 ## Captures
 

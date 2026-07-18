@@ -362,6 +362,8 @@ class SettingsDialog(QDialog):
             else:
                 self.btn_captures.setText("Local")
             self.btn_captures.setEnabled(not parent.session.recording)
+            # Only show Copy when USB/SD is mounted (nothing to copy to otherwise)
+            self.btn_copy_to_media.setVisible(has_media)
             self.btn_copy_to_media.setEnabled(
                 has_media and not parent.session.recording
             )
@@ -369,6 +371,7 @@ class SettingsDialog(QDialog):
             self.btn_captures.setText(
                 "Auto" if cap_mode == "auto" else "Local"
             )
+            self.btn_copy_to_media.setVisible(False)
             self.btn_copy_to_media.setEnabled(False)
 
         mic = self.spectrum.device_name or "(no mic)"
@@ -474,15 +477,21 @@ class SettingsDialog(QDialog):
         return box.exec() == QMessageBox.StandardButton.Yes
 
     def _reset_defaults(self) -> None:
-        """Confidence 0.5 + Max people 1 — confirm first."""
+        """Pose MediaPipe defaults + Captures Auto — confirm first."""
         if not self._confirm(
             "Reset defaults",
-            "Reset Max people and Confidence to MediaPipe defaults\n"
-            "(Max people = 1, Confidence = 0.5)?",
+            "Reset to field defaults?\n\n"
+            "• Max people = 1\n"
+            "• Confidence = 0.5\n"
+            "• Captures to = Auto (USB/SD if mounted, else local)",
             yes_label="Reset",
         ):
             return
-        self.pipeline.reset_pose_defaults()
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "apply_field_defaults"):
+            parent.apply_field_defaults()
+        else:
+            self.pipeline.reset_pose_defaults()
         self._refresh()
 
     def _clear_captures(self) -> None:
@@ -664,6 +673,18 @@ class SlsMainWindow(QMainWindow):
             self.pipeline.s.save_persisted()
         if self._settings_open():
             self._settings_dlg._refresh()
+
+    def apply_field_defaults(self) -> None:
+        """Settings Defaults: pose MediaPipe defaults + captures Auto."""
+        self.pipeline.reset_pose_defaults()
+        if not self.session.recording:
+            label = self.session.set_captures_target("auto")
+            self.session._set_flash(f"defaults · Captures → {label}")
+        else:
+            # Persist auto for next session; keep current path while REC
+            self.pipeline.s.captures_target = "auto"
+            self.pipeline.s.save_persisted()
+            self.session._set_flash("defaults saved (captures path after REC stops)")
 
     def toggle_captures_target(self) -> None:
         """Cycle Local ↔ Auto (USB/SD when mounted). Default is Auto."""
