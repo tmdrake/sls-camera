@@ -98,7 +98,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 | Situation | What happens |
 |-----------|----------------|
 | **No stick/card** | New snaps/records go to **local** `viewer/captures/` |
-| **USB or SD mounted**, Captures=**Auto** (default) | New files go to **`<mount>/sls-captures/`** |
+| **SD and/or USB mounted**, Captures=**Auto** (default) | New files → **SD first**, else USB → **`<mount>/sls-captures/`** |
 | **Captures=Local** | Always local, even if media is plugged in |
 | **Shot local, then plug media** | Settings → **Copy local→media** (keeps local copies) |
 
