@@ -12,10 +12,10 @@ policy come later.
 - [x] **Mux audio into recordings** — Record writes MJPG video + parallel mic WAV, then muxes into a single AVI (PCM audio) via system `ffmpeg` or `imageio-ffmpeg`. Prefers Kinect USB Audio; shares spectrum stream to avoid exclusive-open conflicts. Fallback: video AVI + sidecar WAV if mux fails.
   - Related: `software/linux/viewer/sls_viewer/session_io.py`, `spectrum.py`, `audio_device.py`
   - Closed: [GitHub #1](https://github.com/tmdrake/sls-camera/issues/1)
-- [ ] **Captures → removable media / SD (auto-detect)** — detect mounted USB sticks / SD cards (e.g. `/media/$USER/*`, `/run/media/$USER/*`, common SD mounts); Settings and/or auto-prefer a writable external volume; write snaps, AVI, and session logs there when present; fall back to `viewer/captures` (or appliance `/data/...`).
+- [x] **Captures → removable media / SD (auto-detect)** — Settings **Captures to: Local | Auto**; auto uses lsblk + `/media`/`/run/media` (USB + **mmcblk SD**); writes `sls-captures/` on media; status `CAP:…`; fall back to local.
   - Issue: [#5](https://github.com/tmdrake/sls-camera/issues/5)
+  - Code: `remedia.py`, `session_io`, Settings
   - Related: permanent captures on locked firmware image (below)
-  - Code later: `session_io.CAPTURES_DIR`, `config`, Settings UI
 
 ## Field / packaging (dev → tablet)
 
@@ -26,6 +26,7 @@ policy come later.
 | [#2](https://github.com/tmdrake/sls-camera/issues/2) | Offline recursive apt deps + cache-based install |
 | [#3](https://github.com/tmdrake/sls-camera/issues/3) | apt/Python OR-alternatives, downgrades, version conflicts |
 | [#4](https://github.com/tmdrake/sls-camera/issues/4) | Optional system shutdown (or exit intent) on Quit |
+| [#5](https://github.com/tmdrake/sls-camera/issues/5) | Captures → removable media / SD (auto-detect) |
 
 Firmware may implement offline mirrors; **product install-path and app-behavior decisions stay tracked here**.
 

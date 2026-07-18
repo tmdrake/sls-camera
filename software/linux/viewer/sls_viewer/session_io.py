@@ -17,6 +17,7 @@ import numpy as np
 
 from .audio_device import pick_input_device
 from .config import VIEWER_ROOT
+from .remedia import resolve_captures_dir
 
 if TYPE_CHECKING:
     from .spectrum import SpectrumAnalyzer
@@ -44,7 +45,10 @@ def _find_ffmpeg() -> Optional[str]:
 
 class SessionRecorder:
     def __init__(self, captures_dir: Path = CAPTURES_DIR):
+        self._local_captures_dir = Path(captures_dir)
         self.captures_dir = Path(captures_dir)
+        self._captures_label = "local"
+        self._captures_target = "local"
         self._lock = threading.Lock()
         self._writer: Optional[cv2.VideoWriter] = None
         self._path: Optional[Path] = None
@@ -65,6 +69,30 @@ class SessionRecorder:
         self._via_spectrum = False
         # DrakeVox TTS clips: (offset_seconds from record start, float32 mono)
         self._tts_clips: List[tuple] = []
+
+    @property
+    def captures_label(self) -> str:
+        return self._captures_label
+
+    def set_captures_target(self, mode: str) -> str:
+        """local | auto — resolve path (USB/SD when auto and media present)."""
+        mode = "auto" if (mode or "").lower().strip() == "auto" else "local"
+        self._captures_target = mode
+        # Don't switch mid-record
+        if self._recording:
+            return self._captures_label
+        path, label = resolve_captures_dir(mode, self._local_captures_dir)
+        with self._lock:
+            if path != self.captures_dir:
+                # New session log location when dir changes
+                self._session_log = None
+            self.captures_dir = path
+            self._captures_label = label
+        return label
+
+    def refresh_captures_dir(self) -> str:
+        """Re-resolve auto target (media plugged/unplugged). No-op mid-record."""
+        return self.set_captures_target(self._captures_target)
 
     @property
     def recording(self) -> bool:

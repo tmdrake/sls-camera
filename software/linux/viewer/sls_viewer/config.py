@@ -28,6 +28,7 @@ PERSIST_KEYS = (
     "drakevox_enabled",
     "drakevox_on_autosnap",
     "display_brightness",
+    "captures_target",
 )
 
 
@@ -90,6 +91,8 @@ class Settings:
     auto_snap_on_detect: bool = False
     # Match live pipeline target so AVI timing matches what you see on screen
     record_fps: float = 20.0
+    # Captures destination: local = viewer/captures; auto = SD/USB if mounted
+    captures_target: str = "local"
 
     # DrakeVox (random word every 5–15 min; timestamped + TTS)
     drakevox_enabled: bool = True
@@ -122,6 +125,8 @@ class Settings:
         self.auto_snap_on_detect = bool(self.auto_snap_on_detect)
         self.drakevox_enabled = bool(self.drakevox_enabled)
         self.drakevox_on_autosnap = bool(self.drakevox_on_autosnap)
+        ct = str(getattr(self, "captures_target", "local") or "local").lower().strip()
+        self.captures_target = "auto" if ct == "auto" else "local"
         if self.display_brightness is not None:
             try:
                 self.display_brightness = int(self.display_brightness)
@@ -169,6 +174,7 @@ class Settings:
                 if self.display_brightness is not None
                 else None
             ),
+            "captures_target": str(self.captures_target or "local"),
         }
         try:
             path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")

@@ -229,6 +229,19 @@ class SettingsDialog(QDialog):
         grid.addWidget(self.btn_bright_up, row, 3)
         row += 1
 
+        # Captures destination: local vs auto USB/SD
+        grid.addWidget(QLabel("Captures to"), row, 0)
+        self.btn_captures = QPushButton()
+        self.btn_captures.setObjectName("wide")
+        self.btn_captures.setToolTip(
+            "Local = viewer/captures. Auto = USB pen drive or SD card if mounted "
+            "(writes sls-captures/ on the media); falls back to local. "
+            "Works for both USB sticks and tablet SD cards when the OS mounts them."
+        )
+        self.btn_captures.clicked.connect(self._toggle_captures_target)
+        grid.addWidget(self.btn_captures, row, 1, 1, 3)
+        row += 1
+
         root.addLayout(grid)
 
         # Defaults / Clear captures / DrakeVox now — Snap/Record on main bar
@@ -243,7 +256,7 @@ class SettingsDialog(QDialog):
         self.btn_clear_captures = QPushButton("Clear captures")
         self.btn_clear_captures.setObjectName("wide")
         self.btn_clear_captures.setToolTip(
-            "Delete files in viewer/captures/ (snaps, recordings, session logs)"
+            "Delete files in the current captures folder (local or media/sls-captures/)"
         )
         self.btn_clear_captures.clicked.connect(self._clear_captures)
         act.addWidget(self.btn_clear_captures)
@@ -328,6 +341,20 @@ class SettingsDialog(QDialog):
             tip = bri.detail or "no brightness control on this display"
             self.bright_label.setToolTip(tip)
 
+        parent = self.parent()
+        cap_mode = self.pipeline.s.captures_target
+        if parent is not None and hasattr(parent, "session"):
+            label = parent.session.captures_label
+            if cap_mode == "auto":
+                self.btn_captures.setText(f"Auto · {label}")
+            else:
+                self.btn_captures.setText("Local")
+            self.btn_captures.setEnabled(not parent.session.recording)
+        else:
+            self.btn_captures.setText(
+                "Auto" if cap_mode == "auto" else "Local"
+            )
+
         mic = self.spectrum.device_name or "(no mic)"
         err = self.spectrum.error
         if self.spectrum.active:
@@ -402,6 +429,12 @@ class SettingsDialog(QDialog):
             parent.nudge_display_brightness(delta)
         self._refresh()
 
+    def _toggle_captures_target(self) -> None:
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "toggle_captures_target"):
+            parent.toggle_captures_target()
+        self._refresh()
+
     def _drakevox_now(self) -> None:
         parent = self.parent()
         if parent is not None and hasattr(parent, "drakevox_generate_now"):
@@ -469,10 +502,13 @@ class SlsMainWindow(QMainWindow):
         self.battery = BatteryMonitor(poll_s=5.0)
         self._settings_dlg: Optional[SettingsDialog] = None
         self._quit_confirmed = False
+        self._media_poll_i = 0
         self.setWindowTitle("SLS Camera")
         # Apply saved brightness once (tablet backlight or xrandr software)
         if pipeline.s.display_brightness is not None:
             apply_persisted_percent(pipeline.s.display_brightness)
+        # Captures path: local or auto USB/SD
+        self.session.set_captures_target(pipeline.s.captures_target)
         self.setStyleSheet(_STYLE)
 
         central = QWidget()
@@ -604,6 +640,20 @@ class SlsMainWindow(QMainWindow):
         if info.available and info.percent is not None and info.writable:
             self.pipeline.s.display_brightness = int(info.percent)
             self.pipeline.s.save_persisted()
+        if self._settings_open():
+            self._settings_dlg._refresh()
+
+    def toggle_captures_target(self) -> None:
+        """Cycle Local ↔ Auto (USB/SD when mounted)."""
+        if self.session.recording:
+            self.session._set_flash("stop recording before changing captures path")
+            return
+        cur = (self.pipeline.s.captures_target or "local").lower()
+        nxt = "auto" if cur != "auto" else "local"
+        self.pipeline.s.captures_target = nxt
+        self.pipeline.s.save_persisted()
+        label = self.session.set_captures_target(nxt)
+        self.session._set_flash(f"Captures → {label}")
         if self._settings_open():
             self._settings_dlg._refresh()
 
@@ -792,8 +842,9 @@ class SlsMainWindow(QMainWindow):
             return
         box = QMessageBox(self)
         box.setWindowTitle("Clear captures")
+        dest = self.session.captures_dir
         box.setText(
-            "Delete all files in captures/\n"
+            f"Delete all files in:\n{dest}\n\n"
             "(snapshots, recordings, session logs)?\n\n"
             "This cannot be undone."
         )
@@ -857,9 +908,15 @@ class SlsMainWindow(QMainWindow):
             dv = f" · DRAKEVOX:{self.drakevox.current}"
         bat = self.battery.status_token()
         bat_s = f" · {bat}" if bat else ""
+        # Refresh auto media path occasionally (plug pen drive / SD mid-session)
+        self._media_poll_i = getattr(self, "_media_poll_i", 0) + 1
+        if self._media_poll_i % 90 == 0:  # ~3s at 33ms tick
+            self.session.refresh_captures_dir()
+        cap = self.session.captures_label
+        cap_s = f" · CAP:{cap}" if cap else ""
         base = (
-            f"{self.pipeline.status}  ·  {self.pipeline.fps:.1f} fps  ·  "
-            f"Detected:{self.pipeline.poses_count}/{mx}{rec}{dv}{bat_s}"
+            f"{self.pipeline.status}  ·  "
+            f"Detected:{self.pipeline.poses_count}/{mx}{rec}{dv}{bat_s}{cap_s}"
         )
         self.status.setText(f"{flash}  ·  {base}" if flash else base)
 

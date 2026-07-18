@@ -88,8 +88,11 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 | **DrakeVox** | **ON** = panel + timer/TTS/O; **OFF** = hide panel + stop generation |
 | **DrakeVox on auto-snap** | Default **ON**; only when auto-snap fires (not manual Snap) |
 | **Brightness** | ±10%; n/a if no backlight/xrandr |
+| **Captures to** | **Local** (`viewer/captures`) or **Auto** (USB/SD → `…/sls-captures/`, else local) |
 
 ## Captures
+
+**Default (Local):**
 
 ```text
 viewer/captures/
@@ -98,7 +101,15 @@ viewer/captures/
   session_*.jsonl            # detect/record event log
 ```
 
-Directory is gitignored.
+**Auto (Settings → Captures to → Auto):** when a **writable USB stick or SD card** is mounted, files go to:
+
+```text
+<mount>/sls-captures/
+```
+
+Detection uses `lsblk` (USB `RM`/`HOTPLUG`, SD `mmcblk*`) plus `/media/$USER` and `/run/media/$USER` automounts. Status bar shows `CAP:USB:…` / `CAP:SD:…` or `CAP:local (no media)`.
+
+Local `viewer/captures/` is gitignored.
 
 ### Record audio
 
