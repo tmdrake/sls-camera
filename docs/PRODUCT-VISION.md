@@ -11,7 +11,7 @@ Not a one-off laptop hack — a **repeatable appliance** (firmware-like image + 
 | Platform | Role |
 |----------|------|
 | **Windows** (`software/source/`) | Reference SLS Explorer (Kinect SDK, full desktop app) |
-| **Linux appliance** (`software/linux/`) | Field image for tablets / Lubuntu (or similar) |
+| **Linux appliance** (`software/linux/` + sibling firmware repo `sls-camera-firmware`) | Field image for tablets / Lubuntu (or similar) |
 | **Dev host** (e.g. OptiPlex) | Bring-up, freenect M0, implement services before imaging tablets |
 
 ## Target form factor

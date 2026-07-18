@@ -19,7 +19,9 @@ policy come later.
   - `software/linux/scripts/uninstall-field-app.sh`
   - Docs: `software/linux/docs/FIELD-INSTALL.md`
 - [ ] **Clean the desktop before a firmware package install** — strip / replace stock Lubuntu (or similar) session chrome so a tablet does not ship a cluttered desktop; only then layer a firmware/image package.
-- [ ] **Tablet firmware / image package** — repeatable flash or offline install for field tablets (beyond `~/.local` scripts).
+- [ ] **Tablet firmware / image package** — see sibling repo **`sls-camera-firmware`** (`~/sls-camera-firmware`, GitHub `tmdrake/sls-camera-firmware` when published). Offline debs/wheels + appliance install + future ISO.
+  - Local: `/home/tmdrake/sls-camera-firmware`
+  - App stays in this repo; firmware is packaging only.
 - [ ] **gspca/udev one-shot** — fold or harden `fix-kinect-access.sh` into install path for true zero-touch bring-up.
 - [ ] **Hardware BOM photos / wiring** in `hardware/` (Kinect + tablet + external power).
 - [ ] **Permanent captures on appliance image** — firmware/locked rootfs may be read-only; store snaps/recordings on writable permanent media (`/data`, SD, data partition, USB), not only `viewer/captures` inside the image. Path via env/config for packaging.

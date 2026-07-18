@@ -83,3 +83,16 @@ Later (tablet appliance)
 - App: [../viewer/README.md](../viewer/README.md)
 - Product vision: [../../../docs/PRODUCT-VISION.md](../../../docs/PRODUCT-VISION.md)
 - Ubuntu / freenect: [UBUNTU-SETUP.md](UBUNTU-SETUP.md)
+
+## Tablet firmware (separate repo)
+
+Dev install scripts above are for **developer hosts**. For a flashable / blow-and-go tablet image:
+
+- **Repo:** `sls-camera-firmware` (sibling of this project: `~/sls-camera-firmware`)
+- **Goals:** no-login kiosk, offline freenect + Python + MediaPipe cache, autostart SLS app, writable `/data/sls-captures`
+- **Docs:** `sls-camera-firmware/README.md`, `docs/BUILD.md`, `docs/OFFLINE-MIRROR.md`
+- **Phase 1:** `sudo ./scripts/install-appliance.sh` on a blank Ubuntu/Lubuntu tablet
+- **Phase 2:** bootable ISO (not finished yet)
+
+Do not put Microsoft Kinect UAC firmware in public firmware trees.
+
