@@ -28,15 +28,7 @@ PERSIST_KEYS = (
     "drakevox_enabled",
     "drakevox_on_autosnap",
     "display_brightness",
-    "depth_display_mode",
 )
-
-# Depth+SLS composite size (sensor depth is always 640x480 from freenect)
-# high = software upscale for bigger HUD / recordings (not more depth detail)
-DEPTH_DISPLAY_MODES = {
-    "normal": (640, 480),   # 1:1 sensor
-    "high": (1280, 720),    # 1280-wide upscale (previous default canvas)
-}
 
 
 @dataclass
@@ -78,11 +70,9 @@ class Settings:
     joint_radius: int = 3
     skeleton_min_vis: float = 0.45
 
-    # Composite / HUD / record canvas (from depth_display_mode)
+    # Composite / HUD / record canvas (depth sensor is always freenect 640x480)
     frame_width: int = 1280
     frame_height: int = 720
-    # normal = 640x480, high = 1280x720 (upscaled Depth+SLS)
-    depth_display_mode: str = "high"
     ir_pip_width: int = 280
     ir_pip_height: int = 210
     ir_pip_margin: int = 12
@@ -112,16 +102,6 @@ class Settings:
     model_path: Path = field(default_factory=lambda: MODEL_PATH)
     allow_demo_without_kinect: bool = False
 
-    def apply_depth_display_mode(self) -> None:
-        """Set frame_width/height from depth_display_mode (normal|high)."""
-        mode = (self.depth_display_mode or "high").lower().strip()
-        if mode not in DEPTH_DISPLAY_MODES:
-            mode = "high"
-        self.depth_display_mode = mode
-        w, h = DEPTH_DISPLAY_MODES[mode]
-        self.frame_width = int(w)
-        self.frame_height = int(h)
-
     def load_persisted(self, path: Path = SETTINGS_PATH) -> None:
         if not path.is_file():
             return
@@ -142,11 +122,6 @@ class Settings:
         self.auto_snap_on_detect = bool(self.auto_snap_on_detect)
         self.drakevox_enabled = bool(self.drakevox_enabled)
         self.drakevox_on_autosnap = bool(self.drakevox_on_autosnap)
-        # Migrate old RGB PiP experiment key → ignore, always IR
-        if "depth_display_mode" not in data and "video_pip_mode" in data:
-            # previous default canvas was 1280x720
-            self.depth_display_mode = "high"
-        self.apply_depth_display_mode()
         if self.display_brightness is not None:
             try:
                 self.display_brightness = int(self.display_brightness)
@@ -194,7 +169,6 @@ class Settings:
                 if self.display_brightness is not None
                 else None
             ),
-            "depth_display_mode": str(self.depth_display_mode or "high"),
         }
         try:
             path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")

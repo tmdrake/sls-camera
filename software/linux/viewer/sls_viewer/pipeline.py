@@ -31,7 +31,6 @@ class FramePipeline:
         self._frame_i = 0
         self._last_poses = []
         self._reconnect_attempt = 0
-        self._force_reopen = False
 
     @property
     def status(self) -> str:
@@ -144,18 +143,6 @@ class FramePipeline:
         """Yellow flash for snapshot (caller restores after delay)."""
         return self.set_led(freenect_io.LED_YELLOW)
 
-    def set_depth_display_mode(self, mode: str) -> str:
-        """normal (640x480) or high (1280x720) Depth+SLS canvas. Sensor depth stays 640x480."""
-        self.s.depth_display_mode = mode
-        self.s.apply_depth_display_mode()
-        self.s.save_persisted()
-        return self.s.depth_display_mode
-
-    def cycle_depth_display_mode(self) -> str:
-        cur = (self.s.depth_display_mode or "high").lower()
-        nxt = "high" if cur == "normal" else "normal"
-        return self.set_depth_display_mode(nxt)
-
     def _set_frame(self, bgr: np.ndarray) -> None:
         ok, buf = cv2.imencode(
             ".jpg",
@@ -262,7 +249,6 @@ class FramePipeline:
         try:
             self._status = "opening SLS camera…"
             self.s.ir_brightness = 50
-            self.s.apply_depth_display_mode()
             self._kinect = freenect_io.FreenectSync(
                 index=self.s.device_index,
                 video_mode="ir",
@@ -274,10 +260,8 @@ class FramePipeline:
             self._kinect.prepare()
             depth, _ir = self._kinect.get_depth_and_ir()
             self._reconnect_attempt = 0
-            out_w, out_h = self.s.frame_width, self.s.frame_height
             self._status = (
-                f"live · depth {depth.shape[1]}x{depth.shape[0]} · "
-                f"view {out_w}x{out_h}"
+                f"live · {depth.shape[1]}x{depth.shape[0]} · LED green · tilt 0°"
             )
             return True
         except Exception as e:
