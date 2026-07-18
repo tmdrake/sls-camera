@@ -250,7 +250,7 @@ class SettingsDialog(QDialog):
         self.btn_defaults = QPushButton("Defaults")
         self.btn_defaults.setObjectName("wide")
         self.btn_defaults.setToolTip(
-            "Reset Max people=1 and Confidence=0.5 (MediaPipe official defaults)"
+            "Reset Max people=1, Confidence=0.5, and Captures to Auto (USB/SD if mounted)"
         )
         self.btn_defaults.clicked.connect(self._reset_defaults)
         act.addWidget(self.btn_defaults)

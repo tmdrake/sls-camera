@@ -151,11 +151,13 @@ class Settings:
         self.max_poses = int(max(lo, min(hi, int(self.max_poses))))
 
     def reset_pose_defaults(self) -> None:
-        """Restore MediaPipe-recommended confidence and max poses."""
+        """Restore MediaPipe pose defaults + field defaults (captures Auto)."""
         self.pose_min_confidence = float(MEDIAPIPE_DEFAULT_CONFIDENCE)
         self.max_poses = int(MEDIAPIPE_DEFAULT_MAX_POSES)
         self.clamp_pose_confidence()
         self.clamp_max_poses()
+        # Captures: prefer USB/SD when present
+        self.captures_target = "auto"
         self.save_persisted()
 
     def save_persisted(self, path: Path = SETTINGS_PATH) -> None:

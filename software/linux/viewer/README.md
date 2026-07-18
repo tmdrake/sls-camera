@@ -80,7 +80,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 |---------|-----------------|
 | **Max people** | 1–6; MediaPipe default **1** |
 | **Confidence** | 0.25–0.99; MediaPipe default **0.5** |
-| **Defaults** | Confirm, then Max=1 and Conf=0.5 ([PoseLandmarkerOptions](https://ai.google.dev/edge/api/mediapipe/python/mp/tasks/vision/PoseLandmarkerOptions)) |
+| **Defaults** | Confirm → Max=1, Conf=0.5, **Captures to Auto** |
 | **Clear captures** | Confirm, then delete files under `captures/` (blocked while REC) |
 | **Mirror** | Off by default |
 | **Spectrum** | On/off; strip height always reserved (no layout jump) |
