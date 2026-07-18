@@ -24,4 +24,5 @@ Software paths:
 ## Appliance / firmware notes
 
 - **Captures on locked images:** after a firmware-style tablet image, the root filesystem may be **read-only**. Plan a **writable permanent volume** for investigation media (snaps, AVI, session logs) — e.g. `/data/sls-captures`, SD card, or a data partition — and point the app there via config/env. Do not rely solely on `software/linux/viewer/captures` inside a locked image.  
-  Tracked in [docs/TODO.md](../docs/TODO.md).
+- **Removable / SD in the field:** app should eventually **detect mounted USB/SD** and prefer that for captures when present (fallback to local/`/data`).  
+  Tracked in [docs/TODO.md](../docs/TODO.md) (Recording / capture + Field / packaging).

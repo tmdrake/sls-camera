@@ -11,15 +11,23 @@ policy come later.
 
 - [x] **Mux audio into recordings** — Record writes MJPG video + parallel mic WAV, then muxes into a single AVI (PCM audio) via system `ffmpeg` or `imageio-ffmpeg`. Prefers Kinect USB Audio; shares spectrum stream to avoid exclusive-open conflicts. Fallback: video AVI + sidecar WAV if mux fails.
   - Related: `software/linux/viewer/sls_viewer/session_io.py`, `spectrum.py`, `audio_device.py`
+  - Closed: [GitHub #1](https://github.com/tmdrake/sls-camera/issues/1)
+- [ ] **Captures → removable media / SD (auto-detect)** — detect mounted USB sticks / SD cards (e.g. `/media/$USER/*`, `/run/media/$USER/*`, common SD mounts); Settings and/or auto-prefer a writable external volume; write snaps, AVI, and session logs there when present; fall back to `viewer/captures` (or appliance `/data/...`).
+  - Issue: [#5](https://github.com/tmdrake/sls-camera/issues/5)
+  - Related: permanent captures on locked firmware image (below)
+  - Code later: `session_io.CAPTURES_DIR`, `config`, Settings UI
 
 ## Field / packaging (dev → tablet)
 
-**Issue tracking for deps & version conflicts (this repo):**
+**Open GitHub issues (this repo):**
 
-- [#2](https://github.com/tmdrake/sls-camera/issues/2) — offline recursive apt deps + cache-based install  
-- [#3](https://github.com/tmdrake/sls-camera/issues/3) — apt/Python OR-alternatives, downgrades, new conflicts  
+| Issue | Topic |
+|-------|--------|
+| [#2](https://github.com/tmdrake/sls-camera/issues/2) | Offline recursive apt deps + cache-based install |
+| [#3](https://github.com/tmdrake/sls-camera/issues/3) | apt/Python OR-alternatives, downgrades, version conflicts |
+| [#4](https://github.com/tmdrake/sls-camera/issues/4) | Optional system shutdown (or exit intent) on Quit |
 
-Firmware may implement the mirror scripts; **open/close packaging conflict work here**.
+Firmware may implement offline mirrors; **product install-path and app-behavior decisions stay tracked here**.
 
 - [x] **Install / uninstall scripts (dev packaging)** — user launcher + optional login autostart; documents host needs without a firmware image.
   - `software/linux/scripts/install-field-app.sh`
@@ -30,8 +38,10 @@ Firmware may implement the mirror scripts; **open/close packaging conflict work 
 - [ ] **gspca/udev one-shot** — fold or harden `fix-kinect-access.sh` into install path for true zero-touch bring-up.
 - [ ] **Hardware BOM photos / wiring** in `hardware/` (Kinect + tablet + external power).
 - [ ] **Permanent captures on appliance image** — firmware/locked rootfs may be read-only; store snaps/recordings on writable permanent media (`/data`, SD, data partition, USB), not only `viewer/captures` inside the image. Path via env/config for packaging.
+  - Related: **Captures → removable media / SD** (runtime detect + prefer external volume)
 - [x] **Battery % + charge indicator** — status bar `BAT n%` / `⚡` when sysfs battery exists; hidden on desktop
 - [x] **Quit confirmation** — dialog before exit (stops REC cleanly)
+- [ ] **Quit → optional power off** — app-level intent / Settings (Exit vs Shutdown); firmware launcher may already power off — product UX in app → issue #4
 - [x] **Display brightness** (Settings) — sysfs backlight / brightnessctl / xrandr software fallback
 - [ ] **Power management** — stable SLS on **external power** with tablet: suspend/sleep policy, USB power, avoid brownouts when Kinect + display are both on.
 - [ ] **Sensor inputs** — Arduino/MCU bridge into the app (see product features).
