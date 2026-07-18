@@ -88,7 +88,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 | **DrakeVox** | **ON** = panel + timer/TTS/O; **OFF** = hide panel + stop generation |
 | **DrakeVox on auto-snap** | Default **ON**; only when auto-snap fires (not manual Snap) |
 | **Brightness** | ±10%; n/a if no backlight/xrandr |
-| **Color PiP** | Cycle **IR 640** → **RGB 640@30** → **RGB-Hi 1280@10**; depth/SLS stay 640×480 |
+| **Depth + SLS view** | **Normal 640** (1:1) or **High 1280** (upscaled canvas). Sensor depth always 640×480; IR PiP always on |
 
 ## Captures
 

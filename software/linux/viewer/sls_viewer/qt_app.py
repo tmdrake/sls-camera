@@ -213,16 +213,17 @@ class SettingsDialog(QDialog):
         grid.addWidget(self.btn_drakevox_autosnap, row, 1, 1, 3)
         row += 1
 
-        # PiP video stream (depth/SLS always 640x480)
-        grid.addWidget(QLabel("Color PiP"), row, 0)
-        self.btn_pip_mode = QPushButton()
-        self.btn_pip_mode.setObjectName("wide")
-        self.btn_pip_mode.setToolTip(
-            "Cycle PiP: IR (default) → RGB 640×480@30 → RGB-Hi 1280×1024@10. "
-            "Depth + stick figures stay 640×480. Reopens freenect."
+        # Depth+SLS output size (sensor always 640x480; high = upscale)
+        grid.addWidget(QLabel("Depth + SLS view"), row, 0)
+        self.btn_depth_view = QPushButton()
+        self.btn_depth_view.setObjectName("wide")
+        self.btn_depth_view.setToolTip(
+            "Normal 640×480 (1:1 sensor) or High 1280×720 (upscaled). "
+            "Kinect depth is always 640×480 — no higher freenect depth mode. "
+            "IR PiP unchanged."
         )
-        self.btn_pip_mode.clicked.connect(self._cycle_pip_mode)
-        grid.addWidget(self.btn_pip_mode, row, 1, 1, 3)
+        self.btn_depth_view.clicked.connect(self._cycle_depth_view)
+        grid.addWidget(self.btn_depth_view, row, 1, 1, 3)
         row += 1
 
         # Display brightness (sysfs backlight / brightnessctl / xrandr)
@@ -321,13 +322,11 @@ class SettingsDialog(QDialog):
         )
         self.btn_drakevox_autosnap.setEnabled(on)
 
-        pip = (self.pipeline.s.video_pip_mode or "ir").lower()
-        pip_labels = {
-            "ir": "IR 640",
-            "rgb": "RGB 640@30",
-            "rgb_high": "RGB-Hi 1280@10",
-        }
-        self.btn_pip_mode.setText(pip_labels.get(pip, pip))
+        dmode = (self.pipeline.s.depth_display_mode or "high").lower()
+        if dmode == "normal":
+            self.btn_depth_view.setText("Normal 640")
+        else:
+            self.btn_depth_view.setText("High 1280")
 
         bri = get_brightness()
         if bri.available and bri.percent is not None:
@@ -416,10 +415,10 @@ class SettingsDialog(QDialog):
             )
         self._refresh()
 
-    def _cycle_pip_mode(self) -> None:
+    def _cycle_depth_view(self) -> None:
         parent = self.parent()
-        if parent is not None and hasattr(parent, "cycle_video_pip_mode"):
-            parent.cycle_video_pip_mode()
+        if parent is not None and hasattr(parent, "cycle_depth_display_mode"):
+            parent.cycle_depth_display_mode()
         self._refresh()
 
     def _nudge_brightness(self, delta: int) -> None:
@@ -624,15 +623,11 @@ class SlsMainWindow(QMainWindow):
         if self._settings_open():
             self._settings_dlg._refresh()
 
-    def cycle_video_pip_mode(self) -> None:
-        """IR → RGB → RGB-Hi (depth/SLS unchanged). Reopens freenect."""
-        mode = self.pipeline.cycle_video_pip_mode()
-        labels = {
-            "ir": "IR 640",
-            "rgb": "RGB 640@30",
-            "rgb_high": "RGB-Hi 1280@10",
-        }
-        self.session._set_flash(f"PiP → {labels.get(mode, mode)}")
+    def cycle_depth_display_mode(self) -> None:
+        """Toggle Depth+SLS canvas: Normal 640×480 ↔ High 1280×720 (upscale)."""
+        mode = self.pipeline.cycle_depth_display_mode()
+        label = "Normal 640×480" if mode == "normal" else "High 1280×720"
+        self.session._set_flash(f"Depth+SLS view → {label}")
         if self._settings_open():
             self._settings_dlg._refresh()
 

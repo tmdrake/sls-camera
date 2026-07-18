@@ -24,18 +24,9 @@ from typing import Optional, Tuple
 import numpy as np
 
 # Enums from libfreenect.h
-FREENECT_RESOLUTION_LOW = 0  # depth usually invalid on Kinect 360
-FREENECT_RESOLUTION_MEDIUM = 1  # depth 640x480; IR 640x488; RGB 640x480 @ 30
-FREENECT_RESOLUTION_HIGH = 2  # depth invalid; IR/RGB 1280x1024 @ 10
+FREENECT_RESOLUTION_MEDIUM = 1  # depth 640x480; IR 640x488 @ ~30 (only valid depth size)
 FREENECT_VIDEO_IR_8BIT = 2
-FREENECT_VIDEO_RGB = 0
 FREENECT_DEPTH_11BIT = 0
-
-# App video PiP modes (depth always MEDIUM 640x480)
-#   ir       — IR 640x488 @ ~30 (default SLS PiP)
-#   rgb      — RGB 640x480 @ ~30
-#   rgb_high — RGB 1280x1024 @ ~10 (test higher color; depth/SLS unchanged)
-VIDEO_PIP_MODES = ("ir", "rgb", "rgb_high")
 
 # freenect_led_options (libfreenect.h)
 LED_OFF = 0
@@ -127,10 +118,8 @@ class FreenectSync:
         ir_brightness: int = IR_BRIGHTNESS_DEFAULT,
     ):
         self.index = index
-        mode = (video_mode or "ir").lower().strip()
-        if mode not in VIDEO_PIP_MODES:
-            mode = "ir"
-        self.video_mode = mode  # ir | rgb | rgb_high
+        # Always IR for PiP (RGB modes removed — depth/SLS is the main view)
+        self.video_mode = "ir"
         self.led = led
         self.tilt_degs = 0 if auto_level else int(tilt_degs)
         self.auto_level = auto_level
@@ -152,20 +141,9 @@ class FreenectSync:
         self._dead = False
         self._dead_reason = ""
         self._event_fails = 0
-        # Filled after set_video_mode
-        self.video_width = DEPTH_W
-        self.video_height = DEPTH_H
-        self.video_fps_nominal = 30
         # Keep callback refs alive
         self._depth_cb = _DEPTH_CB(self._on_depth)
         self._video_cb = _VIDEO_CB(self._on_video)
-
-    def video_label(self) -> str:
-        if self.video_mode == "rgb_high":
-            return f"RGB {self.video_width}x{self.video_height}~{self.video_fps_nominal}fps"
-        if self.video_mode == "rgb":
-            return f"RGB {self.video_width}x{self.video_height}~{self.video_fps_nominal}fps"
-        return f"IR {self.video_width}x{self.video_height}"
 
     def _bind(self) -> None:
         lib = self._lib
@@ -236,31 +214,12 @@ class FreenectSync:
             self._event_fails = 0
 
     def _on_video(self, dev, data, ts) -> None:
-        vw = int(self.video_width) or DEPTH_W
-        vh = int(self.video_height) or DEPTH_H
-        if self.video_mode == "ir":
-            # freenect IR medium is 640x488; high IR is full vh
-            if vh >= IR_H_NATIVE and vw == IR_W:
-                n = IR_W * IR_H_NATIVE
-                arr = np.ctypeslib.as_array(
-                    ctypes.cast(data, POINTER(ctypes.c_uint8 * n)).contents
-                ).reshape(IR_H_NATIVE, IR_W)
-                # Crop medium IR to 640x480 to align with depth
-                frame = arr[:DEPTH_H, :].copy()
-            else:
-                n = vw * vh
-                arr = np.ctypeslib.as_array(
-                    ctypes.cast(data, POINTER(ctypes.c_uint8 * n)).contents
-                ).reshape(vh, vw)
-                frame = arr.copy()
-        else:
-            # RGB: freenect delivers RGB interleaved; convert to BGR for OpenCV
-            n = vw * vh * 3
-            arr = np.ctypeslib.as_array(
-                ctypes.cast(data, POINTER(ctypes.c_uint8 * n)).contents
-            ).reshape(vh, vw, 3)
-            # freenect RGB is RGB order
-            frame = arr[:, :, ::-1].copy()  # → BGR
+        # IR medium 640x488 → crop to 640x480 to match depth
+        n = IR_W * IR_H_NATIVE
+        arr = np.ctypeslib.as_array(
+            ctypes.cast(data, POINTER(ctypes.c_uint8 * n)).contents
+        ).reshape(IR_H_NATIVE, IR_W)
+        frame = arr[:DEPTH_H, :].copy()
         now = time.time()
         with self._lock:
             self._video = frame
@@ -346,36 +305,17 @@ class FreenectSync:
         if self.video_mode == "ir":
             lib.freenect_set_ir_brightness(dev, c_uint16(self.ir_brightness))
 
-        # Depth always MEDIUM 640x480 — only valid size on Kinect 360
+        # Depth + IR always MEDIUM — only valid depth size on Kinect 360 (640x480)
         dm = lib.freenect_find_depth_mode(
             FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_11BIT
         )
         if not dm.is_valid:
             raise FreenectError("invalid depth mode")
-
-        if self.video_mode == "ir":
-            vfmt = FREENECT_VIDEO_IR_8BIT
-            vres = FREENECT_RESOLUTION_MEDIUM
-        elif self.video_mode == "rgb_high":
-            vfmt = FREENECT_VIDEO_RGB
-            vres = FREENECT_RESOLUTION_HIGH
-        else:
-            vfmt = FREENECT_VIDEO_RGB
-            vres = FREENECT_RESOLUTION_MEDIUM
-
-        vm = lib.freenect_find_video_mode(vres, vfmt)
+        vm = lib.freenect_find_video_mode(
+            FREENECT_RESOLUTION_MEDIUM, FREENECT_VIDEO_IR_8BIT
+        )
         if not vm.is_valid:
-            # Fall back to RGB medium if high unavailable
-            if self.video_mode == "rgb_high":
-                self.video_mode = "rgb"
-                vm = lib.freenect_find_video_mode(
-                    FREENECT_RESOLUTION_MEDIUM, FREENECT_VIDEO_RGB
-                )
-            if not vm.is_valid:
-                raise FreenectError("invalid video mode")
-        self.video_width = int(vm.width) if vm.width > 0 else DEPTH_W
-        self.video_height = int(vm.height) if vm.height > 0 else DEPTH_H
-        self.video_fps_nominal = int(vm.framerate) if vm.framerate > 0 else 30
+            raise FreenectError("invalid video mode")
 
         if lib.freenect_set_depth_mode(dev, dm) != 0:
             raise FreenectError("set_depth_mode failed")
@@ -483,24 +423,13 @@ class FreenectSync:
             self.prepare()
         return self._wait_fresh_frame("depth")
 
-    def get_video_frame(self) -> np.ndarray:
-        """Secondary stream: IR gray or RGB BGR depending on video_mode."""
+    def get_ir_u8(self) -> np.ndarray:
         if not self._prepared:
             self.prepare()
         return self._wait_fresh_frame("video")
 
-    def get_ir_u8(self) -> np.ndarray:
-        if self.video_mode != "ir":
-            raise FreenectError("video_mode is not ir")
-        return self.get_video_frame()
-
-    def get_rgb_u8(self) -> np.ndarray:
-        if self.video_mode not in ("rgb", "rgb_high"):
-            raise FreenectError("video_mode is not rgb")
-        return self.get_video_frame()
-
     def get_depth_and_ir(self) -> Tuple[np.ndarray, np.ndarray]:
-        """Depth + secondary video (IR or RGB). Name kept for pipeline compatibility."""
+        """Depth (640x480) + IR (cropped 640x480). Raises on USB death / stale frames."""
         if self.is_dead():
             raise FreenectError(
                 f"USB camera dead: {self.dead_reason() or 'transfer failed'}"
@@ -508,8 +437,8 @@ class FreenectSync:
         if not self._prepared:
             self.prepare()
         depth = self._wait_fresh_frame("depth")
-        video = self._wait_fresh_frame("video")
-        return depth, video
+        ir = self._wait_fresh_frame("video")
+        return depth, ir
 
     def stop(self) -> None:
         self._running = False
