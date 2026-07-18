@@ -44,12 +44,19 @@ AGENTS.md           Windows app notes + Linux path pointer
 
 Docs: [linux README](software/linux/README.md) · [viewer README](software/linux/viewer/README.md) · [Ubuntu setup](software/linux/docs/UBUNTU-SETUP.md) · [M0 bring-up](software/linux/notes/BRINGUP-FREENECT.md).
 
+**Firmware team (offline debs / appliance):** start at  
+[**FOR-FIRMWARE-TEAM.md**](software/linux/docs/FOR-FIRMWARE-TEAM.md) — golden rules, `install-apt-deps.sh`, exit codes, smoke checklist.  
+Sibling image repo: [`sls-camera-firmware`](https://github.com/tmdrake/sls-camera-firmware).
+
 ```bash
 # Kinect depth check
 ./software/linux/scripts/check-kinect.sh
 
 # Field app
 cd software/linux/viewer && ./run.sh
+
+# Host apt seeds (online, or --deb-cache from firmware vendor/debs)
+./software/linux/scripts/install-field-app.sh --with-apt-deps
 ```
 
 ## Delegation

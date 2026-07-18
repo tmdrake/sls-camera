@@ -38,6 +38,7 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
   - Docs: `software/linux/docs/FIELD-INSTALL.md`
 - [x] **Offline-safe apt install (#2)** — seed list + `install-apt-deps.sh` (cache → `/var/cache/apt/archives` + `--no-download`; never blanket `dpkg -i`); `--with-apt-deps` / `--deb-cache` / `SLS_OFFLINE=1`; uninstall `--purge-apt-deps` (safe seeds only); honors `SLS_CAPTURES_DIR`.
   - `software/linux/packages/apt-packages.txt`, `apt-purge-safe.txt`
+  - **FW one-pager:** [FOR-FIRMWARE-TEAM.md](../software/linux/docs/FOR-FIRMWARE-TEAM.md)
   - Align with firmware `vendor/debs` + [OFFLINE-MIRROR.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/OFFLINE-MIRROR.md)
   - Closed: [GitHub #2](https://github.com/tmdrake/sls-camera/issues/2); conflicts tracking: [#3](https://github.com/tmdrake/sls-camera/issues/3)
 - [ ] **Clean the desktop before a firmware package install** — strip / replace stock Lubuntu (or similar) session chrome so a tablet does not ship a cluttered desktop; only then layer a firmware/image package.

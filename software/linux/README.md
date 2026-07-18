@@ -12,7 +12,8 @@ Ubuntu / freenect path for the same Xbox 360 Kinect (NUI) hardware used by the W
 | **Session** — Snap / Record + mic in AVI | **Done** (main bar + Settings) |
 | **Reconnect** — video + mic retry | **Done** (RECONNECTING UI; spectrum mic retry) |
 | **Dev install / uninstall scripts** | **Done** (`scripts/install-field-app.sh`) |
-| **Tablet firmware image** | Not started (clean desktop first — see TODO) |
+| **Offline-safe apt seeds (#2)** | **Done** (`install-apt-deps.sh` + `packages/apt-packages.txt`) |
+| **Tablet firmware image** | Sibling `sls-camera-firmware` (see [FOR-FIRMWARE-TEAM.md](docs/FOR-FIRMWARE-TEAM.md)) |
 | **DrakeVox** word panel (5–15 min, timestamped) | **Done** |
 | **Arduino sensors + DrakeVox triggers** | Not started |
 | **External power policy** | Not started |

@@ -64,6 +64,8 @@ Ubuntu / freenect work lives under `software/linux/`. **Same UI goal** as this W
 - **UI:** Qt fullscreen always-on-top (optional `--ui web`)  
 - Dev packaging: `software/linux/scripts/install-field-app.sh` / `uninstall-field-app.sh`  
   ([FIELD-INSTALL.md](software/linux/docs/FIELD-INSTALL.md))  
+- **Firmware / offline apt:** [FOR-FIRMWARE-TEAM.md](software/linux/docs/FOR-FIRMWARE-TEAM.md)  
+  (`install-apt-deps.sh`, seeds in `software/linux/packages/`, never blanket `dpkg -i`)  
 - Backlog: [docs/TODO.md](docs/TODO.md) — clean desktop → tablet firmware → sensors / power  
 
 Report issues on this repo: https://github.com/tmdrake/sls-camera/issues
