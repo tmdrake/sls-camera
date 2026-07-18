@@ -14,14 +14,19 @@ policy come later.
 
 ## Field / packaging (dev → tablet)
 
+**Issue tracking for deps & version conflicts (this repo):**
+
+- [#2](https://github.com/tmdrake/sls-camera/issues/2) — offline recursive apt deps + cache-based install  
+- [#3](https://github.com/tmdrake/sls-camera/issues/3) — apt/Python OR-alternatives, downgrades, new conflicts  
+
+Firmware may implement the mirror scripts; **open/close packaging conflict work here**.
+
 - [x] **Install / uninstall scripts (dev packaging)** — user launcher + optional login autostart; documents host needs without a firmware image.
   - `software/linux/scripts/install-field-app.sh`
   - `software/linux/scripts/uninstall-field-app.sh`
   - Docs: `software/linux/docs/FIELD-INSTALL.md`
 - [ ] **Clean the desktop before a firmware package install** — strip / replace stock Lubuntu (or similar) session chrome so a tablet does not ship a cluttered desktop; only then layer a firmware/image package.
-- [ ] **Tablet firmware / image package** — see sibling repo **`sls-camera-firmware`** (`~/sls-camera-firmware`, GitHub `tmdrake/sls-camera-firmware` when published). Offline debs/wheels + appliance install + future ISO.
-  - Local: `/home/tmdrake/sls-camera-firmware`
-  - App stays in this repo; firmware is packaging only.
+- [ ] **Tablet firmware / image package** — sibling **`sls-camera-firmware`**. Offline debs/wheels + appliance install + future ISO. Deps/conflicts → issues #2 / #3.
 - [ ] **gspca/udev one-shot** — fold or harden `fix-kinect-access.sh` into install path for true zero-touch bring-up.
 - [ ] **Hardware BOM photos / wiring** in `hardware/` (Kinect + tablet + external power).
 - [ ] **Permanent captures on appliance image** — firmware/locked rootfs may be read-only; store snaps/recordings on writable permanent media (`/data`, SD, data partition, USB), not only `viewer/captures` inside the image. Path via env/config for packaging.

@@ -50,6 +50,17 @@ Does **not** copy the tree system-wide. Moving/renaming the repo breaks the wrap
 
 Leaves: git repo, `viewer/.venv`, captures, apt packages, gspca blacklist (if you used `--with-kinect-access`).
 
+## Dependencies & version conflicts (issue tracking)
+
+Report and resolve **apt/Python missing deps and package version conflicts** on the **sls-camera** issue tracker (not only in the firmware repo):
+
+| Issue | Scope |
+|-------|--------|
+| [#2](https://github.com/tmdrake/sls-camera/issues/2) | Offline recursive deps, cache-based install path |
+| [#3](https://github.com/tmdrake/sls-camera/issues/3) | OR-alternatives (`libjack`/`ffmpeg-extra`), python downgrades, new conflicts |
+
+Sibling firmware docs point here: `sls-camera-firmware` → [OFFLINE-MIRROR.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/OFFLINE-MIRROR.md).
+
 ## Screenshots (appliance VM smoke test)
 
 Phase 1 packaging was proven on a **Lubuntu 26.04** KVM guest with the sibling firmware installer; demo mode needs no Kinect.
