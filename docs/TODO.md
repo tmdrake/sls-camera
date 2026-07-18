@@ -27,7 +27,7 @@ policy come later.
 |-------|--------|
 | [#2](https://github.com/tmdrake/sls-camera/issues/2) | Offline recursive apt deps + cache-based install |
 | [#3](https://github.com/tmdrake/sls-camera/issues/3) | apt/Python OR-alternatives, downgrades, version conflicts |
-| [#4](https://github.com/tmdrake/sls-camera/issues/4) | Optional system shutdown (or exit intent) on Quit |
+| [#4](https://github.com/tmdrake/sls-camera/issues/4) | Optional system shutdown on Quit — **closed** (Settings + exit 10) |
 | [#5](https://github.com/tmdrake/sls-camera/issues/5) | Captures → removable media / SD — **closed (v1)**; Auto default, SD then USB |
 
 Firmware may implement offline mirrors; **product install-path and app-behavior decisions stay tracked here**.
@@ -44,7 +44,9 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
   - Related: **Captures → removable media / SD** (runtime detect + prefer external volume)
 - [x] **Battery % + charge indicator** — status bar `BAT n%` / `⚡` when sysfs battery exists; hidden on desktop
 - [x] **Quit confirmation** — dialog before exit (stops REC cleanly)
-- [ ] **Quit → optional power off** — app-level intent / Settings (Exit vs Shutdown); firmware launcher may already power off — product UX in app → issue #4
+- [x] **Quit → optional power off** — Settings **Power off on Quit** (default OFF); env `SLS_QUIT_ACTION=shutdown|exit`; confirm “Power off this tablet?”; clean stop then exit code **10** + best-effort host poweroff. Firmware launcher honors code 10.
+  - Closed: [GitHub #4](https://github.com/tmdrake/sls-camera/issues/4)
+  - Code: `host_power.py`, `qt_app.py`, `config.py`
 - [x] **Display brightness** (Settings) — sysfs backlight / brightnessctl / xrandr software fallback
 - [ ] **Power management** — stable SLS on **external power** with tablet: suspend/sleep policy, USB power, avoid brownouts when Kinect + display are both on.
 - [ ] **Sensor inputs** — Arduino/MCU bridge into the app (see product features).
@@ -71,4 +73,6 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] DrakeVox (~2k word list, 5–15 min, TTS, AVI burn-in)
 - [x] DrakeVox on auto-snap setting (default ON; not manual Snap)
 - [x] Battery status + Quit confirm + display brightness
+- [x] Quit → optional power off (Settings + exit 10 + env)
+- [x] DrakeVox overlay title `***DRAKEVOX***` in LED magenta
 - [x] Dev install/uninstall scripts + FIELD-INSTALL.md

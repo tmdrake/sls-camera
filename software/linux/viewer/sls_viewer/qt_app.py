@@ -32,6 +32,7 @@ from .backlight import (
 from . import freenect_io
 from .battery import BatteryMonitor
 from .drakevox import DrakeVoxEngine, paint_drakevox_bgr
+from .host_power import EXIT_OK, EXIT_POWEROFF, request_host_poweroff
 from .session_io import AUDIO_SAMPLE_RATE, SessionRecorder
 from .spectrum import SpectrumAnalyzer
 from .tts import DrakeVoxTTS, backend_name as tts_backend_name
@@ -243,6 +244,19 @@ class SettingsDialog(QDialog):
         grid.addWidget(self.btn_captures, row, 1, 1, 3)
         row += 1
 
+        # Quit → power off host (tablet appliance; default OFF on desktops)
+        grid.addWidget(QLabel("Power off on Quit"), row, 0)
+        self.btn_quit_poweroff = QPushButton()
+        self.btn_quit_poweroff.setObjectName("wide")
+        self.btn_quit_poweroff.setToolTip(
+            "ON: confirmed Quit powers off the tablet (after stopping capture). "
+            "OFF: Quit returns to the desktop only. "
+            "Dev default is OFF. Appliance can force via SLS_QUIT_ACTION=shutdown."
+        )
+        self.btn_quit_poweroff.clicked.connect(self._toggle_quit_powers_off)
+        grid.addWidget(self.btn_quit_poweroff, row, 1, 1, 3)
+        row += 1
+
         root.addLayout(grid)
 
         # Defaults / Clear captures / DrakeVox now — Snap/Record on main bar
@@ -351,6 +365,10 @@ class SettingsDialog(QDialog):
             tip = bri.detail or "no brightness control on this display"
             self.bright_label.setToolTip(tip)
 
+        self.btn_quit_poweroff.setText(
+            "ON" if self.pipeline.s.quit_powers_off else "OFF"
+        )
+
         parent = self.parent()
         cap_mode = self.pipeline.s.captures_target
         has_media = False
@@ -454,6 +472,12 @@ class SettingsDialog(QDialog):
             parent.toggle_captures_target()
         self._refresh()
 
+    def _toggle_quit_powers_off(self) -> None:
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "toggle_quit_powers_off"):
+            parent.toggle_quit_powers_off()
+        self._refresh()
+
     def _drakevox_now(self) -> None:
         parent = self.parent()
         if parent is not None and hasattr(parent, "drakevox_generate_now"):
@@ -533,6 +557,7 @@ class SlsMainWindow(QMainWindow):
         self.battery = BatteryMonitor(poll_s=5.0)
         self._settings_dlg: Optional[SettingsDialog] = None
         self._quit_confirmed = False
+        self._app_exit_code = EXIT_OK
         self._media_poll_i = 0
         self.setWindowTitle("SLS Camera")
         # Apply saved brightness once (tablet backlight or xrandr software)
@@ -674,6 +699,13 @@ class SlsMainWindow(QMainWindow):
         if self._settings_open():
             self._settings_dlg._refresh()
 
+    def toggle_quit_powers_off(self) -> None:
+        """Settings: Quit returns to desktop (OFF) vs host power-off (ON)."""
+        self.pipeline.s.quit_powers_off = not bool(self.pipeline.s.quit_powers_off)
+        self.pipeline.s.save_persisted()
+        if self._settings_open():
+            self._settings_dlg._refresh()
+
     def apply_field_defaults(self) -> None:
         """Settings Defaults: pose MediaPipe defaults + captures Auto."""
         self.pipeline.reset_pose_defaults()
@@ -797,17 +829,34 @@ class SlsMainWindow(QMainWindow):
         self._request_quit()
 
     def _request_quit(self) -> None:
-        """Quit button / Q / Esc (when Settings closed) — confirm first."""
+        """Quit button / Q / Esc (when Settings closed) — confirm first.
+
+        When Power off on Quit is ON, dialog says so and close uses exit code 10
+        (firmware contract) plus best-effort host poweroff.
+        """
         if self._quit_confirmed:
             self.close()
             return
+        power_off = bool(self.pipeline.s.quit_powers_off)
         box = QMessageBox(self)
-        box.setWindowTitle("Quit SLS Camera")
-        box.setText("Quit SLS Camera?")
-        if self.session.recording:
-            box.setInformativeText("Recording will be stopped and saved.")
+        if power_off:
+            box.setWindowTitle("Power off")
+            box.setText("Power off this tablet?")
+            if self.session.recording:
+                box.setInformativeText(
+                    "Recording will be stopped and saved, then the system powers off."
+                )
+            else:
+                box.setInformativeText(
+                    "Camera and mic will stop, then the system powers off."
+                )
         else:
-            box.setInformativeText("Camera and mic capture will stop.")
+            box.setWindowTitle("Quit SLS Camera")
+            box.setText("Quit SLS Camera?")
+            if self.session.recording:
+                box.setInformativeText("Recording will be stopped and saved.")
+            else:
+                box.setInformativeText("Camera and mic capture will stop.")
         box.setIcon(QMessageBox.Icon.Question)
         box.setStandardButtons(
             QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Yes
@@ -815,7 +864,7 @@ class SlsMainWindow(QMainWindow):
         box.setDefaultButton(QMessageBox.StandardButton.Cancel)
         yes = box.button(QMessageBox.StandardButton.Yes)
         if yes is not None:
-            yes.setText("Quit")
+            yes.setText("Power off" if power_off else "Quit")
         box.setStyleSheet(_STYLE)
         # Keep dialog above fullscreen field UI
         box.setWindowFlags(
@@ -1027,7 +1076,15 @@ class SlsMainWindow(QMainWindow):
         self.spectrum.stop()
         if self._settings_dlg is not None:
             self._settings_dlg.close()
+        # Clean teardown first; then signal power-off intent to launcher / OS.
+        power_off = bool(self.pipeline.s.quit_powers_off)
+        self._app_exit_code = EXIT_POWEROFF if power_off else EXIT_OK
         super().closeEvent(event)
+        app = QApplication.instance()
+        if app is not None:
+            app.exit(int(self._app_exit_code))
+        if power_off:
+            request_host_poweroff()
 
 
 def run_qt(pipeline: FramePipeline) -> int:
@@ -1037,6 +1094,11 @@ def run_qt(pipeline: FramePipeline) -> int:
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("SLS Camera")
     win = SlsMainWindow(pipeline)
+    win._app_exit_code = EXIT_OK
     win.showFullScreen()
     code = app.exec()
-    return int(code)
+    # Prefer window exit intent (10 = power off) over default Qt 0
+    out = int(getattr(win, "_app_exit_code", code) or 0)
+    if out == 0 and int(code) != 0:
+        out = int(code)
+    return out

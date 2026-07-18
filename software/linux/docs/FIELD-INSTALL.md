@@ -71,6 +71,26 @@ Phase 1 packaging was proven on a **Lubuntu 26.04** KVM guest with the sibling f
 
 See [`images/README.md`](images/README.md) for capture notes and a second HUD frame. Firmware first-boot notes: sibling repo `sls-camera-firmware` → `docs/FIRST-BOOT.md`.
 
+## Quit vs power-off (app vs appliance)
+
+Dev default: **Quit returns to the desktop** (no host shutdown).
+
+| Knob | Effect |
+|------|--------|
+| Settings **Power off on Quit** | Persisted in `viewer/user_settings.json` |
+| Env `SLS_QUIT_ACTION=shutdown` | Forces power-off mode for this process (appliance) |
+| Env `SLS_QUIT_ACTION=exit` | Forces exit-only mode for this process |
+
+On confirmed power-off Quit the app stops capture cleanly, exits with code **10**, and best-effort runs host `poweroff` (passwordless `sudo` paths used by appliance sudoers when present). Exit codes:
+
+| Code | Meaning |
+|------|---------|
+| `0` | Clean quit (desktop / shell) |
+| `10` | Operator requested host power-off |
+| `11` | Relaunch app (reserved for kiosk) |
+
+Firmware launcher (`sls-camera-firmware` → `/usr/local/bin/sls-camera`) already understands these codes (`SLS_ON_QUIT=app`). See viewer [README § Quit](../viewer/README.md#quit) and issue [#4](https://github.com/tmdrake/sls-camera/issues/4).
+
 ## Still manual / separate
 
 | Item | Notes |
@@ -78,6 +98,7 @@ See [`images/README.md`](images/README.md) for capture notes and a second HUD fr
 | **Kinect USB Audio** | `sudo apt install kinect-audio-setup` (+ MSI hash recovery in [UBUNTU-SETUP.md](UBUNTU-SETUP.md)) |
 | **First run** | `run.sh` builds venv, downloads MediaPipe model (network once) |
 | **DISPLAY** | Needs a logged-in desktop session for Qt |
+| **Passwordless poweroff** | Appliance: sudoers for `poweroff` / `systemctl poweroff` (firmware); without it, exit `10` still lets the launcher power off |
 
 ## Dev vs tablet firmware (roadmap)
 

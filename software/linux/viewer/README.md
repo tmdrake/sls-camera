@@ -16,9 +16,9 @@
 | **Reconnect** | Splash **Starting / Reconnecting to SLS Camera**; infinite retry |
 | **Battery** | Status `BAT n%` / `⚡` when a battery exists (hidden on desktop) |
 | **Brightness** | Settings ±10% (sysfs / brightnessctl / xrandr) |
-| **Quit** | Confirms before exit (stops recording cleanly) |
+| **Quit** | Confirms before exit (stops recording cleanly); optional **Power off on Quit** |
 | **DrakeVox** | 5–15 min timer + TTS; ~2k-word list; under IR PiP; key **O** |
-| **Settings** | Pose, mirror, spectrum, auto-snap, DrakeVox, brightness, Defaults/Clear (confirm) |
+| **Settings** | Pose, mirror, spectrum, auto-snap, DrakeVox, brightness, captures, Power off on Quit, Defaults/Clear |
 | **On open** | LED green, tilt auto-level 0°, IR sensor gain **50** (fixed) |
 
 Browser UI is optional (`--ui web`).
@@ -89,6 +89,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 | **DrakeVox on auto-snap** | Default **ON**; only when auto-snap fires (not manual Snap) |
 | **Brightness** | ±10%; n/a if no backlight/xrandr |
 | **Captures to** | **Auto** (default) or **Local** — see [Captures](#captures) |
+| **Power off on Quit** | Default **OFF** (dev); **ON** = power off tablet after confirm — see [Quit](#quit) |
 | **Copy local→media** | Only visible when USB/SD is mounted; confirm then copy |
 
 ## Captures
@@ -241,7 +242,19 @@ Settings → **Brightness − / +** (±10%). Tooltip shows which backend is acti
 
 ## Quit
 
-**Quit** / **Q** / **Esc** (when Settings is closed) asks **Quit SLS Camera?** before exiting so a recording can stop cleanly.
+**Quit** / **Q** / **Esc** (when Settings is closed) confirms before exiting so a recording can stop cleanly.
+
+| Mode | How | Dialog | Exit code | Host |
+|------|-----|--------|-----------|------|
+| **Exit only** (default) | Settings **Power off on Quit = OFF** | “Quit SLS Camera?” | `0` | Returns to desktop |
+| **Power off** | Settings **Power off on Quit = ON**, or env `SLS_QUIT_ACTION=shutdown` | “Power off this tablet?” | `10` | Best-effort `poweroff` after clean stop |
+
+- Dev machines keep **OFF** so Quit never surprises you with a shutdown.
+- Tablets / appliance images set **ON** in Settings or export `SLS_QUIT_ACTION=shutdown` (also accepts `poweroff`). Force desktop with `SLS_QUIT_ACTION=exit`.
+- Exit **10** matches the firmware launcher contract (`sls-camera-firmware` → `/usr/local/bin/sls-camera`); the launcher can honor the code without relying only on a shell fallback.
+- Capture, freenect LED/session, and spectrum stop **before** any power-off request.
+
+Issue: [#4](https://github.com/tmdrake/sls-camera/issues/4).
 
 ## Stack
 

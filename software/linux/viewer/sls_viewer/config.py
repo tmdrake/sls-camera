@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from .host_power import env_wants_poweroff_on_quit
+
 VIEWER_ROOT = Path(__file__).resolve().parent.parent
 MODEL_PATH = VIEWER_ROOT / "models" / "pose_landmarker_lite.task"
 WEB_ROOT = VIEWER_ROOT / "web"
@@ -29,6 +31,7 @@ PERSIST_KEYS = (
     "drakevox_on_autosnap",
     "display_brightness",
     "captures_target",
+    "quit_powers_off",
 )
 
 
@@ -102,17 +105,24 @@ class Settings:
     # Display brightness 5–100 (None = leave OS default / don't force at start)
     display_brightness: Optional[int] = None
 
+    # Quit: False = exit app only (dev default); True = power off host after confirm
+    # (appliance / tablet). Env SLS_QUIT_ACTION=shutdown|exit overrides for the process.
+    quit_powers_off: bool = False
+
     model_path: Path = field(default_factory=lambda: MODEL_PATH)
     allow_demo_without_kinect: bool = False
 
     def load_persisted(self, path: Path = SETTINGS_PATH) -> None:
         if not path.is_file():
+            self._apply_quit_env_override()
             return
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
+            self._apply_quit_env_override()
             return
         if not isinstance(data, dict):
+            self._apply_quit_env_override()
             return
         for key in PERSIST_KEYS:
             if key in data:
@@ -125,6 +135,7 @@ class Settings:
         self.auto_snap_on_detect = bool(self.auto_snap_on_detect)
         self.drakevox_enabled = bool(self.drakevox_enabled)
         self.drakevox_on_autosnap = bool(self.drakevox_on_autosnap)
+        self.quit_powers_off = bool(self.quit_powers_off)
         ct = str(getattr(self, "captures_target", "local") or "local").lower().strip()
         self.captures_target = "auto" if ct == "auto" else "local"
         if self.display_brightness is not None:
@@ -137,6 +148,14 @@ class Settings:
         self.clamp_max_poses()
         # IR gain is not user-persisted; always full sensor gain (50)
         self.ir_brightness = 50
+        # Process env wins over disk (appliance can force without editing JSON)
+        self._apply_quit_env_override()
+
+    def _apply_quit_env_override(self) -> None:
+        """SLS_QUIT_ACTION=shutdown|exit forces quit mode for this process."""
+        forced = env_wants_poweroff_on_quit()
+        if forced is not None:
+            self.quit_powers_off = bool(forced)
 
     def clamp_pose_confidence(self) -> None:
         lo, hi = float(self.pose_conf_min), float(self.pose_conf_max)
@@ -177,6 +196,7 @@ class Settings:
                 else None
             ),
             "captures_target": str(self.captures_target or "local"),
+            "quit_powers_off": bool(self.quit_powers_off),
         }
         try:
             path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
