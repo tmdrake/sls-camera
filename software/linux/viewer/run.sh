@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 # Start SLS viewer — Qt fullscreen always-on-top by default.
+#
+# Usage:
+#   ./run.sh --help
+#   ./run.sh
+#   ./run.sh --demo              # synthetic frames ONLY if freenect cannot open
+#   ./run.sh --mirror --led-off
+#
+# See software/linux/viewer/README.md § CLI for full flag table and --demo rules.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"

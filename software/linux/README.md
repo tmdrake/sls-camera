@@ -70,10 +70,13 @@ software/linux/
 
 cd software/linux/viewer
 ./run.sh
+./run.sh --help    # all flags; --demo is freenect-open fallback only
 ```
 
 Main bar: **Settings · Snap · Record · Quit**.  
-Keys: `S` settings · `C` snap · `R` record · `O` drakevox · `F` fullscreen · `Q` quit.
+Keys: `S` settings · `C` snap · `R` record · `O` DrakeVox · `F` fullscreen · `Q` quit.  
+
+Full CLI / `--demo` / PortAudio preflight: [viewer/README.md](viewer/README.md#cli-runsh).
 
 ### Dev packaging (launcher / autostart)
 

@@ -236,20 +236,62 @@ viewer/
   web/                    # optional browser UI
 ```
 
-## CLI
+## CLI (`./run.sh`)
+
+`run.sh` creates the venv if needed, ensures PySide6 + the pose model, then runs `python -m sls_viewer` with your args.
 
 ```bash
-./run.sh --help            # full argparse help
-./run.sh                   # live Kinect (reconnects if missing)
-./run.sh --demo            # if Kinect will not open, use synthetic frames
-./run.sh --mirror          # horizontal mirror
-./run.sh --no-auto-level   # leave tilt as-is
-./run.sh --led-off         # no green idle LED
-./run.sh --ui web          # browser UI on --host/--port (default :8765)
-./run.sh --device 0        # freenect index when multiple devices
+./run.sh --help              # argparse help only (no gspca/portaudio preflight noise)
+./run.sh                     # live Kinect; reconnects forever if missing
+./run.sh --demo              # fallback synthetic frames if freenect cannot open
+./run.sh --mirror            # horizontal mirror
+./run.sh --no-auto-level     # leave tilt as-is
+./run.sh --led-off           # no green idle LED
+./run.sh --ui web            # browser UI (default host/port 127.0.0.1:8765)
+./run.sh --host 0.0.0.0 --port 8765 --ui web
+./run.sh --device 0          # freenect device index (multi-Kinect)
 ```
 
-`--demo` is a **fallback** when freenect cannot open the camera; it does not ignore a working Kinect.
+Equivalent without the wrapper (after venv exists):
+
+```bash
+.venv/bin/python -m sls_viewer --help
+```
+
+### Flags (summary)
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--ui {qt,web}` | `qt` | Fullscreen always-on-top Qt, or browser UI |
+| `--host ADDR` | `127.0.0.1` | Web bind address |
+| `--port N` | `8765` | Web port |
+| `--mirror` | off | Mirror depth/IR |
+| `--demo` | off | **Fallback only:** if freenect open fails, use synthetic depth/IR instead of reconnecting forever. **Does not** skip a working Kinect |
+| `--no-auto-level` | auto-level on | Skip tilt to 0° on start |
+| `--led-off` | green idle LED | Leave Kinect LED off |
+| `--device INDEX` | `0` | Freenect device index |
+
+Full text (examples + keyboard shortcuts) is always from argparse:
+
+```bash
+./run.sh --help
+```
+
+### `run.sh` preflight (when not showing help)
+
+| Check | Behavior |
+|-------|----------|
+| gspca_kinect loaded | WARNING — freenect often fails; unload or run `fix-kinect-access.sh` |
+| PortAudio | Probes `libportaudio.so.2` via Python ctypes (and multiarch paths). NOTE only if truly missing: `sudo apt install libportaudio2` |
+| Startup banner | Printed for normal launches; **skipped** for `--help` / `-h` |
+
+### `--demo` behavior (important)
+
+| Situation | Result |
+|-----------|--------|
+| Kinect opens OK | **Live camera** (same as without `--demo`) |
+| Kinect will not open, **no** `--demo` | Splash **Reconnecting to SLS Camera** forever |
+| Kinect will not open, **with** `--demo` | Synthetic depth/IR UI (“demo mode”) |
 
 ## Troubleshooting
 
@@ -257,12 +299,14 @@ viewer/
 |---------|-----|
 | Window not on top | Press **F** |
 | gspca / open failed | `sudo modprobe -r gspca_kinect` + `../scripts/fix-kinect-access.sh` |
-| Spectrum off / no mic | `libportaudio2`; for Kinect mic: `kinect-audio-setup` + replug |
+| Spectrum off / no mic | `sudo apt install libportaudio2`; Kinect mic: `kinect-audio-setup` + replug |
 | Spectrum `mic retry…` | Unplug/replug or wait; ensure device in `arecord -l` |
+| False “libportaudio not found” | Should be rare after `run.sh` ctypes check; confirm `ldconfig -p \| grep portaudio` or `ls /usr/lib/*/libportaudio.so*` |
 | Record AVI has no sound | Install `ffmpeg` or `imageio-ffmpeg` (in venv); check flash for sidecar WAV |
 | Soft / loud mic | App does not set gain — use `pavucontrol` or `alsamixer` on the capture source |
-| Kinect RECONNECTING | Check power brick + USB; freenect keeps retrying automatically |
-| Black window | Wait for first frame; `./run.sh --demo` |
+| Kinect RECONNECTING | Power brick + USB; freenect retries automatically |
+| No Kinect / test UI only | `./run.sh --demo` (synthetic frames **if** open fails) |
+| Black window | Wait for first frame; or `--demo` if no camera |
 | No DISPLAY | Need a desktop session |
 
 Firmware / tablet image packaging: [PRODUCT-VISION.md](../../../docs/PRODUCT-VISION.md).
