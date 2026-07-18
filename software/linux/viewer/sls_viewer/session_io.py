@@ -17,7 +17,13 @@ import numpy as np
 
 from .audio_device import pick_input_device
 from .config import VIEWER_ROOT
-from .remedia import resolve_captures_dir
+from .remedia import (
+    ensure_captures_on_volume,
+    list_removable_volumes,
+    pick_auto_volume,
+    resolve_captures_dir,
+    copy_local_to_media,
+)
 
 if TYPE_CHECKING:
     from .spectrum import SpectrumAnalyzer
@@ -93,6 +99,43 @@ class SessionRecorder:
     def refresh_captures_dir(self) -> str:
         """Re-resolve auto target (media plugged/unplugged). No-op mid-record."""
         return self.set_captures_target(self._captures_target)
+
+    def has_removable_media(self) -> bool:
+        return pick_auto_volume() is not None
+
+    def copy_local_captures_to_media(self) -> tuple[int, int, str]:
+        """
+        Copy viewer/captures files onto current removable media (sls-captures/).
+
+        Returns (copied, skipped, label). Does not delete local copies.
+        """
+        if self._recording:
+            self._set_flash("stop recording before copy to media")
+            return 0, 0, ""
+        vol = pick_auto_volume()
+        if vol is None:
+            self._set_flash("no USB/SD media mounted")
+            return 0, 0, ""
+        dest = ensure_captures_on_volume(vol)
+        if dest is None:
+            self._set_flash("media not writable")
+            return 0, 0, vol.short_label()
+        copied, skipped = copy_local_to_media(self._local_captures_dir, dest)
+        label = vol.short_label()
+        if copied or skipped:
+            self._set_flash(
+                f"copied {copied} to media ({skipped} already there)"
+            )
+            self._log_event(
+                "copy_local_to_media",
+                {"copied": copied, "skipped": skipped, "dest": str(dest)},
+            )
+        else:
+            self._set_flash("local captures empty — nothing to copy")
+        # Prefer media for new captures after a successful copy path
+        if self._captures_target == "auto":
+            self.refresh_captures_dir()
+        return copied, skipped, label
 
     @property
     def recording(self) -> bool:

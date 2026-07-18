@@ -234,9 +234,10 @@ class SettingsDialog(QDialog):
         self.btn_captures = QPushButton()
         self.btn_captures.setObjectName("wide")
         self.btn_captures.setToolTip(
-            "Local = viewer/captures. Auto = USB pen drive or SD card if mounted "
-            "(writes sls-captures/ on the media); falls back to local. "
-            "Works for both USB sticks and tablet SD cards when the OS mounts them."
+            "Auto (default) = USB/SD if mounted → sls-captures/ on that media; "
+            "else local viewer/captures. Local = always viewer/captures. "
+            "New snaps/recordings follow this setting; use Copy local→media "
+            "to move existing local files onto a stick/card."
         )
         self.btn_captures.clicked.connect(self._toggle_captures_target)
         grid.addWidget(self.btn_captures, row, 1, 1, 3)
@@ -260,6 +261,15 @@ class SettingsDialog(QDialog):
         )
         self.btn_clear_captures.clicked.connect(self._clear_captures)
         act.addWidget(self.btn_clear_captures)
+        self.btn_copy_to_media = QPushButton("Copy local→media")
+        self.btn_copy_to_media.setObjectName("wide")
+        self.btn_copy_to_media.setToolTip(
+            "Copy existing viewer/captures files onto the mounted USB/SD "
+            "(into sls-captures/). Does not delete local files. "
+            "Use when you shot to local first, then plug in a stick/card."
+        )
+        self.btn_copy_to_media.clicked.connect(self._copy_local_to_media)
+        act.addWidget(self.btn_copy_to_media)
         self.btn_drakevox_now = QPushButton("DrakeVox now")
         self.btn_drakevox_now.setObjectName("wide")
         self.btn_drakevox_now.setToolTip(
@@ -343,17 +353,23 @@ class SettingsDialog(QDialog):
 
         parent = self.parent()
         cap_mode = self.pipeline.s.captures_target
+        has_media = False
         if parent is not None and hasattr(parent, "session"):
             label = parent.session.captures_label
+            has_media = parent.session.has_removable_media()
             if cap_mode == "auto":
                 self.btn_captures.setText(f"Auto · {label}")
             else:
                 self.btn_captures.setText("Local")
             self.btn_captures.setEnabled(not parent.session.recording)
+            self.btn_copy_to_media.setEnabled(
+                has_media and not parent.session.recording
+            )
         else:
             self.btn_captures.setText(
                 "Auto" if cap_mode == "auto" else "Local"
             )
+            self.btn_copy_to_media.setEnabled(False)
 
         mic = self.spectrum.device_name or "(no mic)"
         err = self.spectrum.error
@@ -473,6 +489,12 @@ class SettingsDialog(QDialog):
         parent = self.parent()
         if parent is not None and hasattr(parent, "clear_captures"):
             parent.clear_captures()
+        self._refresh()
+
+    def _copy_local_to_media(self) -> None:
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "copy_local_to_media"):
+            parent.copy_local_to_media()
         self._refresh()
 
     def showEvent(self, event) -> None:
@@ -644,18 +666,47 @@ class SlsMainWindow(QMainWindow):
             self._settings_dlg._refresh()
 
     def toggle_captures_target(self) -> None:
-        """Cycle Local ↔ Auto (USB/SD when mounted)."""
+        """Cycle Local ↔ Auto (USB/SD when mounted). Default is Auto."""
         if self.session.recording:
             self.session._set_flash("stop recording before changing captures path")
             return
-        cur = (self.pipeline.s.captures_target or "local").lower()
-        nxt = "auto" if cur != "auto" else "local"
+        cur = (self.pipeline.s.captures_target or "auto").lower()
+        nxt = "local" if cur == "auto" else "auto"
         self.pipeline.s.captures_target = nxt
         self.pipeline.s.save_persisted()
         label = self.session.set_captures_target(nxt)
         self.session._set_flash(f"Captures → {label}")
         if self._settings_open():
             self._settings_dlg._refresh()
+
+    def copy_local_to_media(self) -> None:
+        """Copy viewer/captures → mounted media/sls-captures (confirm first)."""
+        if self.session.recording:
+            self.session._set_flash("stop recording before copy to media")
+            return
+        if not self.session.has_removable_media():
+            self.session._set_flash("no USB/SD media mounted")
+            return
+        box = QMessageBox(self)
+        box.setWindowTitle("Copy local → media")
+        box.setText(
+            "Copy files from local viewer/captures/\n"
+            "onto the mounted USB/SD (sls-captures/)?\n\n"
+            "Local files are kept. Existing same-name files on media are skipped."
+        )
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setStandardButtons(
+            QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Yes
+        )
+        box.setDefaultButton(QMessageBox.StandardButton.Yes)
+        yes = box.button(QMessageBox.StandardButton.Yes)
+        if yes is not None:
+            yes.setText("Copy")
+        box.setStyleSheet(_STYLE)
+        box.setWindowFlags(box.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        if box.exec() != QMessageBox.StandardButton.Yes:
+            return
+        self.session.copy_local_captures_to_media()
 
     def _on_drakevox_word(self, word: str) -> None:
         """Log, speak (TTS), and inject PCM into any active recording."""

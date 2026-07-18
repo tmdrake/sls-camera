@@ -88,26 +88,38 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 | **DrakeVox** | **ON** = panel + timer/TTS/O; **OFF** = hide panel + stop generation |
 | **DrakeVox on auto-snap** | Default **ON**; only when auto-snap fires (not manual Snap) |
 | **Brightness** | ±10%; n/a if no backlight/xrandr |
-| **Captures to** | **Local** (`viewer/captures`) or **Auto** (USB/SD → `…/sls-captures/`, else local) |
+| **Captures to** | **Auto** (default: USB/SD → `…/sls-captures/`, else local) or **Local** only |
+| **Copy local→media** | One-shot copy of existing local files onto mounted USB/SD (confirm) |
 
 ## Captures
 
-**Default (Local):**
+### Easy mental model
+
+| Situation | What happens |
+|-----------|----------------|
+| **No stick/card** | New snaps/records go to **local** `viewer/captures/` |
+| **USB or SD mounted**, Captures=**Auto** (default) | New files go to **`<mount>/sls-captures/`** |
+| **Captures=Local** | Always local, even if media is plugged in |
+| **Shot local, then plug media** | Settings → **Copy local→media** (keeps local copies) |
+
+We do **not** auto-copy old local files when you plug media (avoids surprise full disks / duplicates). One explicit button is easier to understand.
+
+### Paths
 
 ```text
+# local (always available)
 viewer/captures/
-  sls_YYYYMMDD_HHMMSS.jpg    # snapshots
-  sls_YYYYMMDD_HHMMSS.avi    # recordings (MJPG video + PCM mic audio)
-  session_*.jsonl            # detect/record event log
-```
+  sls_YYYYMMDD_HHMMSS.jpg
+  sls_YYYYMMDD_HHMMSS.avi
+  session_*.jsonl
 
-**Auto (Settings → Captures to → Auto):** when a **writable USB stick or SD card** is mounted, files go to:
-
-```text
+# on USB pen drive or tablet SD (when Auto + media mounted)
 <mount>/sls-captures/
+  …same filenames…
 ```
 
-Detection uses `lsblk` (USB `RM`/`HOTPLUG`, SD `mmcblk*`) plus `/media/$USER` and `/run/media/$USER` automounts. Status bar shows `CAP:USB:…` / `CAP:SD:…` or `CAP:local (no media)`.
+Detection: `lsblk` (USB + **mmcblk SD**) and `/media/$USER`, `/run/media/$USER`.  
+Status: `CAP:USB:…` / `CAP:SD:…` / `CAP:local` / `CAP:local (no media)`.
 
 Local `viewer/captures/` is gitignored.
 

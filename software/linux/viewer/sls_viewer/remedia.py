@@ -284,6 +284,41 @@ def ensure_captures_on_volume(vol: MediaVolume) -> Optional[Path]:
         return None
 
 
+def copy_local_to_media(
+    local_dir: Path,
+    media_captures_dir: Path,
+) -> tuple[int, int]:
+    """
+    Copy files from local captures into media sls-captures/.
+
+    Skips files that already exist with the same name and size.
+    Returns (copied, skipped).
+    """
+    local_dir = Path(local_dir)
+    media_captures_dir = Path(media_captures_dir)
+    media_captures_dir.mkdir(parents=True, exist_ok=True)
+    copied = 0
+    skipped = 0
+    if not local_dir.is_dir():
+        return 0, 0
+    for src in sorted(local_dir.iterdir()):
+        if not src.is_file():
+            continue
+        # skip hidden / probe files
+        if src.name.startswith("."):
+            continue
+        dst = media_captures_dir / src.name
+        try:
+            if dst.is_file() and dst.stat().st_size == src.stat().st_size:
+                skipped += 1
+                continue
+            shutil.copy2(src, dst)
+            copied += 1
+        except OSError:
+            pass
+    return copied, skipped
+
+
 def resolve_captures_dir(
     mode: str,
     local_dir: Path,

@@ -91,8 +91,8 @@ class Settings:
     auto_snap_on_detect: bool = False
     # Match live pipeline target so AVI timing matches what you see on screen
     record_fps: float = 20.0
-    # Captures destination: local = viewer/captures; auto = SD/USB if mounted
-    captures_target: str = "local"
+    # Captures destination: auto = SD/USB if mounted (default); local = viewer/captures only
+    captures_target: str = "auto"
 
     # DrakeVox (random word every 5–15 min; timestamped + TTS)
     drakevox_enabled: bool = True
