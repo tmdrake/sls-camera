@@ -32,6 +32,10 @@ class SpectrumAnalyzer:
         self.retry_interval_s = retry_interval_s
         self._lock = threading.Lock()
         self._levels = np.zeros(n_bars, dtype=np.float32)
+        # Phosphor / scope trail: peak envelope decays slower than live bars
+        self._peaks = np.zeros(n_bars, dtype=np.float32)
+        self._peak_hold_until = np.zeros(n_bars, dtype=np.float64)
+        self._last_paint_t = 0.0
         self._stream = None
         self._running = False
         self._want_enabled = False
@@ -40,6 +44,10 @@ class SpectrumAnalyzer:
         self._last_retry = 0.0
         self._cb_errors = 0
         self._pcm_sinks: List[PcmSink] = []
+
+    # Peak hold then fall (seconds / fall rate) — CRT-ish scope feel
+    _PEAK_HOLD_S = 0.14
+    _PEAK_DECAY_PER_S = 1.35
 
     @property
     def device_name(self) -> str:
@@ -56,6 +64,34 @@ class SpectrumAnalyzer:
     def levels(self) -> np.ndarray:
         with self._lock:
             return self._levels.copy()
+
+    def _update_peaks_unlocked(self, levels: np.ndarray, now: float) -> np.ndarray:
+        """Raise peaks with levels; hold briefly; then decay (phosphor trail)."""
+        n = min(len(levels), len(self._peaks))
+        if n < 1:
+            return self._peaks.copy()
+        lv = levels[:n]
+        pk = self._peaks[:n]
+        hold = self._peak_hold_until[:n]
+        # New peaks
+        risen = lv > pk
+        pk = np.where(risen, lv, pk)
+        hold = np.where(risen, now + self._PEAK_HOLD_S, hold)
+        # Decay after hold
+        dt = 0.0
+        if self._last_paint_t > 0:
+            dt = max(0.0, min(0.1, now - self._last_paint_t))
+        if dt > 0:
+            falling = now > hold
+            pk = np.where(
+                falling,
+                np.maximum(lv, pk - self._PEAK_DECAY_PER_S * dt),
+                pk,
+            )
+        self._peaks[:n] = pk
+        self._peak_hold_until[:n] = hold
+        self._last_paint_t = now
+        return pk.copy()
 
     def start(self) -> bool:
         self._want_enabled = True
@@ -173,22 +209,60 @@ class SpectrumAnalyzer:
         import cv2
 
         img = np.zeros((height, width, 3), dtype=np.uint8)
-        img[:] = (12, 12, 12)
-        levels = self.levels()
+        img[:] = (10, 14, 12)
+        with self._lock:
+            levels = self._levels.copy()
+            now = time.time()
+            peaks = self._update_peaks_unlocked(levels, now)
         n = len(levels)
         if n < 1 or width < 8 or height < 4:
             return img
+
+        usable_h = max(1, height - 4)
         gap = 1
         bar_w = max(1, (width - gap * (n + 1)) // n)
-        for i, v in enumerate(levels):
-            h = int(max(0.0, min(1.0, float(v))) * (height - 4))
+        baseline = height - 2
+
+        for i in range(n):
+            v = float(max(0.0, min(1.0, levels[i])))
+            p = float(max(0.0, min(1.0, peaks[i] if i < len(peaks) else v)))
+            h_live = int(v * usable_h)
+            h_peak = int(p * usable_h)
             x0 = gap + i * (bar_w + gap)
             x1 = min(width - 1, x0 + bar_w)
-            y0 = height - 2 - h
-            y1 = height - 2
-            color = (0, int(180 + 75 * v), int(120 + 100 * v))
-            cv2.rectangle(img, (x0, y0), (x1, y1), color, -1)
-        cv2.line(img, (0, height - 2), (width - 1, height - 2), (40, 40, 40), 1)
+            if x1 <= x0:
+                continue
+
+            # Ghost column (phosphor trail) up to peak — dimmer SLS green
+            if h_peak > 0:
+                y_peak = baseline - h_peak
+                trail = (
+                    0,
+                    int(40 + 90 * p),
+                    int(25 + 55 * p),
+                )
+                cv2.rectangle(img, (x0, y_peak), (x1, baseline), trail, -1)
+
+            # Live bar (bright core) on top of trail
+            if h_live > 0:
+                y_live = baseline - h_live
+                core = (
+                    0,
+                    int(160 + 95 * v),
+                    int(100 + 120 * v),
+                )
+                cv2.rectangle(img, (x0, y_live), (x1, baseline), core, -1)
+
+            # Peak cap (scope marker) — short bright tick at envelope top
+            if h_peak > 1:
+                y_cap = baseline - h_peak
+                cap = (40, 255, 200)
+                y1_cap = min(baseline, y_cap + max(1, min(2, bar_w)))
+                cv2.rectangle(img, (x0, y_cap), (x1, y1_cap), cap, -1)
+
+        # Baseline (scope ground)
+        cv2.line(img, (0, baseline), (width - 1, baseline), (35, 55, 45), 1)
+
         if not self.active:
             msg = "reconnecting mic…" if self._want_enabled else "spectrum off"
             if self._error and self._want_enabled:
@@ -210,7 +284,7 @@ class SpectrumAnalyzer:
                 (6, 12),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.35,
-                (70, 70, 70),
+                (55, 90, 70),
                 1,
                 cv2.LINE_AA,
             )
