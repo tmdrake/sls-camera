@@ -367,18 +367,6 @@ class SettingsDialog(QDialog):
         self.btn_captures.clicked.connect(self._toggle_captures_target)
         _add_toggle_row("Captures to", self.btn_captures)
 
-        # Wake lock while app runs (#9). Host power-off on Quit is firmware
-        # (SLS_QUIT_ACTION=shutdown + exit 10) — not a Settings toggle.
-        self.btn_keep_display = QPushButton()
-        self.btn_keep_display.setToolTip(
-            "ON (default): wake lock — inhibit screensaver / idle sleep / DPMS "
-            "while the field UI is running so the depth view does not blank. "
-            "OFF: leave OS display power policy alone. "
-            "Tablet power-off on Quit is owned by the firmware launcher, not this setting."
-        )
-        self.btn_keep_display.clicked.connect(self._toggle_keep_display_on)
-        _add_toggle_row("Keep display on", self.btn_keep_display)
-
         left_layout.addLayout(grid)
 
         # Actions 2×2 under controls
@@ -545,10 +533,6 @@ class SettingsDialog(QDialog):
             tip = bri.detail or "no brightness control on this display"
             self.bright_label.setToolTip(tip)
 
-        self.btn_keep_display.setText(
-            "ON" if self.pipeline.s.keep_display_on else "OFF"
-        )
-
         # Right-pane display geometry (from parent cache or live probe)
         parent = self.parent()
         geom = ""
@@ -560,9 +544,9 @@ class SettingsDialog(QDialog):
         if parent is not None and hasattr(parent, "display_inhibit"):
             di = parent.display_inhibit
             if di is not None and di.active:
-                inh = f"\ninhibit: {di.detail}"
-            elif not self.pipeline.s.keep_display_on:
-                inh = "\ninhibit: off (Keep display on = OFF)"
+                inh = f"\nwake-lock: {di.detail}"
+            else:
+                inh = "\nwake-lock: (not active)"
         self.display_label.setText(geom + inh)
 
         cap_mode = self.pipeline.s.captures_target
@@ -677,12 +661,6 @@ class SettingsDialog(QDialog):
         parent = self.parent()
         if parent is not None and hasattr(parent, "toggle_captures_target"):
             parent.toggle_captures_target()
-        self._refresh()
-
-    def _toggle_keep_display_on(self) -> None:
-        parent = self.parent()
-        if parent is not None and hasattr(parent, "toggle_keep_display_on"):
-            parent.toggle_keep_display_on()
         self._refresh()
 
     def _format_media(self) -> None:
@@ -817,9 +795,8 @@ class SlsMainWindow(QMainWindow):
         # Captures path: local or auto USB/SD
         self.session.set_captures_target(pipeline.s.captures_target)
         self.setStyleSheet(_STYLE)
-        # Keep display awake while field UI is up (#9)
-        if pipeline.s.keep_display_on:
-            self.display_inhibit.start()
+        # Always hold wake lock while field UI is up (#9) — not a Settings toggle
+        self.display_inhibit.start()
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -950,22 +927,6 @@ class SlsMainWindow(QMainWindow):
         if info.available and info.percent is not None and info.writable:
             self.pipeline.s.display_brightness = int(info.percent)
             self.pipeline.s.save_persisted()
-        if self._settings_open():
-            self._settings_dlg._refresh()
-
-    def toggle_keep_display_on(self) -> None:
-        """Settings: wake lock while UI runs (default ON). Not host power-off."""
-        self.pipeline.s.keep_display_on = not bool(self.pipeline.s.keep_display_on)
-        self.pipeline.s.save_persisted()
-        if self.pipeline.s.keep_display_on:
-            self.display_inhibit.start()
-            self.session._set_flash(
-                f"display stay-on: {self.display_inhibit.detail or 'on'}",
-                seconds=2.5,
-            )
-        else:
-            self.display_inhibit.stop()
-            self.session._set_flash("display stay-on: off", seconds=2.5)
         if self._settings_open():
             self._settings_dlg._refresh()
 
@@ -1382,11 +1343,7 @@ class SlsMainWindow(QMainWindow):
             self.session.refresh_captures_dir()
         # Re-assert xset DPMS-off periodically (some WMs re-enable blanking)
         self._inhibit_refresh_i = getattr(self, "_inhibit_refresh_i", 0) + 1
-        if (
-            self.pipeline.s.keep_display_on
-            and self.display_inhibit.active
-            and self._inhibit_refresh_i % 1800 == 0  # ~60s at 33ms tick
-        ):
+        if self.display_inhibit.active and self._inhibit_refresh_i % 1800 == 0:
             self.display_inhibit.refresh_x11()
         cap = self.session.captures_label
         cap_s = f" · CAP:{cap}" if cap else ""

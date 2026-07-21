@@ -59,8 +59,8 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] **Display brightness** (Settings) — sysfs backlight / brightnessctl / xrandr software fallback
 - [x] **Settings fit small tablets (#6)** — log `display: WxH avail=… dpr=… dpi=…` at Qt start; Settings in `QScrollArea` capped ~90% available height; Close pinned; action buttons 2×2
   - Closed: [GitHub #6](https://github.com/tmdrake/sls-camera/issues/6)
-- [x] **Keep display awake (#9)** — Settings **Keep display on** (default ON); D-Bus screensaver inhibit + `systemd-inhibit idle:sleep` + `xset -dpms`; release on Quit
-  - Code: `display_inhibit.py`, `qt_app.py`, `config.py`
+- [x] **Keep display awake (#9)** — always-on wake lock while UI runs (no Settings toggle); D-Bus screensaver inhibit + `systemd-inhibit idle:sleep` + `xset -dpms`; release on Quit
+  - Code: `display_inhibit.py`, `qt_app.py`
   - Closed: [GitHub #9](https://github.com/tmdrake/sls-camera/issues/9)
 - [x] **Hardware matrix (#7)** — [HARDWARE-MATRIX.md](../software/linux/docs/HARDWARE-MATRIX.md) + [hardware/TABLET-FLEET.md](../hardware/TABLET-FLEET.md); tablet-01/02 rows linked to FW devices; post-wipe Qt geometry still TBD per unit
   - Issue: [#7](https://github.com/tmdrake/sls-camera/issues/7)

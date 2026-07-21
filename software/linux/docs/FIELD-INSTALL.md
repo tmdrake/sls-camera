@@ -131,7 +131,7 @@ See [`images/README.md`](images/README.md) for capture notes and a second HUD fr
 
 | Role | Who |
 |------|-----|
-| **Wake lock** (no blank while investigating) | App Settings **Keep display on** + firmware `xset` / logind |
+| **Wake lock** (no blank while investigating) | App always-on while UI runs + firmware `xset` / logind |
 | **Power off tablet on Quit** | **Firmware launcher** (`SLS_QUIT_ACTION=shutdown`, exit **10** → `poweroff`) |
 
 Dev default: Quit returns to the desktop (no `SLS_QUIT_ACTION`).  

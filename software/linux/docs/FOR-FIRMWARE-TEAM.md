@@ -76,7 +76,7 @@ Env: `SLS_DEB_CACHE`, `SLS_OFFLINE=1`, `SLS_APT_YES=1`.
 | **Quit exit codes** | `0` clean quit · **`10` power-off** · `11` relaunch (reserved) |
 | **`SLS_QUIT_ACTION=shutdown`** | Appliance default in launcher — app shows “Power off?” and exits **10** |
 | **`SLS_ON_QUIT=app`** + **`SLS_QUIT_FALLBACK=none`** | Launcher powers off **only** on exit 10 |
-| Settings **Keep display on** | App **wake lock** while running (not host power-off) |
+| App **wake lock** | Always on while field UI runs (not host power-off; no Settings toggle) |
 
 **Host power-off is firmware-owned** (launcher + sudoers). App has no Power-off Settings toggle.  
 Details: [viewer README § Quit](../viewer/README.md#quit) · [FIELD-INSTALL § Quit](FIELD-INSTALL.md#quit-vs-power-off-app-vs-appliance).

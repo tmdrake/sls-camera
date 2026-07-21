@@ -104,7 +104,6 @@ Issue: [#6](https://github.com/tmdrake/sls-camera/issues/6) (closed). Related: [
 | **DrakeVox on auto-snap** | Default **ON**; only when auto-snap fires (not manual Snap) |
 | **Brightness** | ±10%; n/a if no backlight/xrandr |
 | **Captures to** | **Auto** (default) or **Local** — see [Captures](#captures) |
-| **Keep display on** | Default **ON** — **wake lock** while app runs (screensaver/idle/DPMS) — not tablet power-off ([#9](https://github.com/tmdrake/sls-camera/issues/9)) |
 | **Copy local→media** | Only visible when USB/SD is mounted; confirm then copy |
 | **Format removable media…** | Confirm twice → erase + FAT32 the mounted SD/USB → `SLS-MEDIA` + `sls-captures/` (needs admin) — [#8](https://github.com/tmdrake/sls-camera/issues/8) |
 
@@ -270,9 +269,9 @@ When Linux exposes a battery under `/sys/class/power_supply` (or UPower), the st
 
 Settings → **Brightness − / +** (±10%). Tooltip shows which backend is active. If nothing works, shows **n/a**. Value is saved in `user_settings.json` when changed.
 
-## Keep display on (wake lock)
+## Display wake lock (always on while running)
 
-While the field UI is running, the app holds a **wake lock** by default (Settings **Keep display on = ON**) so the panel does not blank mid-investigation:
+While the field UI is up, the app **always** holds a wake lock (no Settings toggle) so the panel does not blank mid-investigation:
 
 | Layer | Method |
 |-------|--------|
@@ -280,8 +279,8 @@ While the field UI is running, the app holds a **wake lock** by default (Setting
 | Idle sleep | `systemd-inhibit --what=idle:sleep` |
 | X11 DPMS | `xset s off` / `xset -dpms` (re-asserted about every minute) |
 
-Released on Quit. Status/log shows `inhibit: …` when active.  
-**This is not tablet power-off** — it only prevents sleep/blank **while the app is running**. Firmware also applies session `xset` / no-suspend policy. Issue [#9](https://github.com/tmdrake/sls-camera/issues/9).
+Released on Quit. Status/log may show `wake-lock: …`.  
+**Not tablet power-off** — firmware owns power-off on Quit. Issue [#9](https://github.com/tmdrake/sls-camera/issues/9).
 
 ## Quit (and who powers off the tablet)
 

@@ -31,8 +31,7 @@ PERSIST_KEYS = (
     "drakevox_on_autosnap",
     "display_brightness",
     "captures_target",
-    "keep_display_on",
-    # quit_powers_off is NOT persisted — only SLS_QUIT_ACTION (firmware)
+    # quit_powers_off / keep_display_on are not Settings prefs (env / always-on)
 )
 
 
@@ -111,10 +110,6 @@ class Settings:
     # App does NOT call system poweroff — firmware launcher does that on exit 10.
     quit_powers_off: bool = False
 
-    # Keep display awake while field UI runs (screensaver / idle / DPMS inhibit).
-    # Default ON — investigations must not blank mid-session (#9).
-    keep_display_on: bool = True
-
     model_path: Path = field(default_factory=lambda: MODEL_PATH)
     allow_demo_without_kinect: bool = False
 
@@ -141,8 +136,7 @@ class Settings:
         self.auto_snap_on_detect = bool(self.auto_snap_on_detect)
         self.drakevox_enabled = bool(self.drakevox_enabled)
         self.drakevox_on_autosnap = bool(self.drakevox_on_autosnap)
-        # Ignore legacy quit_powers_off in JSON (powered desktops after #4)
-        self.keep_display_on = bool(getattr(self, "keep_display_on", True))
+        # Ignore legacy quit_powers_off / keep_display_on keys in JSON
         ct = str(getattr(self, "captures_target", "local") or "local").lower().strip()
         self.captures_target = "auto" if ct == "auto" else "local"
         if self.display_brightness is not None:
@@ -205,7 +199,6 @@ class Settings:
                 else None
             ),
             "captures_target": str(self.captures_target or "local"),
-            "keep_display_on": bool(self.keep_display_on),
         }
         try:
             path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
