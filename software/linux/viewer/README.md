@@ -129,15 +129,15 @@ We do **not** auto-copy old local files when you plug media (avoids surprise ful
 
 One button, shown **only when a USB stick or SD card is mounted**:
 
-**Format removable media…** → confirm → confirm again → erase that SD/USB partition → FAT32 label **`SLS-MEDIA`** → create **`sls-captures/`** → Captures **Auto**.
+**Format removable media…** → two Yes/Cancel confirms → erase that SD/USB partition → FAT32 label **`SLS-MEDIA`** → create **`sls-captures/`** → Captures **Auto**.
 
 1. Plug SD or USB; wait until the app sees it.  
 2. Settings → **Format removable media…**  
 3. **Confirm 1** — shows label / device / size (default **Cancel**).  
-4. **Confirm 2** — type the device name (e.g. `sdb1`).  
-5. Format runs (needs admin: `pkexec` or passwordless `sudo` + `dosfstools`).
+4. **Confirm 2** — “Erase and format” (default **Cancel**; no typing).  
+5. Format runs — **needs admin**: `pkexec` (password dialog) or passwordless `sudo`, plus `dosfstools` (`mkfs.vfat`).
 
-Refuses internal/nvme disks and media larger than 128 GiB. Host whole-disk prep remains firmware `prep-sls-media-usb.sh`.
+Without admin rights the format step fails with a status message (nothing is half-wiped if mkfs never starts). Refuses internal/nvme disks and media larger than 128 GiB. Host whole-disk prep remains firmware `prep-sls-media-usb.sh`.
 
 ### Auto priority (when several volumes are mounted)
 

@@ -968,13 +968,15 @@ class SlsMainWindow(QMainWindow):
             self._settings_dlg._refresh()
 
     def format_removable_media(self) -> None:
-        """Settings button: confirm → format mounted USB/SD for field captures (#8).
+        """Settings: two-tap confirm → format mounted USB/SD for field captures (#8).
 
         Flow:
-          1. Operator taps **Format removable media…** (only when a stick/card is mounted)
-          2. Warning dialog: which device, size, that all data will be destroyed
-          3. Second step: type the device name (e.g. sdb1) so it is not a single fat-finger
-          4. App erases that partition, formats FAT32 (label SLS-MEDIA), creates sls-captures/
+          1. **Format removable media…** (only when a stick/card is mounted)
+          2. Confirm 1 — warning with label / device / size (Cancel default)
+          3. Confirm 2 — final “Erase and format” (Cancel default; no typing)
+          4. mkfs needs admin (pkexec / passwordless sudo / root)
+
+        Does not require typing the device name (field-friendly).
         """
         if self.session.recording:
             self.session._set_flash("stop REC before format", seconds=3.0)
@@ -998,6 +1000,12 @@ class SlsMainWindow(QMainWindow):
             "usb": "USB stick",
             "removable": "removable media",
         }.get(vol.kind, "removable media")
+        detail = (
+            f"  {kind_name}: {vol.label}\n"
+            f"  Device: {dev}\n"
+            f"  Mount:  {vol.path}\n"
+            f"  Size:   ~{size_g:.1f} GiB"
+        )
         # Confirm 1 — cancel is default
         box = QMessageBox(self)
         box.setWindowTitle("Format removable media")
@@ -1005,15 +1013,9 @@ class SlsMainWindow(QMainWindow):
         box.setText(
             f"Format this {kind_name} for SLS captures?\n\n"
             f"This will ERASE ALL DATA on:\n\n"
-            f"  {kind_name}: {vol.label}\n"
-            f"  Device: {dev}\n"
-            f"  Mount:  {vol.path}\n"
-            f"  Size:   ~{size_g:.1f} GiB\n\n"
-            f"After format:\n"
-            f"  • FAT32 filesystem\n"
-            f"  • Volume label «{DEFAULT_LABEL}»\n"
-            f"  • Folder sls-captures/ for snaps and AVI\n\n"
-            f"Cancel is safe — nothing is changed until you confirm twice."
+            f"{detail}\n\n"
+            f"After format: FAT32 «{DEFAULT_LABEL}» + folder sls-captures/.\n"
+            f"Needs admin rights (password prompt or tablet sudoers)."
         )
         box.setStandardButtons(
             QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Yes
@@ -1026,16 +1028,25 @@ class SlsMainWindow(QMainWindow):
         box.setWindowFlags(box.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         if box.exec() != QMessageBox.StandardButton.Yes:
             return
-        # Confirm 2: type device basename
-        token = os.path.basename(dev)
-        typed, ok = QInputDialog.getText(
-            self,
-            "Confirm format",
-            f"Last step — type the device name exactly to erase and format:\n\n"
-            f"    {token}\n\n"
-            f"(This prevents a single accidental tap.)",
+        # Confirm 2 — still Cancel default; no keyboard typing
+        box2 = QMessageBox(self)
+        box2.setWindowTitle("Confirm erase")
+        box2.setIcon(QMessageBox.Icon.Warning)
+        box2.setText(
+            f"Last chance — erase and format?\n\n"
+            f"{detail}\n\n"
+            f"This cannot be undone."
         )
-        if not ok or (typed or "").strip() != token:
+        box2.setStandardButtons(
+            QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Yes
+        )
+        box2.setDefaultButton(QMessageBox.StandardButton.Cancel)
+        yes2 = box2.button(QMessageBox.StandardButton.Yes)
+        if yes2 is not None:
+            yes2.setText("Erase and format")
+        box2.setStyleSheet(_STYLE)
+        box2.setWindowFlags(box2.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        if box2.exec() != QMessageBox.StandardButton.Yes:
             self.session._set_flash("format cancelled", seconds=2.0)
             return
         self.session._set_flash(f"formatting {dev}…", seconds=2.0)
