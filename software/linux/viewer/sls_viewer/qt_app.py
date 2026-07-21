@@ -77,6 +77,25 @@ QPushButton:pressed { background-color: rgba(0, 80, 60, 240); }
 QDialog {
     border: 1px solid #00ffb4;
 }
+/* Settings pane: ~10% shorter controls so left column needs less scroll */
+QDialog QPushButton {
+    min-height: 40px;
+    min-width: 44px;
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+QDialog QPushButton#wide {
+    min-width: 88px;
+}
+QDialog QLabel#vallabel {
+    font-size: 13px;
+    min-width: 64px;
+}
+QDialog QLabel#hdr {
+    font-size: 14px;
+    padding: 2px 0 4px 0;
+}
 QMessageBox {
     background-color: #000000; color: #c8c8c8;
 }
@@ -196,8 +215,8 @@ class SettingsDialog(QDialog):
         self.setMinimumHeight(360)
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(14, 12, 14, 12)
-        root.setSpacing(8)
+        root.setContentsMargins(12, 10, 12, 10)
+        root.setSpacing(6)
 
         # Header
         top = QHBoxLayout()
@@ -233,15 +252,15 @@ class SettingsDialog(QDialog):
         left.setStyleSheet("background-color: #000000;")
         left_layout = QVBoxLayout(left)
         left_layout.setContentsMargins(0, 0, 6, 0)
-        left_layout.setSpacing(8)
+        left_layout.setSpacing(6)
 
         left_title = QLabel("Controls")
         left_title.setStyleSheet("color: #00ffb4; font-size: 12px; font-weight: 600;")
         left_layout.addWidget(left_title)
 
         grid = QGridLayout()
-        grid.setHorizontalSpacing(8)
-        grid.setVerticalSpacing(8)
+        grid.setHorizontalSpacing(6)
+        grid.setVerticalSpacing(6)
         step = pipeline.s.pose_conf_step
         row = 0
 
@@ -350,8 +369,8 @@ class SettingsDialog(QDialog):
 
         # Actions 2×2 under controls
         act = QGridLayout()
-        act.setHorizontalSpacing(8)
-        act.setVerticalSpacing(8)
+        act.setHorizontalSpacing(6)
+        act.setVerticalSpacing(6)
         self.btn_defaults = QPushButton("Defaults")
         self.btn_defaults.setObjectName("wide")
         self.btn_defaults.setToolTip(
