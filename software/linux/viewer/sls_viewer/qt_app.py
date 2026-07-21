@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from typing import TYPE_CHECKING, Optional
 
@@ -15,6 +16,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QMainWindow,
     QMessageBox,
@@ -36,6 +38,13 @@ from .battery import BatteryMonitor
 from .drakevox import DrakeVoxEngine, paint_drakevox_bgr
 from .display_inhibit import DisplayInhibit
 from .host_power import EXIT_OK, EXIT_POWEROFF, request_host_poweroff
+from .media_format import (
+    DEFAULT_LABEL,
+    device_size_bytes,
+    format_volume_fat32,
+    list_format_candidates,
+    prepare_captures_folder,
+)
 from .session_io import AUDIO_SAMPLE_RATE, SessionRecorder
 from .spectrum import SpectrumAnalyzer
 from .tts import DrakeVoxTTS, backend_name as tts_backend_name
@@ -414,6 +423,26 @@ class SettingsDialog(QDialog):
         act.addWidget(self.btn_copy_to_media, 1, 0)
         act.addWidget(self.btn_drakevox_now, 1, 1)
         left_layout.addLayout(act)
+
+        # Removable media: prepare folder / format partition (#8)
+        media_row = QHBoxLayout()
+        self.btn_prepare_media = QPushButton("Prepare media")
+        self.btn_prepare_media.setObjectName("wide")
+        self.btn_prepare_media.setToolTip(
+            "Create sls-captures/ on the mounted USB/SD (no format, no root). "
+            "Hidden when no media is present."
+        )
+        self.btn_prepare_media.clicked.connect(self._prepare_media)
+        self.btn_format_media = QPushButton("Format for SLS…")
+        self.btn_format_media.setObjectName("wide")
+        self.btn_format_media.setToolTip(
+            "ERASE the mounted USB/SD partition → FAT32 label SLS-MEDIA + sls-captures/. "
+            "Needs pkexec/sudo. Double confirm. Hidden when no media."
+        )
+        self.btn_format_media.clicked.connect(self._format_media)
+        media_row.addWidget(self.btn_prepare_media)
+        media_row.addWidget(self.btn_format_media)
+        left_layout.addLayout(media_row)
         left_layout.addStretch(1)
 
         self._scroll.setWidget(left)
@@ -569,12 +598,27 @@ class SettingsDialog(QDialog):
             self.btn_copy_to_media.setEnabled(
                 has_media and not parent.session.recording
             )
+            rec = bool(parent.session.recording)
+            self.btn_prepare_media.setVisible(has_media)
+            self.btn_prepare_media.setEnabled(has_media and not rec)
+            can_fmt = False
+            if has_media and not rec:
+                for _vol, ok, _why in list_format_candidates():
+                    if ok:
+                        can_fmt = True
+                        break
+            self.btn_format_media.setVisible(has_media)
+            self.btn_format_media.setEnabled(can_fmt)
         else:
             self.btn_captures.setText(
                 "Auto" if cap_mode == "auto" else "Local"
             )
             self.btn_copy_to_media.setVisible(False)
             self.btn_copy_to_media.setEnabled(False)
+            self.btn_prepare_media.setVisible(False)
+            self.btn_prepare_media.setEnabled(False)
+            self.btn_format_media.setVisible(False)
+            self.btn_format_media.setEnabled(False)
 
         mic = self.spectrum.device_name or "(no mic)"
         err = self.spectrum.error
@@ -667,6 +711,18 @@ class SettingsDialog(QDialog):
         parent = self.parent()
         if parent is not None and hasattr(parent, "toggle_keep_display_on"):
             parent.toggle_keep_display_on()
+        self._refresh()
+
+    def _prepare_media(self) -> None:
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "prepare_removable_media"):
+            parent.prepare_removable_media()
+        self._refresh()
+
+    def _format_media(self) -> None:
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "format_removable_media"):
+            parent.format_removable_media()
         self._refresh()
 
     def _drakevox_now(self) -> None:
@@ -951,6 +1007,87 @@ class SlsMainWindow(QMainWindow):
         else:
             self.display_inhibit.stop()
             self.session._set_flash("display stay-on: off", seconds=2.5)
+        if self._settings_open():
+            self._settings_dlg._refresh()
+
+    def prepare_removable_media(self) -> None:
+        """Create sls-captures/ on mounted USB/SD (no wipe)."""
+        if self.session.recording:
+            self.session._set_flash("stop REC before preparing media", seconds=3.0)
+            return
+        res = prepare_captures_folder()
+        self.session._set_flash(res.message, seconds=4.0)
+        if res.ok:
+            if self.pipeline.s.captures_target != "auto":
+                self.pipeline.s.captures_target = "auto"
+                self.pipeline.s.save_persisted()
+            self.session.set_captures_target("auto")
+            self.session.refresh_captures_dir()
+        if self._settings_open():
+            self._settings_dlg._refresh()
+
+    def format_removable_media(self) -> None:
+        """Double-confirm FAT32 format of mounted removable partition (#8)."""
+        if self.session.recording:
+            self.session._set_flash("stop REC before format", seconds=3.0)
+            return
+        cands = [(v, ok, why) for v, ok, why in list_format_candidates() if ok]
+        if not cands:
+            self.session._set_flash(
+                "no formattable USB/SD (need mounted removable with /dev node)",
+                seconds=4.0,
+            )
+            return
+        vol, _ok, _why = cands[0]
+        dev = vol.source or "?"
+        size_g = 0.0
+        try:
+            size_g = device_size_bytes(dev) / (1024**3)
+        except Exception:
+            pass
+        # Confirm 1
+        box = QMessageBox(self)
+        box.setWindowTitle("Format for SLS")
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setText(
+            f"DESTROY all data on this media?\n\n"
+            f"{vol.kind.upper()}: {vol.label}\n"
+            f"Device: {dev}\n"
+            f"Mount: {vol.path}\n"
+            f"Size: ~{size_g:.1f} GiB\n\n"
+            f"Will format FAT32 label «{DEFAULT_LABEL}» and create sls-captures/."
+        )
+        box.setStandardButtons(
+            QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Yes
+        )
+        box.setDefaultButton(QMessageBox.StandardButton.Cancel)
+        yes = box.button(QMessageBox.StandardButton.Yes)
+        if yes is not None:
+            yes.setText("Erase and format")
+        box.setStyleSheet(_STYLE)
+        box.setWindowFlags(box.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        if box.exec() != QMessageBox.StandardButton.Yes:
+            return
+        # Confirm 2: type device basename
+        token = os.path.basename(dev)
+        typed, ok = QInputDialog.getText(
+            self,
+            "Confirm format",
+            f"Type the device name to confirm:\n\n    {token}\n",
+        )
+        if not ok or (typed or "").strip() != token:
+            self.session._set_flash("format cancelled", seconds=2.0)
+            return
+        self.session._set_flash(f"formatting {dev}…", seconds=2.0)
+        QApplication.processEvents()
+        res = format_volume_fat32(vol, label=DEFAULT_LABEL)
+        self.session._set_flash(res.message, seconds=6.0)
+        if res.ok:
+            if self.pipeline.s.captures_target != "auto":
+                self.pipeline.s.captures_target = "auto"
+                self.pipeline.s.save_persisted()
+            self.session.set_captures_target("auto")
+            self.session.refresh_captures_dir()
         if self._settings_open():
             self._settings_dlg._refresh()
 

@@ -2,6 +2,13 @@
 
 Shared notes for the physical SLS / Xbox 360 Kinect setup.
 
+## Tablet fleet / hardware matrix
+
+- **Matrix (resolutions, Settings, wipe status):** [../software/linux/docs/HARDWARE-MATRIX.md](../software/linux/docs/HARDWARE-MATRIX.md)  
+- **Fleet template:** [TABLET-FLEET.md](TABLET-FLEET.md)  
+- **Issue:** [#7](https://github.com/tmdrake/sls-camera/issues/7)  
+- Firmware device dossiers: `sls-camera-firmware/docs/devices/` (tablet-01 RCA, tablet-02 TMAX, Kinect portable power)
+
 ## Expected contents
 
 - Power and USB wiring notes  

@@ -107,6 +107,8 @@ Issue: [#6](https://github.com/tmdrake/sls-camera/issues/6) (closed). Related: [
 | **Power off on Quit** | Default **OFF** (dev); **ON** = power off tablet after confirm — see [Quit](#quit) |
 | **Keep display on** | Default **ON** — inhibit screensaver / idle sleep / DPMS while app runs ([#9](https://github.com/tmdrake/sls-camera/issues/9)) |
 | **Copy local→media** | Only visible when USB/SD is mounted; confirm then copy |
+| **Prepare media** | Create `sls-captures/` on mounted USB/SD (no wipe; no root) |
+| **Format for SLS…** | Double-confirm FAT32 `SLS-MEDIA` + `sls-captures/` on mounted partition (needs pkexec/sudo) — [#8](https://github.com/tmdrake/sls-camera/issues/8) |
 
 ## Captures
 
@@ -124,6 +126,15 @@ Field rule of thumb: **tablets will usually use an SD card**; pen drives are fin
 | **Defaults** button | Also sets **Captures to Auto** (and Max=1, Conf=0.5) |
 
 We do **not** auto-copy old local files when you plug media (avoids surprise full disks / duplicates). One explicit button is easier in the field.
+
+### Prepare / format media (Settings)
+
+| Action | What it does | Privileges |
+|--------|----------------|------------|
+| **Prepare media** | Creates `sls-captures/` on the mounted stick/card | None (user write) |
+| **Format for SLS…** | Formats the **mounted partition** FAT32 label **SLS-MEDIA**, remounts, creates `sls-captures/` | `pkexec` or passwordless `sudo` |
+
+Safety: only USB/SD from the Auto detector; refuse nvme/system paths; refuse >128 GiB; **two confirms** (button + type device name e.g. `sdb1`). Whole-disk wipe on a host remains firmware `prep-sls-media-usb.sh`. Buttons **hidden** when no media is mounted.
 
 ### Auto priority (when several volumes are mounted)
 

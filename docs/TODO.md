@@ -30,8 +30,8 @@ policy come later.
 | [#4](https://github.com/tmdrake/sls-camera/issues/4) | Quit → power off — **closed** |
 | [#5](https://github.com/tmdrake/sls-camera/issues/5) | Captures Auto SD/USB — **closed (v1)** |
 | [#6](https://github.com/tmdrake/sls-camera/issues/6) | Geometry log + Settings scroll — **closed** |
-| [#7](https://github.com/tmdrake/sls-camera/issues/7) | Hardware tree / multi-tablet matrix — open |
-| [#8](https://github.com/tmdrake/sls-camera/issues/8) | Format removable media from Settings — open (after #6) |
+| [#7](https://github.com/tmdrake/sls-camera/issues/7) | Hardware matrix — **docs v1** (post-wipe geometry still pending) |
+| [#8](https://github.com/tmdrake/sls-camera/issues/8) | Format/prepare media from Settings — **closed** |
 | [#9](https://github.com/tmdrake/sls-camera/issues/9) | Keep display awake while UI runs — **closed** |
 
 Firmware may implement offline mirrors; **product install-path and app-behavior decisions stay tracked here**.
@@ -62,8 +62,10 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] **Keep display awake (#9)** — Settings **Keep display on** (default ON); D-Bus screensaver inhibit + `systemd-inhibit idle:sleep` + `xset -dpms`; release on Quit
   - Code: `display_inhibit.py`, `qt_app.py`, `config.py`
   - Closed: [GitHub #9](https://github.com/tmdrake/sls-camera/issues/9)
-- [ ] **Hardware matrix (#7)** — per-tablet geometry + BOM rows (with FW docs/devices/)
-- [ ] **Format media from Settings (#8)** — after scrollable Settings
+- [x] **Hardware matrix (#7)** — [HARDWARE-MATRIX.md](../software/linux/docs/HARDWARE-MATRIX.md) + [hardware/TABLET-FLEET.md](../hardware/TABLET-FLEET.md); tablet-01/02 rows linked to FW devices; post-wipe Qt geometry still TBD per unit
+  - Issue: [#7](https://github.com/tmdrake/sls-camera/issues/7)
+- [x] **Format / prepare media (#8)** — Settings **Prepare media** (mkdir sls-captures/) + **Format for SLS…** (FAT32 double-confirm, pkexec/sudo); safety rails in `media_format.py`
+  - Closed: [GitHub #8](https://github.com/tmdrake/sls-camera/issues/8)
 - [ ] **Power management** — stable SLS on **external power** with tablet: suspend/sleep policy, USB power, avoid brownouts when Kinect + display are both on.
 - [ ] **Sensor inputs** — Arduino/MCU bridge into the app (see product features).
 
@@ -95,3 +97,4 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] Offline-safe apt (#2) + FOR-FIRMWARE-TEAM.md handoff
 - [x] Settings scroll + geometry log (#6)
 - [x] Keep display on while field UI runs (#9)
+- [x] Hardware matrix docs (#7) + format/prepare media (#8)

@@ -45,6 +45,7 @@ software/linux/
   docs/
     FOR-FIRMWARE-TEAM.md    # offline apt golden rules (start here for FW)
     FIELD-INSTALL.md        # install/uninstall + tablet roadmap
+    HARDWARE-MATRIX.md      # tablet fleet matrix (#7)
     UBUNTU-SETUP.md         # freenect, gspca, Kinect audio firmware
     ARCHITECTURE.md
     LINUX-SLS-PLAN.md
