@@ -76,6 +76,14 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 
 ## Settings details
 
+Settings is **scrollable** and height-capped at ~**90%** of the screen’s available area so short field tablets (e.g. **1280×800**) can reach every control. **Close** stays pinned at the bottom. At startup the app logs (and briefly flashes) geometry for the hardware matrix:
+
+```text
+display: 1280x800 avail=1280x768 dpr=1.0 dpi=96
+```
+
+Issue: [#6](https://github.com/tmdrake/sls-camera/issues/6) (closed). Related: [#7](https://github.com/tmdrake/sls-camera/issues/7) hardware tree.
+
 | Setting | Range / default |
 |---------|-----------------|
 | **Max people** | 1–6; MediaPipe default **1** |

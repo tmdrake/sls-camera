@@ -43,12 +43,17 @@ Ubuntu / freenect path for the same Xbox 360 Kinect (NUI) hardware used by the W
 software/linux/
   README.md
   docs/
-    UBUNTU-SETUP.md         # freenect, gspca, Kinect audio firmware
+    FOR-FIRMWARE-TEAM.md    # offline apt golden rules (start here for FW)
     FIELD-INSTALL.md        # install/uninstall + tablet roadmap
+    UBUNTU-SETUP.md         # freenect, gspca, Kinect audio firmware
     ARCHITECTURE.md
     LINUX-SLS-PLAN.md
+  packages/
+    apt-packages.txt        # apt seeds (#2)
+    apt-purge-safe.txt
   scripts/
     check-kinect.sh         # USB, freenect, ALSA Kinect mic
+    install-apt-deps.sh     # online or cache-based seed install
     install-freenect.sh
     fix-kinect-access.sh
     install-field-app.sh    # dev packaging: launcher + optional autostart
@@ -79,15 +84,18 @@ Keys: `S` settings · `C` snap · `R` record · `O` DrakeVox · `F` fullscreen �
 
 Full CLI / `--demo` / PortAudio preflight: [viewer/README.md](viewer/README.md#cli-runsh).
 
-### Dev packaging (launcher / autostart)
+### Dev packaging (launcher / autostart / apt)
 
 ```bash
 # optional: menu launcher + login autostart (points at this clone)
 ./software/linux/scripts/install-field-app.sh
 # daily dev without autostart:
 ./software/linux/scripts/install-field-app.sh --no-autostart
+# host packages (online, or offline if firmware vendor/debs is present):
+./software/linux/scripts/install-field-app.sh --with-apt-deps --with-kinect-access
 ./software/linux/scripts/uninstall-field-app.sh
 
+# Firmware / offline pack: docs/FOR-FIRMWARE-TEAM.md
 # details + tablet / firmware TODO:
 #   software/linux/docs/FIELD-INSTALL.md
 ```

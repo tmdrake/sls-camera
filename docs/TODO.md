@@ -57,6 +57,11 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
   - Closed: [GitHub #4](https://github.com/tmdrake/sls-camera/issues/4)
   - Code: `host_power.py`, `qt_app.py`, `config.py`
 - [x] **Display brightness** (Settings) — sysfs backlight / brightnessctl / xrandr software fallback
+- [x] **Settings fit small tablets (#6)** — log `display: WxH avail=… dpr=… dpi=…` at Qt start; Settings in `QScrollArea` capped ~90% available height; Close pinned; action buttons 2×2
+  - Closed: [GitHub #6](https://github.com/tmdrake/sls-camera/issues/6)
+- [ ] **Keep display awake (#9)** — inhibit screensaver/DPMS/idle while field UI runs
+- [ ] **Hardware matrix (#7)** — per-tablet geometry + BOM rows (with FW docs/devices/)
+- [ ] **Format media from Settings (#8)** — after scrollable Settings
 - [ ] **Power management** — stable SLS on **external power** with tablet: suspend/sleep policy, USB power, avoid brownouts when Kinect + display are both on.
 - [ ] **Sensor inputs** — Arduino/MCU bridge into the app (see product features).
 
@@ -86,3 +91,4 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] DrakeVox overlay title `***DRAKEVOX***` in LED magenta
 - [x] Dev install/uninstall scripts + FIELD-INSTALL.md
 - [x] Offline-safe apt (#2) + FOR-FIRMWARE-TEAM.md handoff
+- [x] Settings scroll + geometry log (#6)
