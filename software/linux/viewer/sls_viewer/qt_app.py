@@ -77,20 +77,22 @@ QPushButton:pressed { background-color: rgba(0, 80, 60, 240); }
 QDialog {
     border: 1px solid #00ffb4;
 }
-/* Settings pane: ~10% shorter controls so left column needs less scroll */
+/* Settings pane: ~10% shorter controls so left column needs less scroll.
+   Cap height (max-height) so size-hints cannot inflate past the target. */
 QDialog QPushButton {
-    min-height: 40px;
-    min-width: 44px;
-    font-size: 13px;
-    padding: 4px 10px;
+    min-height: 36px;
+    max-height: 40px;
+    min-width: 40px;
+    font-size: 12px;
+    padding: 2px 8px;
     border-radius: 6px;
 }
 QDialog QPushButton#wide {
-    min-width: 88px;
+    min-width: 80px;
 }
 QDialog QLabel#vallabel {
-    font-size: 13px;
-    min-width: 64px;
+    font-size: 12px;
+    min-width: 56px;
 }
 QDialog QLabel#hdr {
     font-size: 14px;
