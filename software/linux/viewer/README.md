@@ -135,9 +135,19 @@ One button, shown **only when a USB stick or SD card is mounted**:
 2. Settings → **Format removable media…**  
 3. **Confirm 1** — shows label / device / size (default **Cancel**).  
 4. **Confirm 2** — “Erase and format” (default **Cancel**; no typing).  
-5. Format runs — **needs admin**: `pkexec` (password dialog) or passwordless `sudo`, plus `dosfstools` (`mkfs.vfat`).
+5. Format runs as **FAT32**. Privilege order:
+   1. **UDisks2** (polkit) — often works for *removable* media as the logged-in user (may still ask once, or never if FW ships a polkit rule)
+   2. **`mkfs.vfat` via pkexec / sudo** — classic root path (`dosfstools`)
 
-Without admin rights the format step fails with a status message (nothing is half-wiped if mkfs never starts). Refuses internal/nvme disks and media larger than 128 GiB. Host whole-disk prep remains firmware `prep-sls-media-usb.sh`.
+**There is no pure userspace format** of a block device without some elevated right (kernel policy). Workarounds if the tablet has no admin:
+
+| Workaround | Notes |
+|------------|--------|
+| Pre-format on a PC | Firmware `prep-sls-media-usb.sh` → plug into tablet; Auto captures work |
+| Stick already FAT + writable | App can already write `sls-captures/` without format |
+| Appliance polkit rule | Allow `sls` to `org.freedesktop.udisks2.modify-device` for removable only (FW) |
+
+Refuses internal/nvme disks and media larger than 128 GiB.
 
 ### Auto priority (when several volumes are mounted)
 

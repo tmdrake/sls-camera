@@ -184,6 +184,76 @@ def _privileged(cmd: Sequence[str], timeout: int = 180) -> Tuple[int, str]:
     return 1, "need root (pkexec or passwordless sudo) to format"
 
 
+def _udisks_object_path(dev: str) -> str:
+    """ /dev/sdb1 → /org/freedesktop/UDisks2/block_devices/sdb1 """
+    name = os.path.basename(dev.strip())
+    return f"/org/freedesktop/UDisks2/block_devices/{name}"
+
+
+def _format_via_udisks2(dev: str, label: str) -> Tuple[int, str]:
+    """Prefer UDisks2 Format (polkit; often seat user can format *removable*).
+
+    Does not require a root shell when polkit allows org.freedesktop.udisks2.modify-device
+    for the active session — common on desktop; appliance can ship a rule for user ``sls``.
+    """
+    path = _udisks_object_path(dev)
+    # gdbus is widely available with glib2
+    if shutil.which("gdbus"):
+        # a{sv}: label as string variant
+        opts = f"{{'label': <'{label}'>, 'update-partition-type': <true>}}"
+        rc, out = _run(
+            [
+                "gdbus",
+                "call",
+                "--system",
+                "--dest",
+                "org.freedesktop.UDisks2",
+                "--object-path",
+                path,
+                "--method",
+                "org.freedesktop.UDisks2.Block.Format",
+                "vfat",
+                opts,
+            ],
+            timeout=180,
+        )
+        return rc, out or ("udisks2 format ok" if rc == 0 else "udisks2 format failed")
+
+    # Fallback: busctl (systemd)
+    if shutil.which("busctl"):
+        rc, out = _run(
+            [
+                "busctl",
+                "call",
+                "org.freedesktop.UDisks2",
+                path,
+                "org.freedesktop.UDisks2.Block",
+                "Format",
+                "sa{sv}",
+                "vfat",
+                "2",
+                "label",
+                "s",
+                label,
+                "update-partition-type",
+                "b",
+                "true",
+            ],
+            timeout=180,
+        )
+        return rc, out or ("udisks2 format ok" if rc == 0 else "udisks2 format failed")
+
+    return 1, "udisks2 tools not available (gdbus/busctl)"
+
+
+def _format_via_mkfs(dev: str, label: str) -> Tuple[int, str]:
+    """Direct mkfs.vfat — needs root/pkexec/sudo."""
+    mkfs = shutil.which("mkfs.vfat") or shutil.which("mkfs.fat")
+    if not mkfs:
+        return 1, "mkfs.vfat not found (install dosfstools)"
+    return _privileged([mkfs, "-F", "32", "-n", label, "-I", dev], timeout=180)
+
+
 def format_volume_fat32(
     vol: MediaVolume,
     *,
@@ -191,6 +261,10 @@ def format_volume_fat32(
 ) -> FormatResult:
     """
     Format the volume's block device as FAT32, remount, create sls-captures/.
+
+    Privilege order (no pure-userspace rewrite of a block device is possible):
+      1. UDisks2 Format via polkit (may work without password for removable media)
+      2. mkfs.vfat via pkexec / sudo -n / root
 
     Destroys all data on that partition. Caller must confirm with the operator.
     """
@@ -202,24 +276,30 @@ def format_volume_fat32(
     label = re.sub(r"[^A-Za-z0-9_-]", "", label or DEFAULT_LABEL)[:11] or DEFAULT_LABEL
     mountpoint = str(vol.path)
 
-    # Unmount
+    # Unmount (udisksctl often works without root for user mounts)
     _run(["udisksctl", "unmount", "-b", dev], timeout=30)
     _run(["umount", mountpoint], timeout=30)
     _run(["umount", dev], timeout=30)
     time.sleep(0.5)
 
-    mkfs = shutil.which("mkfs.vfat") or shutil.which("mkfs.fat")
-    if not mkfs:
-        return FormatResult(
-            False,
-            "mkfs.vfat not found (install dosfstools)",
-            vol,
-        )
-
-    # -I allows formatting whole-disk if we ever pass one; partitions are normal
-    rc, out = _privileged([mkfs, "-F", "32", "-n", label, "-I", dev], timeout=180)
-    if rc != 0:
-        return FormatResult(False, f"mkfs failed: {out or rc}", vol)
+    method = ""
+    rc, out = _format_via_udisks2(dev, label)
+    if rc == 0:
+        method = "udisks2"
+    else:
+        udisks_err = out
+        rc, out = _format_via_mkfs(dev, label)
+        if rc == 0:
+            method = "mkfs"
+        else:
+            return FormatResult(
+                False,
+                "format failed — need UDisks2/polkit or admin (pkexec/sudo). "
+                f"udisks: {udisks_err[:120]}; mkfs: {out[:120]}. "
+                "Workaround: format stick on a PC with prep-sls-media-usb.sh, "
+                "or install appliance polkit rule for removable Format.",
+                vol,
+            )
 
     # Remount
     new_mount = ""
@@ -239,7 +319,7 @@ def format_volume_fat32(
     if not new_mount:
         return FormatResult(
             False,
-            f"formatted {dev} but remount failed — plug cycle stick; {out_m}",
+            f"formatted {dev} ({method}) but remount failed — plug cycle stick; {out_m}",
             vol,
         )
 
@@ -259,7 +339,7 @@ def format_volume_fat32(
         )
     return FormatResult(
         True,
-        f"Formatted {dev} as FAT32 «{label}»; {dest}",
+        f"Formatted {dev} as FAT32 «{label}» via {method}; {dest}",
         new_vol,
     )
 

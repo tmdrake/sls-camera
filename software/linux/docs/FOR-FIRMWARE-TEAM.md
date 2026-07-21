@@ -67,6 +67,14 @@ Env: `SLS_DEB_CACHE`, `SLS_OFFLINE=1`, `SLS_APT_YES=1`.
 
 ---
 
+## Format media without password prompts (optional)
+
+App **Format removable media…** prefers **UDisks2** then `pkexec`/`sudo` mkfs.  
+There is **no** root-free format of a block device. For kiosk tablets:
+
+1. Pre-format sticks with `prep-sls-media-usb.sh` on a bench PC, **or**  
+2. Ship a polkit rule so user `sls` may UDisks2-format **removable** only — see [FORMAT-MEDIA-PRIVS.md](FORMAT-MEDIA-PRIVS.md).
+
 ## Display target (fleet)
 
 | Target | Detail |
