@@ -53,7 +53,8 @@ DEFAULT_WORDS = FALLBACK_WORDS
 
 MIN_INTERVAL_S = 5 * 60
 MAX_INTERVAL_S = 15 * 60
-HISTORY_MAX = 12
+# Retain enough events for Settings Status/log (shows up to ~24)
+HISTORY_MAX = 36
 OVERLAY_HISTORY_N = 5
 
 

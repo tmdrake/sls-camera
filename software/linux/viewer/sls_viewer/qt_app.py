@@ -448,13 +448,29 @@ class SettingsDialog(QDialog):
         self.drakevox_label.setWordWrap(True)
         right_layout.addWidget(self.drakevox_label)
 
+        # Longer word history (up to 24); scroll within the status pane
+        hist_scroll = QScrollArea()
+        hist_scroll.setWidgetResizable(True)
+        hist_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        hist_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        hist_scroll.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        hist_scroll.setStyleSheet("background-color: transparent;")
         self.drakevox_history = QLabel("")
         self.drakevox_history.setStyleSheet(
             "color: #888; font-size: 11px; font-family: monospace;"
+            " background-color: transparent;"
         )
         self.drakevox_history.setWordWrap(True)
         self.drakevox_history.setAlignment(Qt.AlignmentFlag.AlignTop)
-        right_layout.addWidget(self.drakevox_history, stretch=1)
+        self.drakevox_history.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        hist_scroll.setWidget(self.drakevox_history)
+        right_layout.addWidget(hist_scroll, stretch=1)
 
         hint = QLabel(
             "Keys: [ ] conf  ·  , . max  ·  M mirror  ·  O DrakeVox  ·  S settings  ·  Esc close"
@@ -566,7 +582,8 @@ class SettingsDialog(QDialog):
             self.drakevox_label.setText(
                 f"DrakeVox: off  ·  {self.drakevox.word_source}"
             )
-        hist = self.drakevox.history_lines(8)
+        # Right pane is taller with two-pane layout — show more words (was 8)
+        hist = self.drakevox.history_lines(24)
         self.drakevox_history.setText(
             "History:\n" + "\n".join(hist) if hist else "History: (none yet)"
         )
