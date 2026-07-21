@@ -40,3 +40,5 @@ usbutils
 v4l-utils
 # Optional host ffmpeg (app also vendors imageio-ffmpeg wheel)
 ffmpeg
+dosfstools
+udisks2

@@ -2,7 +2,9 @@
 
 **Stay in dev:** this documents how to wire a **git checkout** of the SLS Qt app on a Linux host (OptiPlex, tablet prototype, etc.). It is **not** a flashable tablet firmware image.
 
-**Firmware team:** start here → **[FOR-FIRMWARE-TEAM.md](FOR-FIRMWARE-TEAM.md)** (offline apt golden rules, commands, exit codes, smoke checklist).
+**Firmware team:** start here → **[FOR-FIRMWARE-TEAM.md](FOR-FIRMWARE-TEAM.md)**  
+(offline apt, **blow-and-go** media links, **polkit format rule**, exit codes, 16:10, smoke checklist).  
+Format privileges detail: [FORMAT-MEDIA-PRIVS.md](FORMAT-MEDIA-PRIVS.md).
 
 Target product path (later): **tablets** with Kinect, then sensor inputs and **stable external power** so SLS runs as a field appliance. Those steps are backlog — see below and [docs/TODO.md](../../../docs/TODO.md).
 

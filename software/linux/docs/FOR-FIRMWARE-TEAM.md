@@ -1,18 +1,75 @@
 # For the firmware team (read this first)
 
-**One-pager** for `sls-camera-firmware` work. Product app lives here; offline image work is sibling.
+**One-pager** for `sls-camera-firmware` work. Product app lives here; offline image / blow-and-go media is the sibling repo.
 
 | Repo | Role |
 |------|------|
-| **`sls-camera`** (this) | App source of truth · seed list · offline-**safe** install helpers · issues |
-| **`sls-camera-firmware`** | `vendor/` mirror · `install-appliance.sh` · future ISO |
+| **`sls-camera`** (this) | App source of truth · seed list · offline-**safe** install helpers · UI contracts · issues |
+| **`sls-camera-firmware`** | `vendor/` mirror · `install-appliance.sh` · field USB · future ISO |
 
-Full install narrative: [FIELD-INSTALL.md](FIELD-INSTALL.md).  
-Offline mirror details: [firmware OFFLINE-MIRROR.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/OFFLINE-MIRROR.md).
+| Doc | Topic |
+|-----|--------|
+| [FIELD-INSTALL.md](FIELD-INSTALL.md) | Dev host install / uninstall |
+| [FORMAT-MEDIA-PRIVS.md](FORMAT-MEDIA-PRIVS.md) | **Polkit rule** for Format removable media (no root password) |
+| [HARDWARE-MATRIX.md](HARDWARE-MATRIX.md) | Fleet tablets, **16:10**, geometry log |
+| [firmware OFFLINE-MIRROR.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/OFFLINE-MIRROR.md) | Recursive debs / wheels / model |
+| [firmware ISO-AND-FIELD-USB.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/ISO-AND-FIELD-USB.md) | **Blow-and-go** Stage A/B media |
+| [firmware FIRST-BOOT.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/FIRST-BOOT.md) | After appliance install |
+| [firmware POWER-AND-DISPLAY.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/POWER-AND-DISPLAY.md) | Landscape, DPMS, no-suspend |
 
 ---
 
-## Golden rules (do not break)
+## Blow-and-go install (resources)
+
+**Goal:** tech wipes tablet → OS → one offline pack → field-ready SLS.
+
+### Media roles (do not mix)
+
+| Stick | Label / role | Contents | When |
+|-------|----------------|----------|------|
+| **OS installer** | Stock **Lubuntu 26.04** ISO (dd / Rufus / Ventoy) | Live + Calamares | Wipe eMMC, install OS |
+| **SLS field USB** | FAT32 **`SLS-MEDIA`** | Offline firmware tree + `install-from-usb.sh` | After OS reboot → appliance |
+
+Docs & scripts live in **`sls-camera-firmware`**:
+
+| Resource | Path / link |
+|----------|-------------|
+| Blow-and-go plan | [`docs/ISO-AND-FIELD-USB.md`](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/ISO-AND-FIELD-USB.md) |
+| Build field USB | `scripts/50-build-field-usb.sh` |
+| Prep empty FAT stick | `scripts/prep-sls-media-usb.sh` (also used for capture media) |
+| Stamp installer stick notes | `scripts/stamp-installer-usb.sh` + `media/installer-usb/` |
+| Appliance install (on target) | `scripts/install-appliance.sh` or **`install-from-usb.sh`** on the field stick |
+| Offline fetch | `scripts/10-fetch-offline.sh` (`FETCH_DEPS=1`) |
+| Live session / landscape | [`docs/LIVE-SESSION.md`](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/LIVE-SESSION.md) |
+| VM rebuild lab | [`docs/VM-REBUILD.md`](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/VM-REBUILD.md) |
+| First boot | [`docs/FIRST-BOOT.md`](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/FIRST-BOOT.md) |
+| Power / display policy | [`docs/POWER-AND-DISPLAY.md`](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/POWER-AND-DISPLAY.md) |
+
+### Typical sequence (Stage A)
+
+```text
+1. Build offline pack on a networked host
+     cd ~/sls-camera-firmware && ./scripts/10-fetch-offline.sh
+     ./scripts/20-sync-app.sh   # pin current sls-camera main
+2. Write SLS-MEDIA stick
+     ./scripts/prep-sls-media-usb.sh /dev/sdX   # or 50-build-field-usb.sh
+3. On tablet: install Lubuntu 26.04 from OS ISO → reboot to eMMC
+4. Plug SLS-MEDIA → run install-from-usb.sh (or copy tree + install-appliance.sh)
+5. First boot: SDDM autologin sls → landscape lock → SLS app
+6. Smoke: --demo or Kinect; copy geometry log into HARDWARE-MATRIX
+```
+
+App-side offline apt check (optional on build host):
+
+```bash
+cd ~/sls-camera
+SLS_OFFLINE=1 ./software/linux/scripts/install-apt-deps.sh \
+  --deb-cache ~/sls-camera-firmware/vendor/debs
+```
+
+---
+
+## Golden rules (offline apt — do not break)
 
 | ✅ Do | ❌ Don’t |
 |-------|----------|
@@ -23,57 +80,72 @@ Offline mirror details: [firmware OFFLINE-MIRROR.md](https://github.com/tmdrake/
 | `pip install --no-index --find-links=vendor/wheels` when wheels exist | `pip install --upgrade pip` from PyPI offline |
 | Track new package fights on **[sls-camera#3](https://github.com/tmdrake/sls-camera/issues/3)** | Only note conflicts in firmware chat |
 
-**Why:** Phase 1 Lubuntu 26.04 — seed-only packs left half-configured packages; blanket `dpkg -i` hit both sides of OR alternatives (`libjack0` vs `libjack-jackd2-0`, `libavcodec` vs `*-extra`).
+App tools: [`packages/apt-packages.txt`](../packages/apt-packages.txt), [`scripts/install-apt-deps.sh`](../scripts/install-apt-deps.sh) (closed [#2](https://github.com/tmdrake/sls-camera/issues/2)).  
+Keep seeds aligned with firmware `packages/apt-packages.txt` (app also wants **`espeak-ng`**).
 
 ---
 
-## App-side tools (closed [sls-camera#2](https://github.com/tmdrake/sls-camera/issues/2))
+## Format removable media — polkit (please ship on appliance)
 
-| Path | What |
-|------|------|
-| [`packages/apt-packages.txt`](../packages/apt-packages.txt) | **Seed** list (keep in sync with firmware `packages/apt-packages.txt`; app also wants `espeak-ng`) |
-| [`packages/apt-purge-safe.txt`](../packages/apt-purge-safe.txt) | Safe uninstall purge only (never python3 / GUI base) |
-| [`scripts/install-apt-deps.sh`](../scripts/install-apt-deps.sh) | Online **or** cache install (same rules as appliance) |
-| [`scripts/install-field-app.sh`](../scripts/install-field-app.sh) | Dev launcher + `--with-apt-deps` / `--deb-cache` |
-| [`scripts/uninstall-field-app.sh`](../scripts/uninstall-field-app.sh) | Remove launcher; optional `--purge-apt-deps` |
+### Why
 
-### Commands that must work tomorrow
+App Settings **Format removable media…** (two Yes confirms, FAT32 `SLS-MEDIA` + `sls-captures/`) needs to write a block device. It tries:
 
-```bash
-# Layout: ~/sls-camera + ~/sls-camera-firmware (siblings)
+1. **UDisks2** `Block.Format` (polkit)  
+2. **`mkfs.vfat`** via `pkexec` / `sudo -n`
 
-# 1) On a build host with network — refresh recursive offline pack
-cd ~/sls-camera-firmware
-./scripts/10-fetch-offline.sh          # FETCH_DEPS=1 default → ~360 debs
+Without polkit/sudo, operators hit a **root password** prompt — bad for kiosk.  
+**There is no fully unprivileged format**; the right fix is a **narrow polkit rule** for user `sls`.
 
-# 2) Prove app installer against that cache (no surprise dpkg -i)
-cd ~/sls-camera
-./software/linux/scripts/install-apt-deps.sh --print-seeds
-./software/linux/scripts/install-apt-deps.sh \
-  --deb-cache ~/sls-camera-firmware/vendor/debs
-# or:
-./software/linux/scripts/install-field-app.sh --with-apt-deps \
-  --deb-cache ~/sls-camera-firmware/vendor/debs
+### What to install (firmware overlay)
 
-# 3) Strict offline (fails if cache incomplete)
-SLS_OFFLINE=1 ./software/linux/scripts/install-apt-deps.sh \
-  --deb-cache ~/sls-camera-firmware/vendor/debs
+**Path:** `/etc/polkit-1/rules.d/60-sls-udisks-format.rules`  
+(Copy from app doc sample; full notes: [FORMAT-MEDIA-PRIVS.md](FORMAT-MEDIA-PRIVS.md).)
 
-# 4) Auto-detect: if vendor/debs exists next door, --with-apt-deps finds it
-./software/linux/scripts/install-field-app.sh --with-apt-deps
+```javascript
+// SLS appliance: allow kiosk user to format/mount removable media via UDisks2
+// without password. App still refuses nvme/system disks in media_format.py.
+polkit.addRule(function(action, subject) {
+    if (subject.user !== "sls")
+        return polkit.Result.NOT_HANDLED;
+    if (action.id.indexOf("org.freedesktop.udisks2.") !== 0)
+        return polkit.Result.NOT_HANDLED;
+    if (action.id == "org.freedesktop.udisks2.modify-device" ||
+        action.id == "org.freedesktop.udisks2.filesystem-mount" ||
+        action.id == "org.freedesktop.udisks2.filesystem-mount-other-seat" ||
+        action.id == "org.freedesktop.udisks2.filesystem-unmount-others") {
+        return polkit.Result.YES;
+    }
+    return polkit.Result.NOT_HANDLED;
+});
 ```
 
-Env: `SLS_DEB_CACHE`, `SLS_OFFLINE=1`, `SLS_APT_YES=1`.
+Also ensure package **`dosfstools`** is in the offline seed list (for mkfs fallback) and **udisks2** is present (usually with desktop).
+
+### Bench alternative (no polkit on tablet)
+
+```bash
+# On a PC (sudo) — same as capture-media prep
+./scripts/prep-sls-media-usb.sh /dev/sdX
+# Label SLS-MEDIA + sls-captures/; plug into tablet → Captures Auto
+```
+
+### Verify after appliance install
+
+```bash
+# as user sls, stick unmounted e.g. /dev/sdb1:
+gdbus call --system --dest org.freedesktop.UDisks2 \
+  --object-path /org/freedesktop/UDisks2/block_devices/sdb1 \
+  --method org.freedesktop.UDisks2.Block.Format \
+  vfat "{'label': <'SLS-MEDIA'>, 'update-partition-type': <true>}"
+```
+
+Then app: Settings → **Format removable media…** → should complete **without** root password when the rule is active. Status flash may say `via udisks2`.
+
+**App code:** `software/linux/viewer/sls_viewer/media_format.py`  
+**Issue:** [#8](https://github.com/tmdrake/sls-camera/issues/8) (closed; polkit is firmware deploy)
 
 ---
-
-## Format media without password prompts (optional)
-
-App **Format removable media…** prefers **UDisks2** then `pkexec`/`sudo` mkfs.  
-There is **no** root-free format of a block device. For kiosk tablets:
-
-1. Pre-format sticks with `prep-sls-media-usb.sh` on a bench PC, **or**  
-2. Ship a polkit rule so user `sls` may UDisks2-format **removable** only — see [FORMAT-MEDIA-PRIVS.md](FORMAT-MEDIA-PRIVS.md).
 
 ## Display target (fleet)
 
@@ -82,49 +154,52 @@ There is **no** root-free format of a block device. For kiosk tablets:
 | **Aspect** | **16:10 landscape** after `sls-lock-landscape` |
 | **Examples** | tablet-01 **1280×800** · tablet-02 **1920×1200** · KVM **1280×800** |
 | **App Settings** | Sized for 16:10 two-pane dialog; scrolls if short |
-| **Geometry log** | Startup line includes `ar=16:10` when detected — paste into hardware matrix |
+| **Geometry log** | Startup: `display: … ar=16:10 dpr=…` — paste into [HARDWARE-MATRIX.md](HARDWARE-MATRIX.md) |
 
-Portrait native glass must be rotated **before** the app (firmware). Do not leave the session in portrait for field use.
+Portrait native glass must be rotated **before** the app (firmware).
+
+---
 
 ## Appliance contracts the app already honors
 
 | Contract | App behavior |
 |----------|----------------|
 | **`SLS_CAPTURES_DIR`** | Local snaps/records dir (firmware sets `/data/sls-captures`) |
-| **`/data/sls-captures`** | Dev wrapper exports `SLS_CAPTURES_DIR` when that dir exists |
+| **`/data/sls-captures`** | Dev wrapper exports when dir exists |
 | **Quit exit codes** | `0` clean quit · **`10` power-off** · `11` relaunch (reserved) |
-| **`SLS_QUIT_ACTION=shutdown`** | Appliance default in launcher — app shows “Power off?” and exits **10** |
-| **`SLS_ON_QUIT=app`** + **`SLS_QUIT_FALLBACK=none`** | Launcher powers off **only** on exit 10 |
-| App **wake lock** | Always on while field UI runs (not host power-off; no Settings toggle) |
+| **`SLS_QUIT_ACTION=shutdown`** | Launcher default — app “Power off?” + exit **10** |
+| **`SLS_ON_QUIT=app`** + **`SLS_QUIT_FALLBACK=none`** | Power off **only** on exit 10 |
+| **Wake lock** | Always on while field UI runs (not host power-off) |
+| **Format media** | UDisks2 then mkfs; two Yes confirms; FAT32 `SLS-MEDIA` |
 
-**Host power-off is firmware-owned** (launcher + sudoers). App has no Power-off Settings toggle.  
-Details: [viewer README § Quit](../viewer/README.md#quit) · [FIELD-INSTALL § Quit](FIELD-INSTALL.md#quit-vs-power-off-app-vs-appliance).
+**Host power-off is firmware-owned** (launcher + `sudoers.d/sls-poweroff`).  
+App does **not** call `poweroff` itself — only exit code 10.
 
 ---
 
 ## Seed list sync
 
-When adding a **system** package the app needs:
+1. Edit **`sls-camera/software/linux/packages/apt-packages.txt`**  
+2. Mirror **`sls-camera-firmware/packages/apt-packages.txt`**  
+3. Re-run `10-fetch-offline.sh` on matching Ubuntu series  
+4. Comment on [#3](https://github.com/tmdrake/sls-camera/issues/3) if apt fights  
 
-1. Add to **`sls-camera/software/linux/packages/apt-packages.txt`**
-2. Mirror in **`sls-camera-firmware/packages/apt-packages.txt`**
-3. Re-run `10-fetch-offline.sh` on the **same Ubuntu series** as the tablet (e.g. 26.04)
-4. Comment on [#3](https://github.com/tmdrake/sls-camera/issues/3) if apt fights alternatives
-
-Do **not** put Microsoft Kinect UAC audio firmware in either public repo (`kinect-audio-setup` on device only).
+Do **not** put Microsoft Kinect UAC audio firmware in public trees (`kinect-audio-setup` on device only).
 
 ---
 
 ## Smoke checklist (before freezing a field pack)
 
-- [ ] `FETCH_DEPS=1` fetch on matching Ubuntu; `vendor/debs` has hundreds of debs + `PACKAGE-LIST.txt`
-- [ ] No `libav*-extra*.deb` / `libjack0_*.deb` left in the pack
-- [ ] `SLS_OFFLINE=1 install-apt-deps.sh --deb-cache vendor/debs` succeeds (or appliance install)
-- [ ] Wheels: `pip install --no-index --find-links=vendor/wheels -r requirements.txt`
-- [ ] App: `./run.sh --demo` smoke (no Kinect required for UI)
-- [ ] With Kinect: depth + spectrum after `kinect-audio-setup` (manual, not in public mirror)
-- [ ] Captures: `SLS_CAPTURES_DIR=/data/sls-captures` or Auto SD/USB path
-- [ ] Lubuntu 26.04 autologin uses **SDDM**, not LightDM
+- [ ] `FETCH_DEPS=1` fetch; hundreds of debs + `PACKAGE-LIST.txt`  
+- [ ] No `libav*-extra*.deb` / `libjack0_*.deb` in pack  
+- [ ] Offline seed install works (`SLS_OFFLINE=1` or appliance script)  
+- [ ] Wheels + pose model offline  
+- [ ] App smoke `--demo`; Kinect + spectrum when audio firmware present  
+- [ ] Captures: `/data/sls-captures` and/or Auto SD/USB  
+- [ ] Quit → exit 10 → poweroff (appliance)  
+- [ ] **Polkit format rule** installed; Format media works without root password  
+- [ ] Landscape **16:10**; geometry log → hardware matrix  
+- [ ] SDDM autologin (not LightDM) on Lubuntu 26.04  
 
 ---
 
@@ -132,9 +207,13 @@ Do **not** put Microsoft Kinect UAC audio firmware in either public repo (`kinec
 
 | Issue | Status |
 |-------|--------|
-| [#2](https://github.com/tmdrake/sls-camera/issues/2) Offline apt cache install | **Closed** — `install-apt-deps.sh` |
-| [#3](https://github.com/tmdrake/sls-camera/issues/3) OR-alternatives / new conflicts | **Open tracker** — comment new finds |
-| [#4](https://github.com/tmdrake/sls-camera/issues/4) Quit → power off | **Closed** — exit 10 + Settings |
-| [#5](https://github.com/tmdrake/sls-camera/issues/5) Captures → SD/USB | **Closed** (v1 Auto SD-first) |
+| [#2](https://github.com/tmdrake/sls-camera/issues/2) Offline apt | **Closed** |
+| [#3](https://github.com/tmdrake/sls-camera/issues/3) OR-conflicts | **Open tracker** |
+| [#4](https://github.com/tmdrake/sls-camera/issues/4) Quit power-off | **Closed** (exit 10) |
+| [#5](https://github.com/tmdrake/sls-camera/issues/5) Captures Auto | **Closed** |
+| [#6](https://github.com/tmdrake/sls-camera/issues/6) Settings geometry | **Closed** |
+| [#7](https://github.com/tmdrake/sls-camera/issues/7) Hardware matrix | **Open** — fill post-wipe row on real tablet |
+| [#8](https://github.com/tmdrake/sls-camera/issues/8) Format media | **Closed** — ship polkit for kiosk UX |
+| [#9](https://github.com/tmdrake/sls-camera/issues/9) Wake lock | **Closed** |
 
 App backlog: [docs/TODO.md](../../../docs/TODO.md).

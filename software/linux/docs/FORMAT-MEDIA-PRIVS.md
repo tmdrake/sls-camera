@@ -1,40 +1,61 @@
-# Format removable media — privileges
+# Format removable media — privileges (firmware note)
 
-The field app **Format removable media…** rewrites a USB/SD partition as FAT32.
-That is a **block-device** operation; Linux will not allow a normal user to do it
-with zero privilege. Options below avoid a clumsy “full root shell” where possible.
+**Audience:** `sls-camera-firmware` appliance / blow-and-go images.  
+**App UI:** Settings → **Format removable media…** (two Yes/Cancel confirms; FAT32 label **`SLS-MEDIA`** + **`sls-captures/`**).  
+**Code:** `software/linux/viewer/sls_viewer/media_format.py` · Issue [#8](https://github.com/tmdrake/sls-camera/issues/8).
+
+## Summary for firmware
+
+| Question | Answer |
+|----------|--------|
+| Does format need privilege? | **Yes** — block-device write; no pure userspace wipe |
+| Best kiosk UX | Ship **polkit rule** below for user **`sls`** + UDisks2 |
+| Fallback | `pkexec` / passwordless `sudo` + `dosfstools` |
+| No privilege on tablet | Pre-format sticks with `prep-sls-media-usb.sh` on a bench PC |
 
 ## What the app tries (order)
 
-1. **UDisks2** `Block.Format` via `gdbus` / `busctl`  
-   - Polkit decides if the **active seat user** may format.  
-   - On many desktops, removable media is allowed after a one-time auth (or always).  
-2. **`mkfs.vfat`** via `pkexec` → `sudo -n` → root  
-   - Requires `dosfstools`.  
+1. **UDisks2** `org.freedesktop.UDisks2.Block.Format` (`gdbus` / `busctl`)  
+   - Polkit decides; with the rule below → **no password** for `sls`  
+2. **`mkfs.vfat -F 32 -n SLS-MEDIA`** via `pkexec` → `sudo -n` → root  
 
-Success message includes `via udisks2` or `via mkfs`.
+Status text: `via udisks2` or `via mkfs`.
 
-## Workarounds (no admin on tablet)
+## Required packages on appliance image
 
-| Approach | When to use |
-|----------|-------------|
-| **Host prep** | `sls-camera-firmware/scripts/prep-sls-media-usb.sh` on a PC; stick already has `SLS-MEDIA` + `sls-captures/` |
-| **Already good FS** | If the card is already FAT/exFAT and writable, **skip Format** — Captures **Auto** creates `sls-captures/` on write |
-| **Appliance polkit** | Ship a rule so user `sls` can format **removable** only (see below) |
+| Package | Why |
+|---------|-----|
+| `udisks2` | Preferred format path (usually pulled by desktop) |
+| `dosfstools` | `mkfs.vfat` fallback — add to apt **seeds** if missing |
+| `policykit-1` / polkit | Rules engine |
 
-## Suggested polkit rule (firmware)
+## Overlay: polkit rule (ship this)
 
-Install as e.g. `/etc/polkit-1/rules.d/60-sls-udisks-format.rules` (polkit JS; adjust for distro):
+**Install path on tablet:**
+
+```text
+/etc/polkit-1/rules.d/60-sls-udisks-format.rules
+```
+
+**Suggested firmware tree path:**
+
+```text
+sls-camera-firmware/overlay/etc/polkit-1/rules.d/60-sls-udisks-format.rules
+```
+
+Wire into `install-appliance.sh` the same way as other `overlay/etc` files.
+
+**File contents:**
 
 ```javascript
-// Allow appliance user to format removable media without password (UDisks2).
-// Still blocked for fixed disks by UDisks "removable" / device checks in the app.
+// SLS appliance — passwordless UDisks2 for kiosk user "sls" (format/mount removable).
+// App media_format.py still refuses nvme / system paths / >128GiB.
+// Adjust subject.user if SLS_USER is not "sls".
 polkit.addRule(function(action, subject) {
     if (subject.user !== "sls")
         return polkit.Result.NOT_HANDLED;
     if (action.id.indexOf("org.freedesktop.udisks2.") !== 0)
         return polkit.Result.NOT_HANDLED;
-    // modify-device / filesystem-mount / etc. — keep scope tight in production
     if (action.id == "org.freedesktop.udisks2.modify-device" ||
         action.id == "org.freedesktop.udisks2.filesystem-mount" ||
         action.id == "org.freedesktop.udisks2.filesystem-mount-other-seat" ||
@@ -45,20 +66,42 @@ polkit.addRule(function(action, subject) {
 });
 ```
 
-Test on appliance after install:
+After install, reload polkit if needed:
 
 ```bash
-# as user sls, with a stick at /dev/sdb1 unmounted:
+sudo systemctl restart polkit || true
+```
+
+### Verify as user `sls`
+
+```bash
+# Stick unmounted, e.g. /dev/sdb1 — DESTRUCTIVE
 gdbus call --system --dest org.freedesktop.UDisks2 \
   --object-path /org/freedesktop/UDisks2/block_devices/sdb1 \
   --method org.freedesktop.UDisks2.Block.Format \
   vfat "{'label': <'SLS-MEDIA'>, 'update-partition-type': <true>}"
 ```
 
-Then use the app Format button (two Yes confirms).
+Then: SLS app → Settings → **Format removable media…** → two confirms → expect success **without** root password.
 
-## Related
+## Workarounds without polkit
 
-- App: `sls_viewer/media_format.py`, Settings **Format removable media…**  
-- Firmware host wipe: `scripts/prep-sls-media-usb.sh`  
-- Issue [#8](https://github.com/tmdrake/sls-camera/issues/8)  
+| Approach | How |
+|----------|-----|
+| **Bench prep** | On PC: `sls-camera-firmware/scripts/prep-sls-media-usb.sh /dev/sdX` → FAT32 `SLS-MEDIA` + `sls-captures/` |
+| **Skip format** | If media already FAT/exFAT and writable, Captures **Auto** creates `sls-captures/` on first snap/record |
+| **Password once** | Desktop polkit may prompt; ok for lab, not kiosk |
+
+## Blow-and-go cross-links
+
+| Resource | Location |
+|----------|----------|
+| Field USB / Stage A | [ISO-AND-FIELD-USB.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/ISO-AND-FIELD-USB.md) |
+| Offline mirror | [OFFLINE-MIRROR.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/OFFLINE-MIRROR.md) |
+| FW team one-pager | [FOR-FIRMWARE-TEAM.md](FOR-FIRMWARE-TEAM.md) |
+| App captures docs | [viewer README § Captures / Format](../viewer/README.md#format-removable-media-settings) |
+
+## Related contracts
+
+- Quit power-off: exit **10** + firmware launcher (not this polkit rule)  
+- Capture path: `SLS_CAPTURES_DIR=/data/sls-captures` when present  
