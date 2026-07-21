@@ -17,7 +17,9 @@ from .audio_device import pick_input_device
 # Optional PCM sinks (e.g. SessionRecorder) share this stream — one open of the mic.
 PcmSink = Callable[[np.ndarray], None]
 
-# Visual styles for the strip (Settings cycle; default phosphor)
+# Visual styles for the strip (Settings cycle; default phosphor).
+# glow / waterfall cost a bit more CPU than bar styles, but the strip is
+# only ~56px tall so they stay light on Atom tablets.
 SPECTRUM_STYLES = (
     "phosphor",
     "classic",
@@ -25,6 +27,10 @@ SPECTRUM_STYLES = (
     "heat",
     "bands",
     "grid",
+    "wave",
+    "glow",
+    "dots",
+    "waterfall",
 )
 SPECTRUM_STYLE_LABELS = {
     "phosphor": "Phosphor",
@@ -33,6 +39,10 @@ SPECTRUM_STYLE_LABELS = {
     "heat": "Heat tips",
     "bands": "Freq bands",
     "grid": "Scope grid",
+    "wave": "Wave",
+    "glow": "Glow",
+    "dots": "Dots",
+    "waterfall": "Waterfall",
 }
 DEFAULT_SPECTRUM_STYLE = "phosphor"
 
@@ -73,6 +83,10 @@ class SpectrumAnalyzer:
         self._peaks = np.zeros(n_bars, dtype=np.float32)
         self._peak_hold_until = np.zeros(n_bars, dtype=np.float64)
         self._last_paint_t = 0.0
+        # Waterfall: recent frames as rows (freq = columns); small strip → cheap
+        self._waterfall_rows: int = 64
+        self._waterfall = np.zeros((self._waterfall_rows, n_bars), dtype=np.float32)
+        self._waterfall_i = 0
         self._stream = None
         self._running = False
         self._want_enabled = False
@@ -259,6 +273,11 @@ class SpectrumAnalyzer:
             now = time.time()
             # Peaks always tracked (used by phosphor/grid/heat; cheap otherwise)
             peaks = self._update_peaks_unlocked(levels, now)
+            if style == "waterfall":
+                self._push_waterfall_unlocked(levels)
+                wf = self._waterfall_snapshot_unlocked()
+            else:
+                wf = None
         n = len(levels)
         if n < 1 or width < 8 or height < 4:
             self._draw_overlay(img, width, height)
@@ -274,11 +293,37 @@ class SpectrumAnalyzer:
             self._paint_bands(img, levels, width, height)
         elif style == "grid":
             self._paint_grid(img, levels, peaks, width, height)
+        elif style == "wave":
+            self._paint_wave(img, levels, width, height)
+        elif style == "glow":
+            self._paint_glow(img, levels, peaks, width, height)
+        elif style == "dots":
+            self._paint_dots(img, levels, peaks, width, height)
+        elif style == "waterfall":
+            self._paint_waterfall(img, wf if wf is not None else levels, width, height)
         else:
             self._paint_phosphor(img, levels, peaks, width, height)
 
         self._draw_overlay(img, width, height)
         return img
+
+    def _push_waterfall_unlocked(self, levels: np.ndarray) -> None:
+        n = min(len(levels), self._waterfall.shape[1])
+        row = self._waterfall_i % self._waterfall_rows
+        self._waterfall[row, :n] = levels[:n]
+        if n < self._waterfall.shape[1]:
+            self._waterfall[row, n:] = 0.0
+        self._waterfall_i += 1
+
+    def _waterfall_snapshot_unlocked(self) -> np.ndarray:
+        """Oldest→newest rows for display (bottom = latest)."""
+        i = self._waterfall_i
+        rows = self._waterfall_rows
+        if i < rows:
+            return self._waterfall[: max(1, i)].copy()
+        # ring: start at i % rows
+        start = i % rows
+        return np.vstack((self._waterfall[start:], self._waterfall[:start]))
 
     def _bar_geom(self, n: int, width: int, height: int):
         usable_h = max(1, height - 4)
@@ -435,6 +480,111 @@ class SpectrumAnalyzer:
             y = int(height * (1.0 - frac * 0.85) - 2)
             cv2.line(img, (0, y), (width - 1, y), (22, 38, 30), 1)
         self._paint_phosphor(img, levels, peaks, width, height)
+
+    def _paint_wave(self, img, levels, width: int, height: int) -> None:
+        """Oscilloscope-style polyline through bar tops."""
+        import cv2
+
+        n = len(levels)
+        usable_h, gap, bar_w, baseline = self._bar_geom(n, width, height)
+        pts = []
+        for i in range(n):
+            v = float(max(0.0, min(1.0, levels[i])))
+            x = gap + i * (bar_w + gap) + bar_w // 2
+            y = baseline - int(v * usable_h)
+            pts.append((x, y))
+        if len(pts) >= 2:
+            arr = np.array(pts, dtype=np.int32).reshape((-1, 1, 2))
+            # Dim fill under curve
+            fill = arr.copy()
+            bottom = np.array(
+                [[[pts[-1][0], baseline]], [[pts[0][0], baseline]]],
+                dtype=np.int32,
+            )
+            poly = np.vstack([fill, bottom])
+            overlay = img.copy()
+            cv2.fillPoly(overlay, [poly], (0, 50, 35))
+            cv2.addWeighted(overlay, 0.45, img, 0.55, 0, img)
+            cv2.polylines(img, [arr], False, (0, 230, 160), 2, cv2.LINE_AA)
+            # Bright dots at samples
+            for x, y in pts[:: max(1, n // 16)]:
+                cv2.circle(img, (x, y), 2, (40, 255, 200), -1, cv2.LINE_AA)
+        cv2.line(img, (0, baseline), (width - 1, baseline), (35, 55, 45), 1)
+
+    def _paint_glow(self, img, levels, peaks, width: int, height: int) -> None:
+        """Soft neon bloom under sharp bars (blur on a tiny buffer — cheap)."""
+        import cv2
+
+        glow = np.zeros_like(img)
+        self._paint_phosphor(glow, levels, peaks, width, height)
+        # Small ksize is enough at ~56px height
+        k = 9 if height >= 40 else 5
+        if k % 2 == 0:
+            k += 1
+        blurred = cv2.GaussianBlur(glow, (k, k), 0)
+        cv2.addWeighted(blurred, 0.75, img, 1.0, 0, img)
+        # Sharp core on top
+        self._paint_phosphor(img, levels, peaks, width, height)
+
+    def _paint_dots(self, img, levels, peaks, width: int, height: int) -> None:
+        """LED-style dots at live level + dim peak ghost."""
+        import cv2
+
+        n = len(levels)
+        usable_h, gap, bar_w, baseline = self._bar_geom(n, width, height)
+        r = max(1, min(3, bar_w // 2))
+        for i in range(n):
+            v = float(max(0.0, min(1.0, levels[i])))
+            p = float(max(0.0, min(1.0, peaks[i] if i < len(peaks) else v)))
+            x = gap + i * (bar_w + gap) + bar_w // 2
+            if p > 0.02:
+                y_p = baseline - int(p * usable_h)
+                cv2.circle(
+                    img,
+                    (x, y_p),
+                    r,
+                    (0, int(50 + 40 * p), int(40 + 30 * p)),
+                    -1,
+                    cv2.LINE_AA,
+                )
+            if v > 0.02:
+                y_v = baseline - int(v * usable_h)
+                cv2.circle(
+                    img,
+                    (x, y_v),
+                    r + 1,
+                    (0, int(180 + 75 * v), int(120 + 100 * v)),
+                    -1,
+                    cv2.LINE_AA,
+                )
+        cv2.line(img, (0, baseline), (width - 1, baseline), (35, 55, 45), 1)
+
+    def _paint_waterfall(self, img, history, width: int, height: int) -> None:
+        """Time-vs-frequency heat strip (bottom = newest).
+
+        Cheap at strip size: resize a small float grid with INTER_NEAREST.
+        Heavier than single-frame bars, still fine for ~48×64 history.
+        """
+        import cv2
+
+        if history is None or getattr(history, "size", 0) == 0:
+            return
+        # history: rows × bars (oldest first)
+        if history.ndim == 1:
+            history = history.reshape(1, -1)
+        rows, cols = history.shape
+        # Color map: dark → SLS green → cyan tips
+        h_f = np.clip(history.astype(np.float32), 0.0, 1.0)
+        b = (40 + 180 * h_f).astype(np.uint8)
+        g = (30 + 220 * h_f).astype(np.uint8)
+        r = (20 + 80 * h_f * h_f).astype(np.uint8)
+        small = np.dstack([b, g, r])
+        # Flip so newest is at bottom of strip
+        small = np.flipud(small)
+        scaled = cv2.resize(small, (width, height), interpolation=cv2.INTER_NEAREST)
+        np.copyto(img, scaled)
+        # Thin top edge so HUD text stays readable
+        cv2.rectangle(img, (0, 0), (width - 1, 14), (8, 12, 10), -1)
 
     def _draw_overlay(self, img, width: int, height: int) -> None:
         import cv2
