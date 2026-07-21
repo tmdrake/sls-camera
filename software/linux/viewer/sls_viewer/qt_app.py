@@ -424,20 +424,22 @@ class SettingsDialog(QDialog):
         act.addWidget(self.btn_drakevox_now, 1, 1)
         left_layout.addLayout(act)
 
-        # Removable media: prepare folder / format partition (#8)
+        # Removable media: prepare folder / format stick (#8)
         media_row = QHBoxLayout()
         self.btn_prepare_media = QPushButton("Prepare media")
         self.btn_prepare_media.setObjectName("wide")
         self.btn_prepare_media.setToolTip(
-            "Create sls-captures/ on the mounted USB/SD (no format, no root). "
-            "Hidden when no media is present."
+            "Safe: only creates the sls-captures/ folder on the mounted USB/SD. "
+            "Does not erase anything. Hidden when no stick/card is mounted."
         )
         self.btn_prepare_media.clicked.connect(self._prepare_media)
-        self.btn_format_media = QPushButton("Format for SLS…")
+        self.btn_format_media = QPushButton("Format removable media…")
         self.btn_format_media.setObjectName("wide")
         self.btn_format_media.setToolTip(
-            "ERASE the mounted USB/SD partition → FAT32 label SLS-MEDIA + sls-captures/. "
-            "Needs pkexec/sudo. Double confirm. Hidden when no media."
+            "ERASE the mounted USB stick or SD card partition, then reformat it for "
+            "field use (FAT32, label SLS-MEDIA, folder sls-captures/). "
+            "You will get two confirmations. Needs admin (pkexec/sudo). "
+            "Hidden when no stick/card is mounted."
         )
         self.btn_format_media.clicked.connect(self._format_media)
         media_row.addWidget(self.btn_prepare_media)

@@ -107,8 +107,8 @@ Issue: [#6](https://github.com/tmdrake/sls-camera/issues/6) (closed). Related: [
 | **Power off on Quit** | Default **OFF** (dev); **ON** = power off tablet after confirm — see [Quit](#quit) |
 | **Keep display on** | Default **ON** — inhibit screensaver / idle sleep / DPMS while app runs ([#9](https://github.com/tmdrake/sls-camera/issues/9)) |
 | **Copy local→media** | Only visible when USB/SD is mounted; confirm then copy |
-| **Prepare media** | Create `sls-captures/` on mounted USB/SD (no wipe; no root) |
-| **Format for SLS…** | Double-confirm FAT32 `SLS-MEDIA` + `sls-captures/` on mounted partition (needs pkexec/sudo) — [#8](https://github.com/tmdrake/sls-camera/issues/8) |
+| **Prepare media** | Create `sls-captures/` on mounted USB/SD only (no wipe; no root) |
+| **Format removable media…** | Confirm twice → erase + FAT32 the mounted SD/USB → `SLS-MEDIA` + `sls-captures/` (needs admin) — [#8](https://github.com/tmdrake/sls-camera/issues/8) |
 
 ## Captures
 
