@@ -69,6 +69,7 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
   - Closed: [GitHub #8](https://github.com/tmdrake/sls-camera/issues/8)
 - [ ] **Power management** — stable SLS on **external power** with tablet: suspend/sleep policy, USB power, avoid brownouts when Kinect + display are both on.
 - [ ] **Sensor inputs** — Arduino/MCU bridge into the app (see product features).
+- [ ] **Pose / skeleton: re-check vs Windows Kinect SDK** — On Windows, stick figures come from the **Kinect runtime skeleton API** (NUI joints on depth). On Linux, **libfreenect has no skeleton API**; we run **MediaPipe on the tablet CPU** (colorized depth). App team: review Windows path (`software/source/`, `KinectSkeletonViewer`, SDK skeleton stream) vs Linux (`pose.py` / MediaPipe) for parity, quality, and performance options (every-Nth-frame, lighter model, registration). See [LINUX-SLS-PLAN.md § Skeleton / pose](../software/linux/docs/LINUX-SLS-PLAN.md#skeleton--pose-options-decision) and firmware [PERFORMANCE.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/PERFORMANCE.md).
 
 ## Product features (later)
 

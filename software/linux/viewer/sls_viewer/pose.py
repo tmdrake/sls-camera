@@ -1,4 +1,10 @@
-"""MediaPipe Tasks Pose Landmarker — colorized depth, multi-person (1–6)."""
+"""MediaPipe Tasks Pose Landmarker — colorized depth, multi-person (1–6).
+
+Note for app dev: Windows SLS Explorer gets skeletons from the *Kinect SDK*
+NUI skeleton API (not available via libfreenect on Linux). This module is the
+Linux stand-in (host CPU + XNNPACK). See docs/TODO.md and LINUX-SLS-PLAN.md
+for a follow-up to re-compare quality/perf against the Windows path.
+"""
 
 from __future__ import annotations
 

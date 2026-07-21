@@ -79,6 +79,18 @@ So: **same operator experience is realistic.** Joint source may differ from Micr
 
 **Decision for planning:** pursue **Option A** for Linux SLS v1. Document NiTE as optional experiment, not a blocker.
 
+### App-dev follow-up (do not forget)
+
+**Windows ≠ “pose inside freenect.”** The classic SLS Explorer gets joints from the **Microsoft Kinect SDK skeleton stream** (camera/runtime API on Windows only). Linux freenect only delivers frames; **MediaPipe is host-side** and is the main CPU load on 2 GB Cherry Trail tablets.
+
+**Action for app team:** with the Windows tree open, re-read how skeleton frames are produced/consumed (`KinectSkeletonViewer`, SDK enable skeleton stream) and decide if Linux should:
+
+1. Stay MediaPipe-only and optimize (Nth frame, input size, max people=1), or  
+2. Revisit a closer-to-Kinect backend (NiTE / other) if field QA says sticks don’t match Windows enough, or  
+3. Document intentional differences for operators/firmware.
+
+Track: root [docs/TODO.md](../../../docs/TODO.md) (*Pose / skeleton: re-check vs Windows Kinect SDK*).
+
 ### Alignment note (RGB pose → depth overlay)
 
 MediaPipe runs on **color**. Windows skeleton is in **depth** image space. Plan:
