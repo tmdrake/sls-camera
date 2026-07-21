@@ -74,10 +74,11 @@ Env: `SLS_DEB_CACHE`, `SLS_OFFLINE=1`, `SLS_APT_YES=1`.
 | **`SLS_CAPTURES_DIR`** | Local snaps/records dir (firmware sets `/data/sls-captures`) |
 | **`/data/sls-captures`** | Dev wrapper exports `SLS_CAPTURES_DIR` when that dir exists |
 | **Quit exit codes** | `0` clean quit · **`10` power-off** · `11` relaunch (reserved) |
-| **`SLS_QUIT_ACTION=shutdown\|exit`** | Forces Power-off-on-Quit mode |
-| Settings **Power off on Quit** | Persisted; default OFF on desktops |
+| **`SLS_QUIT_ACTION=shutdown`** | Appliance default in launcher — app shows “Power off?” and exits **10** |
+| **`SLS_ON_QUIT=app`** + **`SLS_QUIT_FALLBACK=none`** | Launcher powers off **only** on exit 10 |
+| Settings **Keep display on** | App **wake lock** while running (not host power-off) |
 
-Firmware launcher: `overlay/usr/local/bin/sls-camera` (`SLS_ON_QUIT=app`, exit 10 → poweroff).  
+**Host power-off is firmware-owned** (launcher + sudoers). App has no Power-off Settings toggle.  
 Details: [viewer README § Quit](../viewer/README.md#quit) · [FIELD-INSTALL § Quit](FIELD-INSTALL.md#quit-vs-power-off-app-vs-appliance).
 
 ---

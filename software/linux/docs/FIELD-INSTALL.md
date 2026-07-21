@@ -129,15 +129,13 @@ See [`images/README.md`](images/README.md) for capture notes and a second HUD fr
 
 ## Quit vs power-off (app vs appliance)
 
-Dev default: **Quit returns to the desktop** (no host shutdown).
+| Role | Who |
+|------|-----|
+| **Wake lock** (no blank while investigating) | App Settings **Keep display on** + firmware `xset` / logind |
+| **Power off tablet on Quit** | **Firmware launcher** (`SLS_QUIT_ACTION=shutdown`, exit **10** → `poweroff`) |
 
-| Knob | Effect |
-|------|--------|
-| Settings **Power off on Quit** | Persisted in `viewer/user_settings.json` |
-| Env `SLS_QUIT_ACTION=shutdown` | Forces power-off mode for this process (appliance) |
-| Env `SLS_QUIT_ACTION=exit` | Forces exit-only mode for this process |
-
-On confirmed power-off Quit the app stops capture cleanly, exits with code **10**, and best-effort runs host `poweroff` (passwordless `sudo` paths used by appliance sudoers when present). Exit codes:
+Dev default: Quit returns to the desktop (no `SLS_QUIT_ACTION`).  
+Appliance: firmware exports `SLS_QUIT_ACTION=shutdown`; app shows “Power off this tablet?” and exits **10**; launcher powers off. There is **no** app Settings toggle for power-off.
 
 | Code | Meaning |
 |------|---------|
@@ -145,7 +143,7 @@ On confirmed power-off Quit the app stops capture cleanly, exits with code **10*
 | `10` | Operator requested host power-off |
 | `11` | Relaunch app (reserved for kiosk) |
 
-Firmware launcher (`sls-camera-firmware` → `/usr/local/bin/sls-camera`) already understands these codes (`SLS_ON_QUIT=app`). See viewer [README § Quit](../viewer/README.md#quit) and issue [#4](https://github.com/tmdrake/sls-camera/issues/4).
+See viewer [README § Quit](../viewer/README.md#quit) and issue [#4](https://github.com/tmdrake/sls-camera/issues/4).
 
 ## Still manual / separate
 

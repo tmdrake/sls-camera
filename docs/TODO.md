@@ -53,7 +53,7 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
   - Related: **Captures → removable media / SD** (runtime detect + prefer external volume)
 - [x] **Battery % + charge indicator** — status bar `BAT n%` / `⚡` when sysfs battery exists; hidden on desktop
 - [x] **Quit confirmation** — dialog before exit (stops REC cleanly)
-- [x] **Quit → optional power off** — Settings **Power off on Quit** (default OFF); env `SLS_QUIT_ACTION=shutdown|exit`; confirm “Power off this tablet?”; clean stop then exit code **10** + best-effort host poweroff. Firmware launcher honors code 10.
+- [x] **Quit → power off (firmware contract)** — env `SLS_QUIT_ACTION=shutdown` (appliance launcher); app dialog + exit **10**; **no** Settings toggle (firmware owns host poweroff). Dev stays exit-only.
   - Closed: [GitHub #4](https://github.com/tmdrake/sls-camera/issues/4)
   - Code: `host_power.py`, `qt_app.py`, `config.py`
 - [x] **Display brightness** (Settings) — sysfs backlight / brightnessctl / xrandr software fallback

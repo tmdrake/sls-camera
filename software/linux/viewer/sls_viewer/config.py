@@ -106,8 +106,9 @@ class Settings:
     # Display brightness 5–100 (None = leave OS default / don't force at start)
     display_brightness: Optional[int] = None
 
-    # Quit: False = exit app only (dev default); True = power off host after confirm
-    # (appliance / tablet). Env SLS_QUIT_ACTION=shutdown|exit overrides for the process.
+    # Quit host power-off intent (exit code 10). Not a Settings toggle —
+    # appliance firmware sets SLS_QUIT_ACTION=shutdown; desktop defaults exit-only.
+    # App still exits 10 + dialog text when True; firmware launcher does poweroff.
     quit_powers_off: bool = False
 
     # Keep display awake while field UI runs (screensaver / idle / DPMS inhibit).

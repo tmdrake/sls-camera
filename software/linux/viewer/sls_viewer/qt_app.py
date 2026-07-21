@@ -43,7 +43,6 @@ from .media_format import (
     device_size_bytes,
     format_volume_fat32,
     list_format_candidates,
-    prepare_captures_folder,
 )
 from .session_io import AUDIO_SAMPLE_RATE, SessionRecorder
 from .spectrum import SpectrumAnalyzer
@@ -368,20 +367,14 @@ class SettingsDialog(QDialog):
         self.btn_captures.clicked.connect(self._toggle_captures_target)
         _add_toggle_row("Captures to", self.btn_captures)
 
-        self.btn_quit_poweroff = QPushButton()
-        self.btn_quit_poweroff.setToolTip(
-            "ON: confirmed Quit powers off the tablet (after stopping capture). "
-            "OFF: Quit returns to the desktop only. "
-            "Dev default is OFF. Appliance can force via SLS_QUIT_ACTION=shutdown."
-        )
-        self.btn_quit_poweroff.clicked.connect(self._toggle_quit_powers_off)
-        _add_toggle_row("Power off on Quit", self.btn_quit_poweroff)
-
+        # Wake lock while app runs (#9). Host power-off on Quit is firmware
+        # (SLS_QUIT_ACTION=shutdown + exit 10) — not a Settings toggle.
         self.btn_keep_display = QPushButton()
         self.btn_keep_display.setToolTip(
-            "ON (default): inhibit screensaver / idle sleep / DPMS while the app runs "
-            "so the depth view does not blank mid-investigation. "
-            "OFF: leave OS display power policy alone."
+            "ON (default): wake lock — inhibit screensaver / idle sleep / DPMS "
+            "while the field UI is running so the depth view does not blank. "
+            "OFF: leave OS display power policy alone. "
+            "Tablet power-off on Quit is owned by the firmware launcher, not this setting."
         )
         self.btn_keep_display.clicked.connect(self._toggle_keep_display_on)
         _add_toggle_row("Keep display on", self.btn_keep_display)
@@ -424,27 +417,17 @@ class SettingsDialog(QDialog):
         act.addWidget(self.btn_drakevox_now, 1, 1)
         left_layout.addLayout(act)
 
-        # Removable media: prepare folder / format stick (#8)
-        media_row = QHBoxLayout()
-        self.btn_prepare_media = QPushButton("Prepare media")
-        self.btn_prepare_media.setObjectName("wide")
-        self.btn_prepare_media.setToolTip(
-            "Safe: only creates the sls-captures/ folder on the mounted USB/SD. "
-            "Does not erase anything. Hidden when no stick/card is mounted."
-        )
-        self.btn_prepare_media.clicked.connect(self._prepare_media)
+        # Format USB/SD for field captures (#8) — only button; no separate Prepare
         self.btn_format_media = QPushButton("Format removable media…")
         self.btn_format_media.setObjectName("wide")
         self.btn_format_media.setToolTip(
-            "ERASE the mounted USB stick or SD card partition, then reformat it for "
-            "field use (FAT32, label SLS-MEDIA, folder sls-captures/). "
-            "You will get two confirmations. Needs admin (pkexec/sudo). "
+            "ERASE the mounted USB stick or SD card, then format for SLS "
+            "(FAT32, label SLS-MEDIA, folder sls-captures/). "
+            "Two confirmations. Needs admin (pkexec/sudo). "
             "Hidden when no stick/card is mounted."
         )
         self.btn_format_media.clicked.connect(self._format_media)
-        media_row.addWidget(self.btn_prepare_media)
-        media_row.addWidget(self.btn_format_media)
-        left_layout.addLayout(media_row)
+        left_layout.addWidget(self.btn_format_media)
         left_layout.addStretch(1)
 
         self._scroll.setWidget(left)
@@ -562,9 +545,6 @@ class SettingsDialog(QDialog):
             tip = bri.detail or "no brightness control on this display"
             self.bright_label.setToolTip(tip)
 
-        self.btn_quit_poweroff.setText(
-            "ON" if self.pipeline.s.quit_powers_off else "OFF"
-        )
         self.btn_keep_display.setText(
             "ON" if self.pipeline.s.keep_display_on else "OFF"
         )
@@ -601,8 +581,6 @@ class SettingsDialog(QDialog):
                 has_media and not parent.session.recording
             )
             rec = bool(parent.session.recording)
-            self.btn_prepare_media.setVisible(has_media)
-            self.btn_prepare_media.setEnabled(has_media and not rec)
             can_fmt = False
             if has_media and not rec:
                 for _vol, ok, _why in list_format_candidates():
@@ -617,8 +595,6 @@ class SettingsDialog(QDialog):
             )
             self.btn_copy_to_media.setVisible(False)
             self.btn_copy_to_media.setEnabled(False)
-            self.btn_prepare_media.setVisible(False)
-            self.btn_prepare_media.setEnabled(False)
             self.btn_format_media.setVisible(False)
             self.btn_format_media.setEnabled(False)
 
@@ -703,22 +679,10 @@ class SettingsDialog(QDialog):
             parent.toggle_captures_target()
         self._refresh()
 
-    def _toggle_quit_powers_off(self) -> None:
-        parent = self.parent()
-        if parent is not None and hasattr(parent, "toggle_quit_powers_off"):
-            parent.toggle_quit_powers_off()
-        self._refresh()
-
     def _toggle_keep_display_on(self) -> None:
         parent = self.parent()
         if parent is not None and hasattr(parent, "toggle_keep_display_on"):
             parent.toggle_keep_display_on()
-        self._refresh()
-
-    def _prepare_media(self) -> None:
-        parent = self.parent()
-        if parent is not None and hasattr(parent, "prepare_removable_media"):
-            parent.prepare_removable_media()
         self._refresh()
 
     def _format_media(self) -> None:
@@ -989,15 +953,8 @@ class SlsMainWindow(QMainWindow):
         if self._settings_open():
             self._settings_dlg._refresh()
 
-    def toggle_quit_powers_off(self) -> None:
-        """Settings: Quit returns to desktop (OFF) vs host power-off (ON)."""
-        self.pipeline.s.quit_powers_off = not bool(self.pipeline.s.quit_powers_off)
-        self.pipeline.s.save_persisted()
-        if self._settings_open():
-            self._settings_dlg._refresh()
-
     def toggle_keep_display_on(self) -> None:
-        """Settings: inhibit screensaver/idle while UI runs (default ON)."""
+        """Settings: wake lock while UI runs (default ON). Not host power-off."""
         self.pipeline.s.keep_display_on = not bool(self.pipeline.s.keep_display_on)
         self.pipeline.s.save_persisted()
         if self.pipeline.s.keep_display_on:
@@ -1012,24 +969,15 @@ class SlsMainWindow(QMainWindow):
         if self._settings_open():
             self._settings_dlg._refresh()
 
-    def prepare_removable_media(self) -> None:
-        """Create sls-captures/ on mounted USB/SD (no wipe)."""
-        if self.session.recording:
-            self.session._set_flash("stop REC before preparing media", seconds=3.0)
-            return
-        res = prepare_captures_folder()
-        self.session._set_flash(res.message, seconds=4.0)
-        if res.ok:
-            if self.pipeline.s.captures_target != "auto":
-                self.pipeline.s.captures_target = "auto"
-                self.pipeline.s.save_persisted()
-            self.session.set_captures_target("auto")
-            self.session.refresh_captures_dir()
-        if self._settings_open():
-            self._settings_dlg._refresh()
-
     def format_removable_media(self) -> None:
-        """Double-confirm FAT32 format of mounted removable partition (#8)."""
+        """Settings button: confirm → format mounted USB/SD for field captures (#8).
+
+        Flow:
+          1. Operator taps **Format removable media…** (only when a stick/card is mounted)
+          2. Warning dialog: which device, size, that all data will be destroyed
+          3. Second step: type the device name (e.g. sdb1) so it is not a single fat-finger
+          4. App erases that partition, formats FAT32 (label SLS-MEDIA), creates sls-captures/
+        """
         if self.session.recording:
             self.session._set_flash("stop REC before format", seconds=3.0)
             return
@@ -1047,17 +995,27 @@ class SlsMainWindow(QMainWindow):
             size_g = device_size_bytes(dev) / (1024**3)
         except Exception:
             pass
-        # Confirm 1
+        kind_name = {
+            "sd": "SD card",
+            "usb": "USB stick",
+            "removable": "removable media",
+        }.get(vol.kind, "removable media")
+        # Confirm 1 — cancel is default
         box = QMessageBox(self)
-        box.setWindowTitle("Format for SLS")
+        box.setWindowTitle("Format removable media")
         box.setIcon(QMessageBox.Icon.Warning)
         box.setText(
-            f"DESTROY all data on this media?\n\n"
-            f"{vol.kind.upper()}: {vol.label}\n"
-            f"Device: {dev}\n"
-            f"Mount: {vol.path}\n"
-            f"Size: ~{size_g:.1f} GiB\n\n"
-            f"Will format FAT32 label «{DEFAULT_LABEL}» and create sls-captures/."
+            f"Format this {kind_name} for SLS captures?\n\n"
+            f"This will ERASE ALL DATA on:\n\n"
+            f"  {kind_name}: {vol.label}\n"
+            f"  Device: {dev}\n"
+            f"  Mount:  {vol.path}\n"
+            f"  Size:   ~{size_g:.1f} GiB\n\n"
+            f"After format:\n"
+            f"  • FAT32 filesystem\n"
+            f"  • Volume label «{DEFAULT_LABEL}»\n"
+            f"  • Folder sls-captures/ for snaps and AVI\n\n"
+            f"Cancel is safe — nothing is changed until you confirm twice."
         )
         box.setStandardButtons(
             QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Yes
@@ -1065,7 +1023,7 @@ class SlsMainWindow(QMainWindow):
         box.setDefaultButton(QMessageBox.StandardButton.Cancel)
         yes = box.button(QMessageBox.StandardButton.Yes)
         if yes is not None:
-            yes.setText("Erase and format")
+            yes.setText("Continue…")
         box.setStyleSheet(_STYLE)
         box.setWindowFlags(box.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         if box.exec() != QMessageBox.StandardButton.Yes:
@@ -1075,7 +1033,9 @@ class SlsMainWindow(QMainWindow):
         typed, ok = QInputDialog.getText(
             self,
             "Confirm format",
-            f"Type the device name to confirm:\n\n    {token}\n",
+            f"Last step — type the device name exactly to erase and format:\n\n"
+            f"    {token}\n\n"
+            f"(This prevents a single accidental tap.)",
         )
         if not ok or (typed or "").strip() != token:
             self.session._set_flash("format cancelled", seconds=2.0)

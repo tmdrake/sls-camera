@@ -104,10 +104,8 @@ Issue: [#6](https://github.com/tmdrake/sls-camera/issues/6) (closed). Related: [
 | **DrakeVox on auto-snap** | Default **ON**; only when auto-snap fires (not manual Snap) |
 | **Brightness** | ±10%; n/a if no backlight/xrandr |
 | **Captures to** | **Auto** (default) or **Local** — see [Captures](#captures) |
-| **Power off on Quit** | Default **OFF** (dev); **ON** = power off tablet after confirm — see [Quit](#quit) |
-| **Keep display on** | Default **ON** — inhibit screensaver / idle sleep / DPMS while app runs ([#9](https://github.com/tmdrake/sls-camera/issues/9)) |
+| **Keep display on** | Default **ON** — **wake lock** while app runs (screensaver/idle/DPMS) — not tablet power-off ([#9](https://github.com/tmdrake/sls-camera/issues/9)) |
 | **Copy local→media** | Only visible when USB/SD is mounted; confirm then copy |
-| **Prepare media** | Create `sls-captures/` on mounted USB/SD only (no wipe; no root) |
 | **Format removable media…** | Confirm twice → erase + FAT32 the mounted SD/USB → `SLS-MEDIA` + `sls-captures/` (needs admin) — [#8](https://github.com/tmdrake/sls-camera/issues/8) |
 
 ## Captures
@@ -127,14 +125,19 @@ Field rule of thumb: **tablets will usually use an SD card**; pen drives are fin
 
 We do **not** auto-copy old local files when you plug media (avoids surprise full disks / duplicates). One explicit button is easier in the field.
 
-### Prepare / format media (Settings)
+### Format removable media (Settings)
 
-| Action | What it does | Privileges |
-|--------|----------------|------------|
-| **Prepare media** | Creates `sls-captures/` on the mounted stick/card | None (user write) |
-| **Format for SLS…** | Formats the **mounted partition** FAT32 label **SLS-MEDIA**, remounts, creates `sls-captures/` | `pkexec` or passwordless `sudo` |
+One button, shown **only when a USB stick or SD card is mounted**:
 
-Safety: only USB/SD from the Auto detector; refuse nvme/system paths; refuse >128 GiB; **two confirms** (button + type device name e.g. `sdb1`). Whole-disk wipe on a host remains firmware `prep-sls-media-usb.sh`. Buttons **hidden** when no media is mounted.
+**Format removable media…** → confirm → confirm again → erase that SD/USB partition → FAT32 label **`SLS-MEDIA`** → create **`sls-captures/`** → Captures **Auto**.
+
+1. Plug SD or USB; wait until the app sees it.  
+2. Settings → **Format removable media…**  
+3. **Confirm 1** — shows label / device / size (default **Cancel**).  
+4. **Confirm 2** — type the device name (e.g. `sdb1`).  
+5. Format runs (needs admin: `pkexec` or passwordless `sudo` + `dosfstools`).
+
+Refuses internal/nvme disks and media larger than 128 GiB. Host whole-disk prep remains firmware `prep-sls-media-usb.sh`.
 
 ### Auto priority (when several volumes are mounted)
 
@@ -267,9 +270,9 @@ When Linux exposes a battery under `/sys/class/power_supply` (or UPower), the st
 
 Settings → **Brightness − / +** (±10%). Tooltip shows which backend is active. If nothing works, shows **n/a**. Value is saved in `user_settings.json` when changed.
 
-## Keep display on
+## Keep display on (wake lock)
 
-While the field UI is running, the app **inhibits screen blanking** by default (Settings **Keep display on = ON**):
+While the field UI is running, the app holds a **wake lock** by default (Settings **Keep display on = ON**) so the panel does not blank mid-investigation:
 
 | Layer | Method |
 |-------|--------|
@@ -277,23 +280,26 @@ While the field UI is running, the app **inhibits screen blanking** by default (
 | Idle sleep | `systemd-inhibit --what=idle:sleep` |
 | X11 DPMS | `xset s off` / `xset -dpms` (re-asserted about every minute) |
 
-Released on Quit. Status/log shows `inhibit: …` when active. Does not replace firmware session defaults (logind / LXQt) — it is the **while-running** guarantee. Issue [#9](https://github.com/tmdrake/sls-camera/issues/9).
+Released on Quit. Status/log shows `inhibit: …` when active.  
+**This is not tablet power-off** — it only prevents sleep/blank **while the app is running**. Firmware also applies session `xset` / no-suspend policy. Issue [#9](https://github.com/tmdrake/sls-camera/issues/9).
 
-## Quit
+## Quit (and who powers off the tablet)
 
-**Quit** / **Q** / **Esc** (when Settings is closed) confirms before exiting so a recording can stop cleanly.
+**Quit** / **Q** / **Esc** (when Settings is closed) confirms, stops capture cleanly, then exits.
 
-| Mode | How | Dialog | Exit code | Host |
-|------|-----|--------|-----------|------|
-| **Exit only** (default) | Settings **Power off on Quit = OFF** | “Quit SLS Camera?” | `0` | Returns to desktop |
-| **Power off** | Settings **Power off on Quit = ON**, or env `SLS_QUIT_ACTION=shutdown` | “Power off this tablet?” | `10` | Best-effort `poweroff` after clean stop |
+| Environment | Who decides power-off | App dialog | Exit code |
+|-------------|----------------------|------------|-----------|
+| **Dev desktop** | App default: exit only | “Quit SLS Camera?” | `0` |
+| **Appliance / tablet** | **Firmware launcher** sets `SLS_QUIT_ACTION=shutdown` | “Power off this tablet?” | **`10`** |
 
-- Dev machines keep **OFF** so Quit never surprises you with a shutdown.
-- Tablets / appliance images set **ON** in Settings or export `SLS_QUIT_ACTION=shutdown` (also accepts `poweroff`). Force desktop with `SLS_QUIT_ACTION=exit`.
-- Exit **10** matches the firmware launcher contract (`sls-camera-firmware` → `/usr/local/bin/sls-camera`); the launcher can honor the code without relying only on a shell fallback.
-- Capture, freenect LED/session, and spectrum stop **before** any power-off request.
+There is **no Settings toggle** for power-off. Firmware (`sls-camera-firmware` → `/usr/local/bin/sls-camera`) owns host shutdown:
 
-Issue: [#4](https://github.com/tmdrake/sls-camera/issues/4).
+- `SLS_ON_QUIT=app` — honor exit codes  
+- `SLS_QUIT_ACTION=shutdown` — app uses power-off dialog + exit **10**  
+- `SLS_QUIT_FALLBACK=none` — exit **0** does **not** power off (app must send **10**)  
+- Launcher runs `poweroff` when it sees exit **10** (sudoers)
+
+Dev machines never set that env, so Quit returns to the desktop. Issue [#4](https://github.com/tmdrake/sls-camera/issues/4).
 
 ## Stack
 
