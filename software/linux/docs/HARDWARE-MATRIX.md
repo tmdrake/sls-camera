@@ -26,7 +26,7 @@ After first appliance boot on a unit:
 |---------|--------------|------------------|------------------|-----|-----|--------------------|-------------|------------|----------|----------------|--------|
 | **tablet-01** | RCA **W101AS23T2** | 800×1280 portrait | **1280×800** landscape | 2 GB | Atom x5-Z8350 | *fill after wipe* | *pending* | kit ready | *pending* | *pending* | Wipe candidate — [FW note](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/devices/rca-w101as23t2.md) |
 | **tablet-02** | TMAX **TM800W610L** | 1200×1920 portrait | **1920×1200** landscape | 2 GB | Atom x5-Z8300 | *fill after wipe* | *pending* | kit ready | *pending* | *pending* | Wipe candidate — [FW note](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/devices/tablet-02.md) |
-| **kvm-phase1** | QEMU/KVM Lubuntu 26.04 | — | **1280×800** | VM | host | 1280×800 avail≈1280×768 dpr=1 dpi=96 | OK (two-pane Settings) | passthrough lab | Auto/local OK | exit 10 OK | **Packaging reference** |
+| **kvm-phase1** | QEMU/KVM Lubuntu 26.04 | — | **1280×800** / **1920×1200** | VM | host | 1280×800 avail≈1280×768 · 1920×1200 avail≈1920×1168 · ar=16:10 dpr=1 dpi=96 | Two-pane **OK**; left pane **minor scroll** at both sizes — try slightly smaller left-pane buttons | passthrough lab | Auto/local OK | exit 10 OK | **Packaging reference** (layout QA 2026-07-21) |
 
 ### Shared field kit
 

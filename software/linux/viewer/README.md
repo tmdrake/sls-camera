@@ -87,9 +87,12 @@ Settings is a **wide two-pane** dialog sized for fleet **16:10 landscape** (1280
 
 ```text
 display: 1280x800 avail=1280x768 ar=16:10 dpr=1.0 dpi=96
+display: 1920x1200 avail=1920x1168 ar=16:10 dpr=1.0 dpi=96   # tablet-02 class / VM mode
 ```
 
 Firmware should leave the session in **16:10 landscape** before launch. Issue: [#6](https://github.com/tmdrake/sls-camera/issues/6) (closed). Related: [#7](https://github.com/tmdrake/sls-camera/issues/7) hardware tree.
+
+**VM QA note (2026-07-21):** two-pane layout looks good at **1280×800** and **1920×1200**. Left pane still has **minor scrolling** at both sizes — consider scaling left-pane control buttons **slightly smaller** so the common field controls fit without scroll (or with less scroll). Track under [#7](https://github.com/tmdrake/sls-camera/issues/7).
 
 | Setting | Range / default |
 |---------|-----------------|

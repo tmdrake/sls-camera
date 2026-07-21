@@ -59,6 +59,7 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] **Display brightness** (Settings) — sysfs backlight / brightnessctl / xrandr software fallback
 - [x] **Settings fit small tablets (#6)** — log `display: WxH avail=… dpr=… dpi=…` at Qt start; Settings in `QScrollArea` capped ~90% available height; Close pinned; action buttons 2×2
   - Closed: [GitHub #6](https://github.com/tmdrake/sls-camera/issues/6)
+- [ ] **Settings left-pane density polish** — VM QA (1280×800 + 1920×1200 16:10): layout looks good but **minor left-pane scroll** remains; scale left-pane buttons a little smaller so common controls fit without scroll. Track: [#7](https://github.com/tmdrake/sls-camera/issues/7)
 - [x] **Keep display awake (#9)** — always-on wake lock while UI runs (no Settings toggle); D-Bus screensaver inhibit + `systemd-inhibit idle:sleep` + `xset -dpms`; release on Quit
   - Code: `display_inhibit.py`, `qt_app.py`
   - Closed: [GitHub #9](https://github.com/tmdrake/sls-camera/issues/9)
