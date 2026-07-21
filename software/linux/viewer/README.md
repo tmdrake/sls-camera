@@ -105,6 +105,7 @@ Issue: [#6](https://github.com/tmdrake/sls-camera/issues/6) (closed). Related: [
 | **Brightness** | ±10%; n/a if no backlight/xrandr |
 | **Captures to** | **Auto** (default) or **Local** — see [Captures](#captures) |
 | **Power off on Quit** | Default **OFF** (dev); **ON** = power off tablet after confirm — see [Quit](#quit) |
+| **Keep display on** | Default **ON** — inhibit screensaver / idle sleep / DPMS while app runs ([#9](https://github.com/tmdrake/sls-camera/issues/9)) |
 | **Copy local→media** | Only visible when USB/SD is mounted; confirm then copy |
 
 ## Captures
@@ -254,6 +255,18 @@ When Linux exposes a battery under `/sys/class/power_supply` (or UPower), the st
 | **xrandr --brightness** | Desktop/HDMI software dim (works on many monitors) |
 
 Settings → **Brightness − / +** (±10%). Tooltip shows which backend is active. If nothing works, shows **n/a**. Value is saved in `user_settings.json` when changed.
+
+## Keep display on
+
+While the field UI is running, the app **inhibits screen blanking** by default (Settings **Keep display on = ON**):
+
+| Layer | Method |
+|-------|--------|
+| Screensaver | D-Bus `org.freedesktop.ScreenSaver.Inhibit` |
+| Idle sleep | `systemd-inhibit --what=idle:sleep` |
+| X11 DPMS | `xset s off` / `xset -dpms` (re-asserted about every minute) |
+
+Released on Quit. Status/log shows `inhibit: …` when active. Does not replace firmware session defaults (logind / LXQt) — it is the **while-running** guarantee. Issue [#9](https://github.com/tmdrake/sls-camera/issues/9).
 
 ## Quit
 

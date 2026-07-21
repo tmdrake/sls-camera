@@ -32,7 +32,7 @@ policy come later.
 | [#6](https://github.com/tmdrake/sls-camera/issues/6) | Geometry log + Settings scroll — **closed** |
 | [#7](https://github.com/tmdrake/sls-camera/issues/7) | Hardware tree / multi-tablet matrix — open |
 | [#8](https://github.com/tmdrake/sls-camera/issues/8) | Format removable media from Settings — open (after #6) |
-| [#9](https://github.com/tmdrake/sls-camera/issues/9) | Keep display awake while UI runs — open |
+| [#9](https://github.com/tmdrake/sls-camera/issues/9) | Keep display awake while UI runs — **closed** |
 
 Firmware may implement offline mirrors; **product install-path and app-behavior decisions stay tracked here**.
 
@@ -59,7 +59,9 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] **Display brightness** (Settings) — sysfs backlight / brightnessctl / xrandr software fallback
 - [x] **Settings fit small tablets (#6)** — log `display: WxH avail=… dpr=… dpi=…` at Qt start; Settings in `QScrollArea` capped ~90% available height; Close pinned; action buttons 2×2
   - Closed: [GitHub #6](https://github.com/tmdrake/sls-camera/issues/6)
-- [ ] **Keep display awake (#9)** — inhibit screensaver/DPMS/idle while field UI runs
+- [x] **Keep display awake (#9)** — Settings **Keep display on** (default ON); D-Bus screensaver inhibit + `systemd-inhibit idle:sleep` + `xset -dpms`; release on Quit
+  - Code: `display_inhibit.py`, `qt_app.py`, `config.py`
+  - Closed: [GitHub #9](https://github.com/tmdrake/sls-camera/issues/9)
 - [ ] **Hardware matrix (#7)** — per-tablet geometry + BOM rows (with FW docs/devices/)
 - [ ] **Format media from Settings (#8)** — after scrollable Settings
 - [ ] **Power management** — stable SLS on **external power** with tablet: suspend/sleep policy, USB power, avoid brownouts when Kinect + display are both on.
@@ -92,3 +94,4 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] Dev install/uninstall scripts + FIELD-INSTALL.md
 - [x] Offline-safe apt (#2) + FOR-FIRMWARE-TEAM.md handoff
 - [x] Settings scroll + geometry log (#6)
+- [x] Keep display on while field UI runs (#9)

@@ -34,6 +34,7 @@ from .backlight import (
 from . import freenect_io
 from .battery import BatteryMonitor
 from .drakevox import DrakeVoxEngine, paint_drakevox_bgr
+from .display_inhibit import DisplayInhibit
 from .host_power import EXIT_OK, EXIT_POWEROFF, request_host_poweroff
 from .session_io import AUDIO_SAMPLE_RATE, SessionRecorder
 from .spectrum import SpectrumAnalyzer
@@ -367,6 +368,15 @@ class SettingsDialog(QDialog):
         self.btn_quit_poweroff.clicked.connect(self._toggle_quit_powers_off)
         _add_toggle_row("Power off on Quit", self.btn_quit_poweroff)
 
+        self.btn_keep_display = QPushButton()
+        self.btn_keep_display.setToolTip(
+            "ON (default): inhibit screensaver / idle sleep / DPMS while the app runs "
+            "so the depth view does not blank mid-investigation. "
+            "OFF: leave OS display power policy alone."
+        )
+        self.btn_keep_display.clicked.connect(self._toggle_keep_display_on)
+        _add_toggle_row("Keep display on", self.btn_keep_display)
+
         left_layout.addLayout(grid)
 
         # Actions 2×2 under controls
@@ -524,6 +534,9 @@ class SettingsDialog(QDialog):
         self.btn_quit_poweroff.setText(
             "ON" if self.pipeline.s.quit_powers_off else "OFF"
         )
+        self.btn_keep_display.setText(
+            "ON" if self.pipeline.s.keep_display_on else "OFF"
+        )
 
         # Right-pane display geometry (from parent cache or live probe)
         parent = self.parent()
@@ -532,7 +545,14 @@ class SettingsDialog(QDialog):
             geom = str(getattr(parent, "_display_geometry_line", "") or "")
         if not geom:
             geom = format_display_geometry()
-        self.display_label.setText(geom)
+        inh = ""
+        if parent is not None and hasattr(parent, "display_inhibit"):
+            di = parent.display_inhibit
+            if di is not None and di.active:
+                inh = f"\ninhibit: {di.detail}"
+            elif not self.pipeline.s.keep_display_on:
+                inh = "\ninhibit: off (Keep display on = OFF)"
+        self.display_label.setText(geom + inh)
 
         cap_mode = self.pipeline.s.captures_target
         has_media = False
@@ -641,6 +661,12 @@ class SettingsDialog(QDialog):
         parent = self.parent()
         if parent is not None and hasattr(parent, "toggle_quit_powers_off"):
             parent.toggle_quit_powers_off()
+        self._refresh()
+
+    def _toggle_keep_display_on(self) -> None:
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "toggle_keep_display_on"):
+            parent.toggle_keep_display_on()
         self._refresh()
 
     def _drakevox_now(self) -> None:
@@ -756,10 +782,12 @@ class SlsMainWindow(QMainWindow):
         # Mix spoken words into AVI whenever recording
         self.tts.set_record_callback(self.session.inject_tts)
         self.battery = BatteryMonitor(poll_s=5.0)
+        self.display_inhibit = DisplayInhibit()
         self._settings_dlg: Optional[SettingsDialog] = None
         self._quit_confirmed = False
         self._app_exit_code = EXIT_OK
         self._media_poll_i = 0
+        self._inhibit_refresh_i = 0
         self.setWindowTitle("SLS Camera")
         # Apply saved brightness once (tablet backlight or xrandr software)
         if pipeline.s.display_brightness is not None:
@@ -767,6 +795,9 @@ class SlsMainWindow(QMainWindow):
         # Captures path: local or auto USB/SD
         self.session.set_captures_target(pipeline.s.captures_target)
         self.setStyleSheet(_STYLE)
+        # Keep display awake while field UI is up (#9)
+        if pipeline.s.keep_display_on:
+            self.display_inhibit.start()
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -904,6 +935,22 @@ class SlsMainWindow(QMainWindow):
         """Settings: Quit returns to desktop (OFF) vs host power-off (ON)."""
         self.pipeline.s.quit_powers_off = not bool(self.pipeline.s.quit_powers_off)
         self.pipeline.s.save_persisted()
+        if self._settings_open():
+            self._settings_dlg._refresh()
+
+    def toggle_keep_display_on(self) -> None:
+        """Settings: inhibit screensaver/idle while UI runs (default ON)."""
+        self.pipeline.s.keep_display_on = not bool(self.pipeline.s.keep_display_on)
+        self.pipeline.s.save_persisted()
+        if self.pipeline.s.keep_display_on:
+            self.display_inhibit.start()
+            self.session._set_flash(
+                f"display stay-on: {self.display_inhibit.detail or 'on'}",
+                seconds=2.5,
+            )
+        else:
+            self.display_inhibit.stop()
+            self.session._set_flash("display stay-on: off", seconds=2.5)
         if self._settings_open():
             self._settings_dlg._refresh()
 
@@ -1234,6 +1281,14 @@ class SlsMainWindow(QMainWindow):
         self._media_poll_i = getattr(self, "_media_poll_i", 0) + 1
         if self._media_poll_i % 90 == 0:  # ~3s at 33ms tick
             self.session.refresh_captures_dir()
+        # Re-assert xset DPMS-off periodically (some WMs re-enable blanking)
+        self._inhibit_refresh_i = getattr(self, "_inhibit_refresh_i", 0) + 1
+        if (
+            self.pipeline.s.keep_display_on
+            and self.display_inhibit.active
+            and self._inhibit_refresh_i % 1800 == 0  # ~60s at 33ms tick
+        ):
+            self.display_inhibit.refresh_x11()
         cap = self.session.captures_label
         cap_s = f" · CAP:{cap}" if cap else ""
         base = (
@@ -1275,6 +1330,7 @@ class SlsMainWindow(QMainWindow):
             self.session.stop_record()
             self.pipeline.set_recording_led(False)
         self.spectrum.stop()
+        self.display_inhibit.stop()
         if self._settings_dlg is not None:
             self._settings_dlg.close()
         # Clean teardown first; then signal power-off intent to launcher / OS.

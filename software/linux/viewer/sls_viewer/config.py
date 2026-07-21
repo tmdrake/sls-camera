@@ -32,6 +32,7 @@ PERSIST_KEYS = (
     "display_brightness",
     "captures_target",
     "quit_powers_off",
+    "keep_display_on",
 )
 
 
@@ -109,6 +110,10 @@ class Settings:
     # (appliance / tablet). Env SLS_QUIT_ACTION=shutdown|exit overrides for the process.
     quit_powers_off: bool = False
 
+    # Keep display awake while field UI runs (screensaver / idle / DPMS inhibit).
+    # Default ON — investigations must not blank mid-session (#9).
+    keep_display_on: bool = True
+
     model_path: Path = field(default_factory=lambda: MODEL_PATH)
     allow_demo_without_kinect: bool = False
 
@@ -136,6 +141,7 @@ class Settings:
         self.drakevox_enabled = bool(self.drakevox_enabled)
         self.drakevox_on_autosnap = bool(self.drakevox_on_autosnap)
         self.quit_powers_off = bool(self.quit_powers_off)
+        self.keep_display_on = bool(getattr(self, "keep_display_on", True))
         ct = str(getattr(self, "captures_target", "local") or "local").lower().strip()
         self.captures_target = "auto" if ct == "auto" else "local"
         if self.display_brightness is not None:
@@ -197,6 +203,7 @@ class Settings:
             ),
             "captures_target": str(self.captures_target or "local"),
             "quit_powers_off": bool(self.quit_powers_off),
+            "keep_display_on": bool(self.keep_display_on),
         }
         try:
             path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
