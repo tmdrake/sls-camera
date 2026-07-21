@@ -45,7 +45,7 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
   - **FW one-pager:** [FOR-FIRMWARE-TEAM.md](../software/linux/docs/FOR-FIRMWARE-TEAM.md)
   - Align with firmware `vendor/debs` + [OFFLINE-MIRROR.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/OFFLINE-MIRROR.md)
   - Closed: [GitHub #2](https://github.com/tmdrake/sls-camera/issues/2); conflicts tracking: [#3](https://github.com/tmdrake/sls-camera/issues/3)
-- [ ] **Clean the desktop before a firmware package install** — strip / replace stock Lubuntu (or similar) session chrome so a tablet does not ship a cluttered desktop; only then layer a firmware/image package.
+- [ ] **Clean the desktop before a firmware package install** — strip / replace stock Lubuntu (or similar) session chrome so a tablet does not ship a cluttered desktop; only then layer a firmware/image package. **FW Phase 3:** [KIOSK-DESKTOP.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/KIOSK-DESKTOP.md).
 - [ ] **Tablet firmware / image package** — sibling **`sls-camera-firmware`**. Offline debs/wheels + appliance install + future ISO. Deps/conflicts → issues #2 / #3.
 - [ ] **gspca/udev one-shot** — fold or harden `fix-kinect-access.sh` into install path for true zero-touch bring-up.
 - [ ] **Hardware BOM photos / wiring** in `hardware/` (Kinect + tablet + external power).
