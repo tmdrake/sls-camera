@@ -76,7 +76,14 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 
 ## Settings details
 
-Settings is **scrollable** and height-capped at ~**90%** of the screen’s available area so short field tablets (e.g. **1280×800**) can reach every control. **Close** stays pinned at the bottom. At startup the app logs (and briefly flashes) geometry for the hardware matrix:
+Settings is a **wide two-pane** dialog (~72–92% of available geometry):
+
+| Pane | Content |
+|------|---------|
+| **Left** | Controls (pose, spectrum, DrakeVox, captures, actions) — scrolls if needed |
+| **Right** | Status / log (display geometry, mic, DrakeVox history, keys) |
+
+**Close** is in the header. At startup the app logs geometry (also shown on the right pane):
 
 ```text
 display: 1280x800 avail=1280x768 dpr=1.0 dpi=96

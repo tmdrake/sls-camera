@@ -163,9 +163,12 @@ def log_display_geometry(app: Optional[QApplication] = None) -> str:
 
 
 class SettingsDialog(QDialog):
-    """Popup: max people, confidence, mirror, spectrum, session tools.
+    """Field Settings: horizontal two-pane layout for landscape tablets.
 
-    Scrollable body + height cap (~90% availableGeometry) for 1280×800 tablets (#6).
+    Left  — controls (pose, spectrum, DrakeVox, captures, actions)
+    Right — status / log (display geometry, mic, DrakeVox history, keys)
+
+    Height/width capped to ~90% of availableGeometry; left pane scrolls if needed (#6).
     """
 
     def __init__(
@@ -189,17 +192,30 @@ class SettingsDialog(QDialog):
             | Qt.WindowType.WindowStaysOnTopHint
         )
         self.setStyleSheet(_STYLE)
-        self.setMinimumWidth(320)
+        self.setMinimumWidth(640)
+        self.setMinimumHeight(360)
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(16, 14, 16, 14)
+        root.setContentsMargins(14, 12, 14, 12)
         root.setSpacing(8)
 
+        # Header
+        top = QHBoxLayout()
         hdr = QLabel("SETTINGS")
         hdr.setObjectName("hdr")
-        root.addWidget(hdr)
+        top.addWidget(hdr)
+        top.addStretch(1)
+        self.btn_close = QPushButton("Close")
+        self.btn_close.setObjectName("wide")
+        self.btn_close.clicked.connect(self.accept)
+        top.addWidget(self.btn_close)
+        root.addLayout(top)
 
-        # Scrollable body so short tablets can reach every control (#6)
+        # Main: left controls | right status/log
+        panes = QHBoxLayout()
+        panes.setSpacing(12)
+
+        # ----- LEFT: controls (scroll if short) -----
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
         self._scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -213,17 +229,28 @@ class SettingsDialog(QDialog):
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
 
-        body = QWidget()
-        body.setStyleSheet("background-color: #000000;")
-        body_layout = QVBoxLayout(body)
-        body_layout.setContentsMargins(0, 0, 8, 0)
-        body_layout.setSpacing(10)
+        left = QWidget()
+        left.setStyleSheet("background-color: #000000;")
+        left_layout = QVBoxLayout(left)
+        left_layout.setContentsMargins(0, 0, 6, 0)
+        left_layout.setSpacing(8)
+
+        left_title = QLabel("Controls")
+        left_title.setStyleSheet("color: #00ffb4; font-size: 12px; font-weight: 600;")
+        left_layout.addWidget(left_title)
 
         grid = QGridLayout()
         grid.setHorizontalSpacing(8)
-        grid.setVerticalSpacing(10)
+        grid.setVerticalSpacing(8)
         step = pipeline.s.pose_conf_step
         row = 0
+
+        def _add_toggle_row(label: str, btn: QPushButton) -> None:
+            nonlocal row
+            grid.addWidget(QLabel(label), row, 0)
+            btn.setObjectName("wide")
+            grid.addWidget(btn, row, 1, 1, 3)
+            row += 1
 
         # Max people
         grid.addWidget(QLabel("Max people"), row, 0)
@@ -253,73 +280,54 @@ class SettingsDialog(QDialog):
         grid.addWidget(self.btn_conf_up, row, 3)
         row += 1
 
-        # Mirror
-        grid.addWidget(QLabel("Mirror"), row, 0)
         self.btn_mirror = QPushButton()
-        self.btn_mirror.setObjectName("wide")
         self.btn_mirror.clicked.connect(self._toggle_mirror)
-        grid.addWidget(self.btn_mirror, row, 1, 1, 3)
-        row += 1
+        _add_toggle_row("Mirror", self.btn_mirror)
 
-        # Spectrum
-        grid.addWidget(QLabel("Spectrum"), row, 0)
         self.btn_spectrum = QPushButton()
-        self.btn_spectrum.setObjectName("wide")
         self.btn_spectrum.clicked.connect(self._toggle_spectrum)
-        grid.addWidget(self.btn_spectrum, row, 1, 1, 3)
-        row += 1
+        _add_toggle_row("Spectrum", self.btn_spectrum)
 
-        # Auto-snap
-        grid.addWidget(QLabel("Auto-snap on detect"), row, 0)
         self.btn_autosnap = QPushButton()
-        self.btn_autosnap.setObjectName("wide")
         self.btn_autosnap.clicked.connect(self._toggle_autosnap)
-        grid.addWidget(self.btn_autosnap, row, 1, 1, 3)
-        row += 1
+        _add_toggle_row("Auto-snap on detect", self.btn_autosnap)
 
-        # DrakeVox
-        grid.addWidget(QLabel("DrakeVox"), row, 0)
         self.btn_drakevox = QPushButton()
-        self.btn_drakevox.setObjectName("wide")
         self.btn_drakevox.setToolTip(
             "ON: show panel + generate words (timer/TTS) · OFF: hide panel and stop generation"
         )
         self.btn_drakevox.clicked.connect(self._toggle_drakevox)
-        grid.addWidget(self.btn_drakevox, row, 1, 1, 3)
-        row += 1
+        _add_toggle_row("DrakeVox", self.btn_drakevox)
 
-        # DrakeVox on auto-snap (when pose appears + auto-snap on)
-        grid.addWidget(QLabel("DrakeVox on auto-snap"), row, 0)
         self.btn_drakevox_autosnap = QPushButton()
-        self.btn_drakevox_autosnap.setObjectName("wide")
         self.btn_drakevox_autosnap.setToolTip(
             "When ON: auto-snap on detect also fires DrakeVox (word + TTS in the JPEG). "
             "Manual Snap does not force a new word."
         )
         self.btn_drakevox_autosnap.clicked.connect(self._toggle_drakevox_autosnap)
-        grid.addWidget(self.btn_drakevox_autosnap, row, 1, 1, 3)
-        row += 1
+        _add_toggle_row("DrakeVox on auto-snap", self.btn_drakevox_autosnap)
 
-        # Display brightness (sysfs backlight / brightnessctl / xrandr)
+        # Brightness
         grid.addWidget(QLabel("Brightness"), row, 0)
         self.btn_bright_down = QPushButton("−")
         self.btn_bright_down.setToolTip("Dimmer (−10%)")
-        self.btn_bright_down.clicked.connect(lambda: self._nudge_brightness(-BRIGHTNESS_STEP))
+        self.btn_bright_down.clicked.connect(
+            lambda: self._nudge_brightness(-BRIGHTNESS_STEP)
+        )
         self.bright_label = QLabel()
         self.bright_label.setObjectName("vallabel")
         self.bright_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.btn_bright_up = QPushButton("+")
         self.btn_bright_up.setToolTip("Brighter (+10%)")
-        self.btn_bright_up.clicked.connect(lambda: self._nudge_brightness(+BRIGHTNESS_STEP))
+        self.btn_bright_up.clicked.connect(
+            lambda: self._nudge_brightness(+BRIGHTNESS_STEP)
+        )
         grid.addWidget(self.btn_bright_down, row, 1)
         grid.addWidget(self.bright_label, row, 2)
         grid.addWidget(self.btn_bright_up, row, 3)
         row += 1
 
-        # Captures destination: local vs auto USB/SD
-        grid.addWidget(QLabel("Captures to"), row, 0)
         self.btn_captures = QPushButton()
-        self.btn_captures.setObjectName("wide")
         self.btn_captures.setToolTip(
             "Auto (default) = USB/SD if mounted → sls-captures/ on that media; "
             "else local viewer/captures. Local = always viewer/captures. "
@@ -327,25 +335,20 @@ class SettingsDialog(QDialog):
             "to move existing local files onto a stick/card."
         )
         self.btn_captures.clicked.connect(self._toggle_captures_target)
-        grid.addWidget(self.btn_captures, row, 1, 1, 3)
-        row += 1
+        _add_toggle_row("Captures to", self.btn_captures)
 
-        # Quit → power off host (tablet appliance; default OFF on desktops)
-        grid.addWidget(QLabel("Power off on Quit"), row, 0)
         self.btn_quit_poweroff = QPushButton()
-        self.btn_quit_poweroff.setObjectName("wide")
         self.btn_quit_poweroff.setToolTip(
             "ON: confirmed Quit powers off the tablet (after stopping capture). "
             "OFF: Quit returns to the desktop only. "
             "Dev default is OFF. Appliance can force via SLS_QUIT_ACTION=shutdown."
         )
         self.btn_quit_poweroff.clicked.connect(self._toggle_quit_powers_off)
-        grid.addWidget(self.btn_quit_poweroff, row, 1, 1, 3)
-        row += 1
+        _add_toggle_row("Power off on Quit", self.btn_quit_poweroff)
 
-        body_layout.addLayout(grid)
+        left_layout.addLayout(grid)
 
-        # Defaults / Clear / Copy / DrakeVox now — 2×2 on narrow tablets
+        # Actions 2×2 under controls
         act = QGridLayout()
         act.setHorizontalSpacing(8)
         act.setVerticalSpacing(8)
@@ -379,44 +382,68 @@ class SettingsDialog(QDialog):
         act.addWidget(self.btn_clear_captures, 0, 1)
         act.addWidget(self.btn_copy_to_media, 1, 0)
         act.addWidget(self.btn_drakevox_now, 1, 1)
-        body_layout.addLayout(act)
+        left_layout.addLayout(act)
+        left_layout.addStretch(1)
+
+        self._scroll.setWidget(left)
+        panes.addWidget(self._scroll, stretch=3)
+
+        # ----- RIGHT: status / log pane -----
+        right = QFrame()
+        right.setObjectName("statusPane")
+        right.setStyleSheet(
+            "QFrame#statusPane {"
+            "  background-color: #0a1210;"
+            "  border: 1px solid #1a4030;"
+            "  border-radius: 8px;"
+            "}"
+        )
+        right.setMinimumWidth(240)
+        right_layout = QVBoxLayout(right)
+        right_layout.setContentsMargins(12, 10, 12, 10)
+        right_layout.setSpacing(8)
+
+        right_title = QLabel("Status / log")
+        right_title.setStyleSheet("color: #00ffb4; font-size: 12px; font-weight: 600;")
+        right_layout.addWidget(right_title)
+
+        self.display_label = QLabel("")
+        self.display_label.setStyleSheet(
+            "color: #88ccaa; font-size: 11px; font-family: monospace;"
+        )
+        self.display_label.setWordWrap(True)
+        self.display_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        right_layout.addWidget(self.display_label)
 
         self.mic_label = QLabel("")
-        self.mic_label.setStyleSheet("color: #666; font-size: 11px;")
+        self.mic_label.setStyleSheet("color: #888; font-size: 11px;")
         self.mic_label.setWordWrap(True)
-        body_layout.addWidget(self.mic_label)
+        right_layout.addWidget(self.mic_label)
 
         self.drakevox_label = QLabel("")
         self.drakevox_label.setStyleSheet("color: #00ffb4; font-size: 12px;")
         self.drakevox_label.setWordWrap(True)
-        body_layout.addWidget(self.drakevox_label)
+        right_layout.addWidget(self.drakevox_label)
 
         self.drakevox_history = QLabel("")
         self.drakevox_history.setStyleSheet(
             "color: #888; font-size: 11px; font-family: monospace;"
         )
         self.drakevox_history.setWordWrap(True)
-        body_layout.addWidget(self.drakevox_history)
+        self.drakevox_history.setAlignment(Qt.AlignmentFlag.AlignTop)
+        right_layout.addWidget(self.drakevox_history, stretch=1)
 
         hint = QLabel(
-            "Keys: [ ] conf  , . max  M mirror  O DrakeVox now  S settings  Esc close"
+            "Keys: [ ] conf  ·  , . max  ·  M mirror  ·  O DrakeVox  ·  S settings  ·  Esc close"
         )
-        hint.setStyleSheet("color: #666; font-size: 11px;")
+        hint.setStyleSheet("color: #555; font-size: 10px;")
         hint.setWordWrap(True)
-        body_layout.addWidget(hint)
-        body_layout.addStretch(1)
+        right_layout.addWidget(hint)
 
-        self._scroll.setWidget(body)
-        root.addWidget(self._scroll, stretch=1)
-
-        # Close stays pinned outside the scroll area
-        close_row = QHBoxLayout()
-        close_row.addStretch(1)
-        self.btn_close = QPushButton("Close")
-        self.btn_close.setObjectName("wide")
-        self.btn_close.clicked.connect(self.accept)
-        close_row.addWidget(self.btn_close)
-        root.addLayout(close_row)
+        panes.addWidget(right, stretch=2)
+        root.addLayout(panes, stretch=1)
 
         self._refresh()
 
@@ -461,7 +488,15 @@ class SettingsDialog(QDialog):
             "ON" if self.pipeline.s.quit_powers_off else "OFF"
         )
 
+        # Right-pane display geometry (from parent cache or live probe)
         parent = self.parent()
+        geom = ""
+        if parent is not None:
+            geom = str(getattr(parent, "_display_geometry_line", "") or "")
+        if not geom:
+            geom = format_display_geometry()
+        self.display_label.setText(geom)
+
         cap_mode = self.pipeline.s.captures_target
         has_media = False
         if parent is not None and hasattr(parent, "session"):
@@ -623,7 +658,7 @@ class SettingsDialog(QDialog):
         self._refresh()
 
     def _fit_to_screen(self) -> None:
-        """Cap dialog to ~90% of available geometry so short tablets can scroll (#6)."""
+        """Wide landscape dialog: ~90% available size; left pane scrolls if needed."""
         screen = self.screen()
         if screen is None:
             app = QApplication.instance()
@@ -631,22 +666,21 @@ class SettingsDialog(QDialog):
         if screen is None:
             return
         avail = screen.availableGeometry()
-        max_h = max(280, int(avail.height() * 0.90))
-        max_w = max(300, min(560, int(avail.width() * 0.95)))
-        min_w = min(380, max_w)
-        self.setMinimumWidth(min_w)
+        max_h = max(320, int(avail.height() * 0.90))
+        max_w = max(640, int(avail.width() * 0.92))
+        # Prefer a wide panel (two panes) rather than a tall narrow column
+        prefer_w = min(max_w, max(720, int(avail.width() * 0.72)))
+        prefer_h = min(max_h, max(420, int(avail.height() * 0.72)))
+        self.setMinimumWidth(min(640, max_w))
         self.setMaximumWidth(max_w)
         self.setMaximumHeight(max_h)
-        # Prefer content size when it fits; otherwise clamp and scroll
-        hint = self.sizeHint()
-        w = min(max(hint.width(), min_w), max_w)
-        h = min(max(hint.height(), 320), max_h)
-        self.resize(w, h)
+        self.resize(prefer_w, prefer_h)
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
         self._refresh()
         self._fit_to_screen()
+        # Center over parent / available area (wide dialog reads better centered)
         parent = self.parentWidget()
         screen = self.screen()
         if screen is None:
@@ -655,11 +689,11 @@ class SettingsDialog(QDialog):
         avail = screen.availableGeometry() if screen is not None else None
         if parent is not None:
             pg = parent.geometry()
-            x = pg.x() + pg.width() - self.width() - 24
-            y = pg.y() + pg.height() - self.height() - 72
+            x = pg.x() + (pg.width() - self.width()) // 2
+            y = pg.y() + (pg.height() - self.height()) // 2
         elif avail is not None:
-            x = avail.x() + avail.width() - self.width() - 24
-            y = avail.y() + avail.height() - self.height() - 24
+            x = avail.x() + (avail.width() - self.width()) // 2
+            y = avail.y() + (avail.height() - self.height()) // 2
         else:
             return
         if avail is not None:
