@@ -16,12 +16,18 @@
 # Note: Ubuntu 24.04+ uses t64 transition names (libfreenect0.5t64).
 # install-apt-deps.sh resolves both t64 and pre-t64 names.
 
+# Kinect depth/IR/motor (freenect) — keep in sync with sls-camera-firmware
 freenect
 libfreenect-bin
 libfreenect0.5t64
 libfreenect-dev
+libusb-1.0-0
 libportaudio2
 alsa-utils
+# Mic array: package only; MS UAC firmware is on-device / firmware vendor/kinect/
+kinect-audio-setup
+wget
+7zip
 espeak-ng
 python3
 python3-venv
