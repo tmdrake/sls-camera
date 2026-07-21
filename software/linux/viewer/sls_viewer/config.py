@@ -92,7 +92,7 @@ class Settings:
     # Visual style id — see spectrum.SPECTRUM_STYLES; default phosphor scope trail
     spectrum_style: str = DEFAULT_SPECTRUM_STYLE
     spectrum_height: int = 56
-    spectrum_bars: int = 48
+    spectrum_bars: int = 64  # fixed (no Settings); 48 was default, 64 a bit more detail
 
     # Session tools
     auto_snap_on_detect: bool = False
