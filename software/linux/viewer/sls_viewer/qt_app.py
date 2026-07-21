@@ -37,7 +37,7 @@ from . import freenect_io
 from .battery import BatteryMonitor
 from .drakevox import DrakeVoxEngine, paint_drakevox_bgr
 from .display_inhibit import DisplayInhibit
-from .host_power import EXIT_OK, EXIT_POWEROFF, request_host_poweroff
+from .host_power import EXIT_OK, EXIT_POWEROFF
 from .media_format import (
     DEFAULT_LABEL,
     device_size_bytes,
@@ -1432,15 +1432,13 @@ class SlsMainWindow(QMainWindow):
         self.display_inhibit.stop()
         if self._settings_dlg is not None:
             self._settings_dlg.close()
-        # Clean teardown first; then signal power-off intent to launcher / OS.
+        # Clean teardown; exit 10 only signals firmware launcher (never poweroff here).
         power_off = bool(self.pipeline.s.quit_powers_off)
         self._app_exit_code = EXIT_POWEROFF if power_off else EXIT_OK
         super().closeEvent(event)
         app = QApplication.instance()
         if app is not None:
             app.exit(int(self._app_exit_code))
-        if power_off:
-            request_host_poweroff()
 
 
 def run_qt(pipeline: FramePipeline) -> int:

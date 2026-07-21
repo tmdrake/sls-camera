@@ -1,14 +1,15 @@
-"""Host power-off helpers for appliance Quit (issue #4).
+"""Quit exit-code contract + optional host power-off helper (issue #4).
 
 Exit-code contract (firmware launcher + app):
   0  — clean quit to desktop / shell
   10 — operator requested host power-off
   11 — relaunch app (kiosk; reserved)
 
-When Settings “Power off on Quit” is ON (or SLS_QUIT_ACTION=shutdown),
-the app exits with code 10 and best-effort requests poweroff so:
-  - appliance launcher can honor the code without a shell fallback, and
-  - standalone field installs still power off when sudoers/polkit allow it.
+Product rule:
+  - App sets exit **10** only when ``SLS_QUIT_ACTION=shutdown`` (firmware exports this).
+  - App does **not** call system poweroff on Quit — the firmware launcher
+    (``/usr/local/bin/sls-camera``) powers off when it sees exit 10.
+  - ``request_host_poweroff()`` remains for rare tooling/tests; not used by the UI.
 """
 
 from __future__ import annotations

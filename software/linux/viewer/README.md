@@ -18,7 +18,7 @@
 | **Brightness** | Settings ±10% (sysfs / brightnessctl / xrandr) |
 | **Quit** | Confirms before exit; on appliance firmware powers off (exit 10) |
 | **DrakeVox** | 5–15 min timer + TTS; ~2k-word list; under IR PiP; key **O** |
-| **Settings** | Scrollable panel (fits 1280×800 tablets); pose, mirror, spectrum, DrakeVox, captures, Power off on Quit, … |
+| **Settings** | Two-pane panel; pose, DrakeVox, captures, Keep display on, Format removable media, … |
 | **On open** | LED green, tilt auto-level 0°, IR sensor gain **50** (fixed) |
 
 Browser UI is optional (`--ui web`).
@@ -299,7 +299,8 @@ There is **no Settings toggle** for power-off. Firmware (`sls-camera-firmware` �
 - `SLS_QUIT_FALLBACK=none` — exit **0** does **not** power off (app must send **10**)  
 - Launcher runs `poweroff` when it sees exit **10** (sudoers)
 
-Dev machines never set that env, so Quit returns to the desktop. Issue [#4](https://github.com/tmdrake/sls-camera/issues/4).
+Dev machines never set that env, so Quit returns to the desktop.  
+The app **never** runs `poweroff` itself — only exit code **10** for the launcher. Issue [#4](https://github.com/tmdrake/sls-camera/issues/4).
 
 ## Stack
 

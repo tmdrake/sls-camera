@@ -31,8 +31,8 @@ PERSIST_KEYS = (
     "drakevox_on_autosnap",
     "display_brightness",
     "captures_target",
-    "quit_powers_off",
     "keep_display_on",
+    # quit_powers_off is NOT persisted — only SLS_QUIT_ACTION (firmware)
 )
 
 
@@ -106,9 +106,9 @@ class Settings:
     # Display brightness 5–100 (None = leave OS default / don't force at start)
     display_brightness: Optional[int] = None
 
-    # Quit host power-off intent (exit code 10). Not a Settings toggle —
-    # appliance firmware sets SLS_QUIT_ACTION=shutdown; desktop defaults exit-only.
-    # App still exits 10 + dialog text when True; firmware launcher does poweroff.
+    # Quit power-off *intent* (exit code 10 only). Never from JSON/Settings.
+    # True only when firmware sets SLS_QUIT_ACTION=shutdown|poweroff.
+    # App does NOT call system poweroff — firmware launcher does that on exit 10.
     quit_powers_off: bool = False
 
     # Keep display awake while field UI runs (screensaver / idle / DPMS inhibit).
@@ -141,7 +141,7 @@ class Settings:
         self.auto_snap_on_detect = bool(self.auto_snap_on_detect)
         self.drakevox_enabled = bool(self.drakevox_enabled)
         self.drakevox_on_autosnap = bool(self.drakevox_on_autosnap)
-        self.quit_powers_off = bool(self.quit_powers_off)
+        # Ignore legacy quit_powers_off in JSON (powered desktops after #4)
         self.keep_display_on = bool(getattr(self, "keep_display_on", True))
         ct = str(getattr(self, "captures_target", "local") or "local").lower().strip()
         self.captures_target = "auto" if ct == "auto" else "local"
@@ -155,14 +155,16 @@ class Settings:
         self.clamp_max_poses()
         # IR gain is not user-persisted; always full sensor gain (50)
         self.ir_brightness = 50
-        # Process env wins over disk (appliance can force without editing JSON)
+        # Firmware env only (never disk) for power-off intent
         self._apply_quit_env_override()
 
     def _apply_quit_env_override(self) -> None:
-        """SLS_QUIT_ACTION=shutdown|exit forces quit mode for this process."""
+        """SLS_QUIT_ACTION from firmware; default False on bare ./run.sh."""
         forced = env_wants_poweroff_on_quit()
         if forced is not None:
             self.quit_powers_off = bool(forced)
+        else:
+            self.quit_powers_off = False
 
     def clamp_pose_confidence(self) -> None:
         lo, hi = float(self.pose_conf_min), float(self.pose_conf_max)
@@ -203,7 +205,6 @@ class Settings:
                 else None
             ),
             "captures_target": str(self.captures_target or "local"),
-            "quit_powers_off": bool(self.quit_powers_off),
             "keep_display_on": bool(self.keep_display_on),
         }
         try:
