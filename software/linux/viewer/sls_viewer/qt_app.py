@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import sys
 from typing import TYPE_CHECKING, Optional
 
@@ -16,7 +15,6 @@ from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
-    QInputDialog,
     QLabel,
     QMainWindow,
     QMessageBox,
@@ -425,7 +423,7 @@ class SettingsDialog(QDialog):
         self.btn_format_media.setToolTip(
             "ERASE the mounted USB stick or SD card, then format for SLS "
             "(FAT32, label SLS-MEDIA, folder sls-captures/). "
-            "Two confirmations. Needs admin (pkexec/sudo). "
+            "Two Yes/Cancel confirms (no typing). Needs admin (pkexec/sudo). "
             "Hidden when no stick/card is mounted."
         )
         self.btn_format_media.clicked.connect(self._format_media)
