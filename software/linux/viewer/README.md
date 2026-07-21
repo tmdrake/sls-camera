@@ -76,7 +76,7 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 
 ## Settings details
 
-Settings is a **wide two-pane** dialog (~72–92% of available geometry):
+Settings is a **wide two-pane** dialog sized for fleet **16:10 landscape** (1280×800 / 1920×1200):
 
 | Pane | Content |
 |------|---------|
@@ -86,10 +86,10 @@ Settings is a **wide two-pane** dialog (~72–92% of available geometry):
 **Close** is in the header. At startup the app logs geometry (also shown on the right pane):
 
 ```text
-display: 1280x800 avail=1280x768 dpr=1.0 dpi=96
+display: 1280x800 avail=1280x768 ar=16:10 dpr=1.0 dpi=96
 ```
 
-Issue: [#6](https://github.com/tmdrake/sls-camera/issues/6) (closed). Related: [#7](https://github.com/tmdrake/sls-camera/issues/7) hardware tree.
+Firmware should leave the session in **16:10 landscape** before launch. Issue: [#6](https://github.com/tmdrake/sls-camera/issues/6) (closed). Related: [#7](https://github.com/tmdrake/sls-camera/issues/7) hardware tree.
 
 | Setting | Range / default |
 |---------|-----------------|
