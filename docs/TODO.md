@@ -73,7 +73,7 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 ## Product features (later)
 
 - [x] DrakeVox word panel (5–15 min timer, TTS, auto-snap option; key `O`)
-- [ ] **Branding** — configurable product/overlay names (e.g. replace `***DrakeVox***` title, app chrome) without hardcoding
+- [ ] **Branding** — configurable product/overlay names (e.g. replace `***DrakeVox***` title, app chrome) without hardcoding; splash image/text via env (`SLS_PRODUCT_NAME`, etc.). Firmware bootsplash/Plymouth + brand pack layout: [sls-camera-firmware BRANDING.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/BRANDING.md)
 - [ ] DrakeVox external triggers beyond auto-snap (audio spike / MCU)
 - [ ] Arduino / MCU sensor bridge
 - [ ] Optional RGB view or color swap (Windows parity)
