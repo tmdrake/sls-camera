@@ -12,12 +12,14 @@ from PySide6.QtGui import QImage, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
+    QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -88,6 +90,25 @@ QMessageBox QPushButton {
     border-radius: 8px; font-size: 14px; font-weight: 600;
     padding: 6px 14px;
 }
+QScrollArea {
+    border: none;
+    background-color: #000000;
+}
+QScrollBar:vertical {
+    width: 18px;
+    background: #0a1210;
+    margin: 2px;
+    border-radius: 4px;
+}
+QScrollBar::handle:vertical {
+    background: #00aa78;
+    min-height: 40px;
+    border-radius: 4px;
+}
+QScrollBar::handle:vertical:hover { background: #00ffb4; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
 """
 
 
@@ -99,8 +120,53 @@ def bgr_to_qpixmap(bgr: np.ndarray) -> QPixmap:
     return QPixmap.fromImage(qimg)
 
 
+def format_display_geometry(app: Optional[QApplication] = None) -> str:
+    """One-line primary-screen geometry for logs / hardware matrix (#6)."""
+    app = app or QApplication.instance()
+    if app is None:
+        return "display: (no QApplication)"
+    screen = app.primaryScreen()
+    if screen is None:
+        screens = app.screens()
+        screen = screens[0] if screens else None
+    if screen is None:
+        return "display: (no screen)"
+    g = screen.geometry()
+    avail = screen.availableGeometry()
+    dpr = float(screen.devicePixelRatio())
+    try:
+        dpi = float(screen.logicalDotsPerInch())
+    except Exception:
+        dpi = 0.0
+    orient = ""
+    try:
+        o = screen.orientation()
+        name = getattr(o, "name", None)
+        if callable(name):
+            orient = f" orient={o.name}"
+        else:
+            orient = f" orient={int(o)}"
+    except Exception:
+        pass
+    return (
+        f"display: {g.width()}x{g.height()} "
+        f"avail={avail.width()}x{avail.height()} "
+        f"dpr={dpr:.1f} dpi={dpi:.0f}{orient}"
+    )
+
+
+def log_display_geometry(app: Optional[QApplication] = None) -> str:
+    """Print geometry once to stdout; return the same line."""
+    line = format_display_geometry(app)
+    print(line, flush=True)
+    return line
+
+
 class SettingsDialog(QDialog):
-    """Popup: max people, confidence, mirror, spectrum, session tools."""
+    """Popup: max people, confidence, mirror, spectrum, session tools.
+
+    Scrollable body + height cap (~90% availableGeometry) for 1280×800 tablets (#6).
+    """
 
     def __init__(
         self,
@@ -123,15 +189,35 @@ class SettingsDialog(QDialog):
             | Qt.WindowType.WindowStaysOnTopHint
         )
         self.setStyleSheet(_STYLE)
-        self.setMinimumWidth(380)
+        self.setMinimumWidth(320)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 14, 16, 14)
-        root.setSpacing(10)
+        root.setSpacing(8)
 
         hdr = QLabel("SETTINGS")
         hdr.setObjectName("hdr")
         root.addWidget(hdr)
+
+        # Scrollable body so short tablets can reach every control (#6)
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self._scroll.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        self._scroll.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+
+        body = QWidget()
+        body.setStyleSheet("background-color: #000000;")
+        body_layout = QVBoxLayout(body)
+        body_layout.setContentsMargins(0, 0, 8, 0)
+        body_layout.setSpacing(10)
 
         grid = QGridLayout()
         grid.setHorizontalSpacing(8)
@@ -257,24 +343,24 @@ class SettingsDialog(QDialog):
         grid.addWidget(self.btn_quit_poweroff, row, 1, 1, 3)
         row += 1
 
-        root.addLayout(grid)
+        body_layout.addLayout(grid)
 
-        # Defaults / Clear captures / DrakeVox now — Snap/Record on main bar
-        act = QHBoxLayout()
+        # Defaults / Clear / Copy / DrakeVox now — 2×2 on narrow tablets
+        act = QGridLayout()
+        act.setHorizontalSpacing(8)
+        act.setVerticalSpacing(8)
         self.btn_defaults = QPushButton("Defaults")
         self.btn_defaults.setObjectName("wide")
         self.btn_defaults.setToolTip(
             "Reset Max people=1, Confidence=0.5, and Captures to Auto (USB/SD if mounted)"
         )
         self.btn_defaults.clicked.connect(self._reset_defaults)
-        act.addWidget(self.btn_defaults)
         self.btn_clear_captures = QPushButton("Clear captures")
         self.btn_clear_captures.setObjectName("wide")
         self.btn_clear_captures.setToolTip(
             "Delete files in the current captures folder (local or media/sls-captures/)"
         )
         self.btn_clear_captures.clicked.connect(self._clear_captures)
-        act.addWidget(self.btn_clear_captures)
         self.btn_copy_to_media = QPushButton("Copy local→media")
         self.btn_copy_to_media.setObjectName("wide")
         self.btn_copy_to_media.setToolTip(
@@ -283,41 +369,47 @@ class SettingsDialog(QDialog):
             "Use when you shot to local first, then plug in a stick/card."
         )
         self.btn_copy_to_media.clicked.connect(self._copy_local_to_media)
-        act.addWidget(self.btn_copy_to_media)
         self.btn_drakevox_now = QPushButton("DrakeVox now")
         self.btn_drakevox_now.setObjectName("wide")
         self.btn_drakevox_now.setToolTip(
             "Speak a word now (requires DrakeVox ON; recorded if REC is active)"
         )
         self.btn_drakevox_now.clicked.connect(self._drakevox_now)
-        act.addWidget(self.btn_drakevox_now)
-        act.addStretch(1)
-        root.addLayout(act)
+        act.addWidget(self.btn_defaults, 0, 0)
+        act.addWidget(self.btn_clear_captures, 0, 1)
+        act.addWidget(self.btn_copy_to_media, 1, 0)
+        act.addWidget(self.btn_drakevox_now, 1, 1)
+        body_layout.addLayout(act)
 
         self.mic_label = QLabel("")
         self.mic_label.setStyleSheet("color: #666; font-size: 11px;")
         self.mic_label.setWordWrap(True)
-        root.addWidget(self.mic_label)
+        body_layout.addWidget(self.mic_label)
 
         self.drakevox_label = QLabel("")
         self.drakevox_label.setStyleSheet("color: #00ffb4; font-size: 12px;")
         self.drakevox_label.setWordWrap(True)
-        root.addWidget(self.drakevox_label)
+        body_layout.addWidget(self.drakevox_label)
 
         self.drakevox_history = QLabel("")
         self.drakevox_history.setStyleSheet(
             "color: #888; font-size: 11px; font-family: monospace;"
         )
         self.drakevox_history.setWordWrap(True)
-        root.addWidget(self.drakevox_history)
+        body_layout.addWidget(self.drakevox_history)
 
         hint = QLabel(
             "Keys: [ ] conf  , . max  M mirror  O DrakeVox now  S settings  Esc close"
         )
         hint.setStyleSheet("color: #666; font-size: 11px;")
         hint.setWordWrap(True)
-        root.addWidget(hint)
+        body_layout.addWidget(hint)
+        body_layout.addStretch(1)
 
+        self._scroll.setWidget(body)
+        root.addWidget(self._scroll, stretch=1)
+
+        # Close stays pinned outside the scroll area
         close_row = QHBoxLayout()
         close_row.addStretch(1)
         self.btn_close = QPushButton("Close")
@@ -530,16 +622,53 @@ class SettingsDialog(QDialog):
             parent.copy_local_to_media()
         self._refresh()
 
+    def _fit_to_screen(self) -> None:
+        """Cap dialog to ~90% of available geometry so short tablets can scroll (#6)."""
+        screen = self.screen()
+        if screen is None:
+            app = QApplication.instance()
+            screen = app.primaryScreen() if app is not None else None
+        if screen is None:
+            return
+        avail = screen.availableGeometry()
+        max_h = max(280, int(avail.height() * 0.90))
+        max_w = max(300, min(560, int(avail.width() * 0.95)))
+        min_w = min(380, max_w)
+        self.setMinimumWidth(min_w)
+        self.setMaximumWidth(max_w)
+        self.setMaximumHeight(max_h)
+        # Prefer content size when it fits; otherwise clamp and scroll
+        hint = self.sizeHint()
+        w = min(max(hint.width(), min_w), max_w)
+        h = min(max(hint.height(), 320), max_h)
+        self.resize(w, h)
+
     def showEvent(self, event) -> None:
         super().showEvent(event)
         self._refresh()
+        self._fit_to_screen()
         parent = self.parentWidget()
+        screen = self.screen()
+        if screen is None:
+            app = QApplication.instance()
+            screen = app.primaryScreen() if app is not None else None
+        avail = screen.availableGeometry() if screen is not None else None
         if parent is not None:
             pg = parent.geometry()
-            self.adjustSize()
             x = pg.x() + pg.width() - self.width() - 24
             y = pg.y() + pg.height() - self.height() - 72
-            self.move(max(0, x), max(0, y))
+        elif avail is not None:
+            x = avail.x() + avail.width() - self.width() - 24
+            y = avail.y() + avail.height() - self.height() - 24
+        else:
+            return
+        if avail is not None:
+            x = max(avail.x(), min(x, avail.x() + avail.width() - self.width()))
+            y = max(avail.y(), min(y, avail.y() + avail.height() - self.height()))
+        else:
+            x = max(0, x)
+            y = max(0, y)
+        self.move(int(x), int(y))
 
 
 class SlsMainWindow(QMainWindow):
@@ -1093,9 +1222,21 @@ def run_qt(pipeline: FramePipeline) -> int:
     )
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("SLS Camera")
+    # Primary-screen geometry for hardware matrix / tablet bring-up (#6)
+    geom_line = log_display_geometry(app)
     win = SlsMainWindow(pipeline)
     win._app_exit_code = EXIT_OK
+    win._display_geometry_line = geom_line
     win.showFullScreen()
+    # Re-log after fullscreen in case WM/screen metrics settle
+    def _relog_geometry() -> None:
+        line = log_display_geometry(app)
+        win._display_geometry_line = line
+        # Brief status flash so operators/techs see it on first tablet boot
+        if hasattr(win, "session") and win.session is not None:
+            win.session._set_flash(line, seconds=4.0)
+
+    QTimer.singleShot(250, _relog_geometry)
     code = app.exec()
     # Prefer window exit intent (10 = power off) over default Qt 0
     out = int(getattr(win, "_app_exit_code", code) or 0)

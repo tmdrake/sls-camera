@@ -25,10 +25,14 @@ policy come later.
 
 | Issue | Topic |
 |-------|--------|
-| [#2](https://github.com/tmdrake/sls-camera/issues/2) | Offline apt seeds + cache install — **closed** (`install-apt-deps.sh`) |
-| [#3](https://github.com/tmdrake/sls-camera/issues/3) | OR-alternatives / conflicts — **tracking** (mitigated; new finds → comment) |
-| [#4](https://github.com/tmdrake/sls-camera/issues/4) | Optional system shutdown on Quit — **closed** (Settings + exit 10) |
-| [#5](https://github.com/tmdrake/sls-camera/issues/5) | Captures → removable media / SD — **closed (v1)**; Auto default, SD then USB |
+| [#2](https://github.com/tmdrake/sls-camera/issues/2) | Offline apt seeds + cache install — **closed** |
+| [#3](https://github.com/tmdrake/sls-camera/issues/3) | OR-alternatives / conflicts — **tracking** |
+| [#4](https://github.com/tmdrake/sls-camera/issues/4) | Quit → power off — **closed** |
+| [#5](https://github.com/tmdrake/sls-camera/issues/5) | Captures Auto SD/USB — **closed (v1)** |
+| [#6](https://github.com/tmdrake/sls-camera/issues/6) | Geometry log + Settings scroll — **closed** |
+| [#7](https://github.com/tmdrake/sls-camera/issues/7) | Hardware tree / multi-tablet matrix — open |
+| [#8](https://github.com/tmdrake/sls-camera/issues/8) | Format removable media from Settings — open (after #6) |
+| [#9](https://github.com/tmdrake/sls-camera/issues/9) | Keep display awake while UI runs — open |
 
 Firmware may implement offline mirrors; **product install-path and app-behavior decisions stay tracked here**.
 
@@ -81,3 +85,4 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] Quit → optional power off (Settings + exit 10 + env)
 - [x] DrakeVox overlay title `***DRAKEVOX***` in LED magenta
 - [x] Dev install/uninstall scripts + FIELD-INSTALL.md
+- [x] Offline-safe apt (#2) + FOR-FIRMWARE-TEAM.md handoff

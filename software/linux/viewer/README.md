@@ -18,7 +18,7 @@
 | **Brightness** | Settings ±10% (sysfs / brightnessctl / xrandr) |
 | **Quit** | Confirms before exit (stops recording cleanly); optional **Power off on Quit** |
 | **DrakeVox** | 5–15 min timer + TTS; ~2k-word list; under IR PiP; key **O** |
-| **Settings** | Pose, mirror, spectrum, auto-snap, DrakeVox, brightness, captures, Power off on Quit, Defaults/Clear |
+| **Settings** | Scrollable panel (fits 1280×800 tablets); pose, mirror, spectrum, DrakeVox, captures, Power off on Quit, … |
 | **On open** | LED green, tilt auto-level 0°, IR sensor gain **50** (fixed) |
 
 Browser UI is optional (`--ui web`).
