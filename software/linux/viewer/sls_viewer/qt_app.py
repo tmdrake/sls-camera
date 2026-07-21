@@ -45,7 +45,11 @@ from .media_format import (
     list_format_candidates,
 )
 from .session_io import AUDIO_SAMPLE_RATE, SessionRecorder
-from .spectrum import SpectrumAnalyzer
+from .spectrum import (
+    SpectrumAnalyzer,
+    next_spectrum_style,
+    spectrum_style_label,
+)
 from .tts import DrakeVoxTTS, backend_name as tts_backend_name
 
 if TYPE_CHECKING:
@@ -318,6 +322,15 @@ class SettingsDialog(QDialog):
         self.btn_spectrum.clicked.connect(self._toggle_spectrum)
         _add_toggle_row("Spectrum", self.btn_spectrum)
 
+        self.btn_spectrum_style = QPushButton()
+        self.btn_spectrum_style.setObjectName("wide")
+        self.btn_spectrum_style.setToolTip(
+            "Cycle spectrum strip look. Default is Phosphor (scope trail). "
+            "Saved across restarts. Defaults button restores Phosphor."
+        )
+        self.btn_spectrum_style.clicked.connect(self._cycle_spectrum_style)
+        _add_toggle_row("Spectrum style", self.btn_spectrum_style)
+
         self.btn_autosnap = QPushButton()
         self.btn_autosnap.clicked.connect(self._toggle_autosnap)
         _add_toggle_row("Auto-snap on detect", self.btn_autosnap)
@@ -376,7 +389,8 @@ class SettingsDialog(QDialog):
         self.btn_defaults = QPushButton("Defaults")
         self.btn_defaults.setObjectName("wide")
         self.btn_defaults.setToolTip(
-            "Reset Max people=1, Confidence=0.5, and Captures to Auto (USB/SD if mounted)"
+            "Reset Max people=1, Confidence=0.5, Captures to Auto, "
+            "and Spectrum style to Phosphor"
         )
         self.btn_defaults.clicked.connect(self._reset_defaults)
         self.btn_clear_captures = QPushButton("Clear captures")
@@ -502,6 +516,9 @@ class SettingsDialog(QDialog):
         self.btn_mirror.setText("ON" if self.pipeline.mirror else "OFF")
         self.btn_spectrum.setText(
             "ON" if self.pipeline.s.spectrum_enabled else "OFF"
+        )
+        self.btn_spectrum_style.setText(
+            spectrum_style_label(self.pipeline.s.spectrum_style)
         )
         self.btn_autosnap.setText(
             "ON" if self.pipeline.s.auto_snap_on_detect else "OFF"
@@ -632,6 +649,12 @@ class SettingsDialog(QDialog):
             parent.set_spectrum_enabled(not self.pipeline.s.spectrum_enabled)
         self._refresh()
 
+    def _cycle_spectrum_style(self) -> None:
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "cycle_spectrum_style"):
+            parent.cycle_spectrum_style()
+        self._refresh()
+
     def _toggle_autosnap(self) -> None:
         self.pipeline.s.auto_snap_on_detect = not self.pipeline.s.auto_snap_on_detect
         self.pipeline.s.save_persisted()
@@ -692,13 +715,14 @@ class SettingsDialog(QDialog):
         return box.exec() == QMessageBox.StandardButton.Yes
 
     def _reset_defaults(self) -> None:
-        """Pose MediaPipe defaults + Captures Auto — confirm first."""
+        """Pose MediaPipe defaults + Captures Auto + Phosphor spectrum — confirm first."""
         if not self._confirm(
             "Reset defaults",
             "Reset to field defaults?\n\n"
             "• Max people = 1\n"
             "• Confidence = 0.5\n"
-            "• Captures to = Auto (USB/SD if mounted, else local)",
+            "• Captures to = Auto (USB/SD if mounted, else local)\n"
+            "• Spectrum style = Phosphor",
             yes_label="Reset",
         ):
             return
@@ -906,6 +930,19 @@ class SlsMainWindow(QMainWindow):
         # Re-assert fullscreen in case the WM reacted to layout churn
         QTimer.singleShot(0, self._force_fullscreen)
 
+    def cycle_spectrum_style(self) -> None:
+        """Settings: cycle strip look; persist; default style is Phosphor."""
+        cur = self.pipeline.s.spectrum_style
+        nxt = next_spectrum_style(cur)
+        self.pipeline.s.spectrum_style = nxt
+        self.pipeline.s.save_persisted()
+        self.session._set_flash(
+            f"spectrum: {spectrum_style_label(nxt)}", seconds=2.0
+        )
+        self._paint_spectrum_strip()
+        if self._settings_open():
+            self._settings_dlg._refresh()
+
     def set_drakevox_enabled(self, enabled: bool) -> None:
         """ON = show panel + word generation; OFF = hide panel + stop generation."""
         self.pipeline.s.drakevox_enabled = bool(enabled)
@@ -1015,16 +1052,24 @@ class SlsMainWindow(QMainWindow):
             self._settings_dlg._refresh()
 
     def apply_field_defaults(self) -> None:
-        """Settings Defaults: pose MediaPipe defaults + captures Auto."""
+        """Settings Defaults: pose, captures Auto, spectrum style Phosphor."""
         self.pipeline.reset_pose_defaults()
         if not self.session.recording:
             label = self.session.set_captures_target("auto")
-            self.session._set_flash(f"defaults · Captures → {label}")
+            style = spectrum_style_label(self.pipeline.s.spectrum_style)
+            self.session._set_flash(
+                f"defaults · Captures → {label} · spectrum:{style}"
+            )
         else:
             # Persist auto for next session; keep current path while REC
             self.pipeline.s.captures_target = "auto"
             self.pipeline.s.save_persisted()
-            self.session._set_flash("defaults saved (captures path after REC stops)")
+            self.session._set_flash(
+                "defaults saved (captures path after REC stops; spectrum → Phosphor)"
+            )
+        self._paint_spectrum_strip()
+        if self._settings_open():
+            self._settings_dlg._refresh()
 
     def toggle_captures_target(self) -> None:
         """Cycle Local ↔ Auto (USB/SD when mounted). Default is Auto."""
@@ -1094,7 +1139,9 @@ class SlsMainWindow(QMainWindow):
         h = int(self.pipeline.s.spectrum_height)
         if self.pipeline.s.spectrum_enabled:
             # paint_bgr shows bars when live, or "mic retry…" while reconnecting
-            strip = self.spectrum.paint_bgr(w, h)
+            strip = self.spectrum.paint_bgr(
+                w, h, style=self.pipeline.s.spectrum_style
+            )
         else:
             strip = np.zeros((h, w, 3), dtype=np.uint8)
             strip[:] = (12, 12, 12)

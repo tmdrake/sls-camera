@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from .host_power import env_wants_poweroff_on_quit
+from .spectrum import DEFAULT_SPECTRUM_STYLE, normalize_spectrum_style
 
 VIEWER_ROOT = Path(__file__).resolve().parent.parent
 MODEL_PATH = VIEWER_ROOT / "models" / "pose_landmarker_lite.task"
@@ -26,12 +27,13 @@ PERSIST_KEYS = (
     "pose_min_confidence",
     "max_poses",
     "spectrum_enabled",
+    "spectrum_style",
     "auto_snap_on_detect",
     "drakevox_enabled",
     "drakevox_on_autosnap",
     "display_brightness",
     "captures_target",
-    # quit_powers_off / keep_display_on are not Settings prefs (env / always-on)
+    # quit_powers_off is not persisted (firmware env only)
 )
 
 
@@ -87,6 +89,8 @@ class Settings:
 
     # Spectrum strip (ALSA/Pulse; prefers Kinect UAC after kinect-audio-setup)
     spectrum_enabled: bool = True
+    # Visual style id — see spectrum.SPECTRUM_STYLES; default phosphor scope trail
+    spectrum_style: str = DEFAULT_SPECTRUM_STYLE
     spectrum_height: int = 56
     spectrum_bars: int = 48
 
@@ -133,6 +137,9 @@ class Settings:
             self.drakevox_enabled = bool(data["ovilus_enabled"])
         self.mirror = bool(self.mirror)
         self.spectrum_enabled = bool(self.spectrum_enabled)
+        self.spectrum_style = normalize_spectrum_style(
+            str(getattr(self, "spectrum_style", DEFAULT_SPECTRUM_STYLE) or "")
+        )
         self.auto_snap_on_detect = bool(self.auto_snap_on_detect)
         self.drakevox_enabled = bool(self.drakevox_enabled)
         self.drakevox_on_autosnap = bool(self.drakevox_on_autosnap)
@@ -173,23 +180,27 @@ class Settings:
         self.max_poses = int(max(lo, min(hi, int(self.max_poses))))
 
     def reset_pose_defaults(self) -> None:
-        """Restore MediaPipe pose defaults + field defaults (captures Auto)."""
+        """Restore MediaPipe pose defaults + field defaults (captures Auto, phosphor)."""
         self.pose_min_confidence = float(MEDIAPIPE_DEFAULT_CONFIDENCE)
         self.max_poses = int(MEDIAPIPE_DEFAULT_MAX_POSES)
         self.clamp_pose_confidence()
         self.clamp_max_poses()
         # Captures: prefer USB/SD when present
         self.captures_target = "auto"
+        # Spectrum look: phosphor scope trail
+        self.spectrum_style = DEFAULT_SPECTRUM_STYLE
         self.save_persisted()
 
     def save_persisted(self, path: Path = SETTINGS_PATH) -> None:
         self.clamp_pose_confidence()
         self.clamp_max_poses()
+        self.spectrum_style = normalize_spectrum_style(self.spectrum_style)
         data: Dict[str, Any] = {
             "mirror": bool(self.mirror),
             "pose_min_confidence": float(self.pose_min_confidence),
             "max_poses": int(self.max_poses),
             "spectrum_enabled": bool(self.spectrum_enabled),
+            "spectrum_style": str(self.spectrum_style),
             "auto_snap_on_detect": bool(self.auto_snap_on_detect),
             "drakevox_enabled": bool(self.drakevox_enabled),
             "drakevox_on_autosnap": bool(self.drakevox_on_autosnap),

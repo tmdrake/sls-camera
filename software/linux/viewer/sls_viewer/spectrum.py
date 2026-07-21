@@ -17,6 +17,43 @@ from .audio_device import pick_input_device
 # Optional PCM sinks (e.g. SessionRecorder) share this stream — one open of the mic.
 PcmSink = Callable[[np.ndarray], None]
 
+# Visual styles for the strip (Settings cycle; default phosphor)
+SPECTRUM_STYLES = (
+    "phosphor",
+    "classic",
+    "mirror",
+    "heat",
+    "bands",
+    "grid",
+)
+SPECTRUM_STYLE_LABELS = {
+    "phosphor": "Phosphor",
+    "classic": "Classic",
+    "mirror": "Mirror",
+    "heat": "Heat tips",
+    "bands": "Freq bands",
+    "grid": "Scope grid",
+}
+DEFAULT_SPECTRUM_STYLE = "phosphor"
+
+
+def normalize_spectrum_style(style: Optional[str]) -> str:
+    s = (style or DEFAULT_SPECTRUM_STYLE).strip().lower()
+    if s in SPECTRUM_STYLES:
+        return s
+    return DEFAULT_SPECTRUM_STYLE
+
+
+def spectrum_style_label(style: Optional[str]) -> str:
+    sid = normalize_spectrum_style(style)
+    return SPECTRUM_STYLE_LABELS.get(sid, SPECTRUM_STYLE_LABELS[DEFAULT_SPECTRUM_STYLE])
+
+
+def next_spectrum_style(style: Optional[str]) -> str:
+    sid = normalize_spectrum_style(style)
+    i = SPECTRUM_STYLES.index(sid)
+    return SPECTRUM_STYLES[(i + 1) % len(SPECTRUM_STYLES)]
+
 
 class SpectrumAnalyzer:
     def __init__(
@@ -205,24 +242,56 @@ class SpectrumAnalyzer:
             self._running = False
             return False
 
-    def paint_bgr(self, width: int, height: int) -> np.ndarray:
+    def paint_bgr(
+        self,
+        width: int,
+        height: int,
+        style: str = DEFAULT_SPECTRUM_STYLE,
+    ) -> np.ndarray:
+        """Draw spectrum strip. ``style`` is a SPECTRUM_STYLES id (default phosphor)."""
         import cv2
 
+        style = normalize_spectrum_style(style)
         img = np.zeros((height, width, 3), dtype=np.uint8)
         img[:] = (10, 14, 12)
         with self._lock:
             levels = self._levels.copy()
             now = time.time()
+            # Peaks always tracked (used by phosphor/grid/heat; cheap otherwise)
             peaks = self._update_peaks_unlocked(levels, now)
         n = len(levels)
         if n < 1 or width < 8 or height < 4:
+            self._draw_overlay(img, width, height)
             return img
 
+        if style == "classic":
+            self._paint_classic(img, levels, width, height)
+        elif style == "mirror":
+            self._paint_mirror(img, levels, width, height)
+        elif style == "heat":
+            self._paint_heat(img, levels, peaks, width, height)
+        elif style == "bands":
+            self._paint_bands(img, levels, width, height)
+        elif style == "grid":
+            self._paint_grid(img, levels, peaks, width, height)
+        else:
+            self._paint_phosphor(img, levels, peaks, width, height)
+
+        self._draw_overlay(img, width, height)
+        return img
+
+    def _bar_geom(self, n: int, width: int, height: int):
         usable_h = max(1, height - 4)
         gap = 1
         bar_w = max(1, (width - gap * (n + 1)) // n)
         baseline = height - 2
+        return usable_h, gap, bar_w, baseline
 
+    def _paint_phosphor(self, img, levels, peaks, width: int, height: int) -> None:
+        import cv2
+
+        n = len(levels)
+        usable_h, gap, bar_w, baseline = self._bar_geom(n, width, height)
         for i in range(n):
             v = float(max(0.0, min(1.0, levels[i])))
             p = float(max(0.0, min(1.0, peaks[i] if i < len(peaks) else v)))
@@ -232,36 +301,143 @@ class SpectrumAnalyzer:
             x1 = min(width - 1, x0 + bar_w)
             if x1 <= x0:
                 continue
-
-            # Ghost column (phosphor trail) up to peak — dimmer SLS green
             if h_peak > 0:
-                y_peak = baseline - h_peak
-                trail = (
-                    0,
-                    int(40 + 90 * p),
-                    int(25 + 55 * p),
+                trail = (0, int(40 + 90 * p), int(25 + 55 * p))
+                cv2.rectangle(
+                    img, (x0, baseline - h_peak), (x1, baseline), trail, -1
                 )
-                cv2.rectangle(img, (x0, y_peak), (x1, baseline), trail, -1)
-
-            # Live bar (bright core) on top of trail
             if h_live > 0:
-                y_live = baseline - h_live
-                core = (
-                    0,
-                    int(160 + 95 * v),
-                    int(100 + 120 * v),
+                core = (0, int(160 + 95 * v), int(100 + 120 * v))
+                cv2.rectangle(
+                    img, (x0, baseline - h_live), (x1, baseline), core, -1
                 )
-                cv2.rectangle(img, (x0, y_live), (x1, baseline), core, -1)
-
-            # Peak cap (scope marker) — short bright tick at envelope top
             if h_peak > 1:
                 y_cap = baseline - h_peak
-                cap = (40, 255, 200)
                 y1_cap = min(baseline, y_cap + max(1, min(2, bar_w)))
-                cv2.rectangle(img, (x0, y_cap), (x1, y1_cap), cap, -1)
-
-        # Baseline (scope ground)
+                cv2.rectangle(img, (x0, y_cap), (x1, y1_cap), (40, 255, 200), -1)
         cv2.line(img, (0, baseline), (width - 1, baseline), (35, 55, 45), 1)
+
+    def _paint_classic(self, img, levels, width: int, height: int) -> None:
+        import cv2
+
+        n = len(levels)
+        usable_h, gap, bar_w, baseline = self._bar_geom(n, width, height)
+        for i in range(n):
+            v = float(max(0.0, min(1.0, levels[i])))
+            h = int(v * usable_h)
+            x0 = gap + i * (bar_w + gap)
+            x1 = min(width - 1, x0 + bar_w)
+            if h < 1 or x1 <= x0:
+                continue
+            color = (0, int(180 + 75 * v), int(120 + 100 * v))
+            cv2.rectangle(img, (x0, baseline - h), (x1, baseline), color, -1)
+        cv2.line(img, (0, baseline), (width - 1, baseline), (40, 40, 40), 1)
+
+    def _paint_mirror(self, img, levels, width: int, height: int) -> None:
+        import cv2
+
+        n = len(levels)
+        mid = height // 2
+        half = max(1, mid - 2)
+        gap = 1
+        bar_w = max(1, (width - gap * (n + 1)) // n)
+        for i in range(n):
+            v = float(max(0.0, min(1.0, levels[i])))
+            h = int(v * half)
+            x0 = gap + i * (bar_w + gap)
+            x1 = min(width - 1, x0 + bar_w)
+            if h < 1 or x1 <= x0:
+                continue
+            upper = (0, int(150 + 100 * v), int(90 + 130 * v))
+            lower = (0, int(80 + 70 * v), int(50 + 80 * v))
+            cv2.rectangle(img, (x0, mid - h), (x1, mid), upper, -1)
+            cv2.rectangle(img, (x0, mid), (x1, mid + h), lower, -1)
+        cv2.line(img, (0, mid), (width - 1, mid), (45, 70, 55), 1)
+
+    def _paint_heat(self, img, levels, peaks, width: int, height: int) -> None:
+        """Green bars with magenta tips (DrakeVox accent) on loud bins."""
+        import cv2
+
+        n = len(levels)
+        usable_h, gap, bar_w, baseline = self._bar_geom(n, width, height)
+        for i in range(n):
+            v = float(max(0.0, min(1.0, levels[i])))
+            p = float(max(0.0, min(1.0, peaks[i] if i < len(peaks) else v)))
+            h_live = int(v * usable_h)
+            h_peak = int(p * usable_h)
+            x0 = gap + i * (bar_w + gap)
+            x1 = min(width - 1, x0 + bar_w)
+            if x1 <= x0:
+                continue
+            if h_peak > h_live and h_peak > 0:
+                trail = (20, int(30 + 40 * p), int(40 + 80 * p))
+                cv2.rectangle(
+                    img, (x0, baseline - h_peak), (x1, baseline), trail, -1
+                )
+            if h_live > 0:
+                # Split bar: green body, magenta tip on top third when hot
+                tip_h = max(1, int(h_live * 0.28)) if v > 0.45 else 0
+                body_h = h_live - tip_h
+                if body_h > 0:
+                    green = (0, int(140 + 100 * v), int(90 + 100 * v))
+                    cv2.rectangle(
+                        img,
+                        (x0, baseline - body_h),
+                        (x1, baseline),
+                        green,
+                        -1,
+                    )
+                if tip_h > 0:
+                    # BGR magenta / pink
+                    mag = (int(180 + 75 * v), int(30 + 40 * v), int(200 + 55 * v))
+                    cv2.rectangle(
+                        img,
+                        (x0, baseline - h_live),
+                        (x1, baseline - body_h),
+                        mag,
+                        -1,
+                    )
+        cv2.line(img, (0, baseline), (width - 1, baseline), (35, 45, 50), 1)
+
+    def _paint_bands(self, img, levels, width: int, height: int) -> None:
+        """Low→mid→high color ramp across bar index."""
+        import cv2
+
+        n = len(levels)
+        usable_h, gap, bar_w, baseline = self._bar_geom(n, width, height)
+        for i in range(n):
+            v = float(max(0.0, min(1.0, levels[i])))
+            h = int(v * usable_h)
+            x0 = gap + i * (bar_w + gap)
+            x1 = min(width - 1, x0 + bar_w)
+            if h < 1 or x1 <= x0:
+                continue
+            t = i / max(1, n - 1)  # 0 low … 1 high
+            # BGR: teal lows → green mids → cyan highs
+            b = int(40 + 120 * t + 40 * v)
+            g = int(140 + 90 * v)
+            r = int(60 + 40 * (1.0 - t) + 50 * v)
+            cv2.rectangle(
+                img,
+                (x0, baseline - h),
+                (x1, baseline),
+                (min(255, b), min(255, g), min(255, r)),
+                -1,
+            )
+        cv2.line(img, (0, baseline), (width - 1, baseline), (35, 50, 45), 1)
+
+    def _paint_grid(self, img, levels, peaks, width: int, height: int) -> None:
+        """Phosphor bars + faint horizontal reticle."""
+        import cv2
+
+        # Grid first so bars sit on top
+        for frac in (0.25, 0.5, 0.75):
+            y = int(height * (1.0 - frac * 0.85) - 2)
+            cv2.line(img, (0, y), (width - 1, y), (22, 38, 30), 1)
+        self._paint_phosphor(img, levels, peaks, width, height)
+
+    def _draw_overlay(self, img, width: int, height: int) -> None:
+        import cv2
 
         if not self.active:
             msg = "reconnecting mic…" if self._want_enabled else "spectrum off"
@@ -288,4 +464,3 @@ class SpectrumAnalyzer:
                 1,
                 cv2.LINE_AA,
             )
-        return img
