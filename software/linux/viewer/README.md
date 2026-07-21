@@ -18,7 +18,7 @@
 | **Brightness** | Settings ±10% (sysfs / brightnessctl / xrandr) |
 | **Quit** | Confirms before exit; on appliance firmware powers off (exit 10) |
 | **DrakeVox** | 5–15 min timer + TTS; ~2k-word list; under IR PiP; key **O** |
-| **Settings** | Two-pane panel; pose, DrakeVox, captures, Keep display on, Format removable media, … |
+| **Settings** | Two-pane panel; pose, DrakeVox, captures, Format removable media, … |
 | **On open** | LED green, tilt auto-level 0°, IR sensor gain **50** (fixed) |
 
 Browser UI is optional (`--ui web`).

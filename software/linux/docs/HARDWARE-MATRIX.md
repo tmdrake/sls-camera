@@ -51,7 +51,7 @@ App depth canvas remains **1280×720** composite (independent of panel).
 |---------|-------|--------|
 | Geometry log at start | #6 | Done — `display: WxH avail=… dpr=… dpi=…` |
 | Two-pane scrollable Settings | #6 | Done |
-| Keep display on | #9 | Done |
+| Wake lock (always while running) | #9 | Done |
 | Quit → power off (exit 10) | #4 | Done |
 | Captures Auto SD-first | #5 | Done |
 | Format / prepare media | #8 | App Settings (see viewer README) |
