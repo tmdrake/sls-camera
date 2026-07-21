@@ -1178,8 +1178,8 @@ class SlsMainWindow(QMainWindow):
     def _request_quit(self) -> None:
         """Quit button / Q / Esc (when Settings closed) — confirm first.
 
-        When Power off on Quit is ON, dialog says so and close uses exit code 10
-        (firmware contract) plus best-effort host poweroff.
+        When firmware sets SLS_QUIT_ACTION=shutdown, dialog is “Power off?”
+        and exit code 10 (firmware launcher does host poweroff).
         """
         if self._quit_confirmed:
             self.close()

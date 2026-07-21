@@ -16,7 +16,7 @@
 | **Reconnect** | Splash **Starting / Reconnecting to SLS Camera**; infinite retry |
 | **Battery** | Status `BAT n%` / `⚡` when a battery exists (hidden on desktop) |
 | **Brightness** | Settings ±10% (sysfs / brightnessctl / xrandr) |
-| **Quit** | Confirms before exit (stops recording cleanly); optional **Power off on Quit** |
+| **Quit** | Confirms before exit; on appliance firmware powers off (exit 10) |
 | **DrakeVox** | 5–15 min timer + TTS; ~2k-word list; under IR PiP; key **O** |
 | **Settings** | Scrollable panel (fits 1280×800 tablets); pose, mirror, spectrum, DrakeVox, captures, Power off on Quit, … |
 | **On open** | LED green, tilt auto-level 0°, IR sensor gain **50** (fixed) |
