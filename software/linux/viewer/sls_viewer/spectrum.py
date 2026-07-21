@@ -70,7 +70,7 @@ class SpectrumAnalyzer:
         self,
         sample_rate: int = 16000,
         block_size: int = 1024,
-        n_bars: int = 48,
+        n_bars: int = 64,
         retry_interval_s: float = 2.0,
     ):
         self.sample_rate = sample_rate
