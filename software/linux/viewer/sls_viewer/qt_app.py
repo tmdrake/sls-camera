@@ -152,8 +152,26 @@ def bgr_to_qpixmap(bgr: np.ndarray) -> QPixmap:
     return QPixmap.fromImage(qimg)
 
 
+def _aspect_label(w: int, h: int) -> str:
+    """Rough aspect family for field logs (16:10 fleet target)."""
+    if w < 1 or h < 1:
+        return "?"
+    ar = w / float(h)
+    if 1.55 <= ar <= 1.65:
+        return "16:10"
+    if 1.72 <= ar <= 1.82:
+        return "16:9"
+    if 1.45 <= ar <= 1.55:
+        return "3:2"
+    if 1.28 <= ar <= 1.40:
+        return "4:3"
+    if ar < 1.0:
+        return "portrait"
+    return f"{ar:.2f}"
+
+
 def format_display_geometry(app: Optional[QApplication] = None) -> str:
-    """One-line primary-screen geometry for logs / hardware matrix (#6)."""
+    """One-line primary-screen geometry for logs / hardware matrix (#6 / #7)."""
     app = app or QApplication.instance()
     if app is None:
         return "display: (no QApplication)"
@@ -180,10 +198,11 @@ def format_display_geometry(app: Optional[QApplication] = None) -> str:
             orient = f" orient={int(o)}"
     except Exception:
         pass
+    ar = _aspect_label(g.width(), g.height())
     return (
         f"display: {g.width()}x{g.height()} "
         f"avail={avail.width()}x{avail.height()} "
-        f"dpr={dpr:.1f} dpi={dpi:.0f}{orient}"
+        f"ar={ar} dpr={dpr:.1f} dpi={dpi:.0f}{orient}"
     )
 
 
@@ -744,7 +763,12 @@ class SettingsDialog(QDialog):
         self._refresh()
 
     def _fit_to_screen(self) -> None:
-        """Wide landscape dialog: ~90% available size; left pane scrolls if needed."""
+        """Fit Settings for fleet **16:10 landscape** (1280×800 / 1920×1200).
+
+        Wide two-pane dialog, capped to availableGeometry; left pane scrolls.
+        16:10-ish panels get a wider/taller preferred size so controls + status
+        sit side-by-side without feeling like a phone column.
+        """
         screen = self.screen()
         if screen is None:
             app = QApplication.instance()
@@ -752,15 +776,30 @@ class SettingsDialog(QDialog):
         if screen is None:
             return
         avail = screen.availableGeometry()
-        max_h = max(320, int(avail.height() * 0.90))
-        max_w = max(640, int(avail.width() * 0.92))
-        # Prefer a wide panel (two panes) rather than a tall narrow column
-        prefer_w = min(max_w, max(720, int(avail.width() * 0.72)))
-        prefer_h = min(max_h, max(420, int(avail.height() * 0.72)))
-        self.setMinimumWidth(min(640, max_w))
+        aw, ah = max(1, avail.width()), max(1, avail.height())
+        ar = aw / float(ah)
+        max_h = max(300, int(ah * 0.90))
+        max_w = max(560, int(aw * 0.94))
+        # Fleet target: 16:10 landscape (1.6). Also treat near-16:10 as such.
+        if 1.50 <= ar <= 1.70 and aw >= ah:
+            # e.g. 1280×800 → ~1080×640; 1920×1200 → ~1620×960
+            prefer_w = min(max_w, int(aw * 0.84))
+            prefer_h = min(max_h, int(ah * 0.84))
+        elif aw >= ah:
+            # Other landscape (16:9, ultrawide): keep wide but not full height
+            prefer_w = min(max_w, max(720, int(aw * 0.75)))
+            prefer_h = min(max_h, max(400, int(ah * 0.78)))
+        else:
+            # Portrait fallback (should be rare after FW landscape lock)
+            prefer_w = min(max_w, max(480, int(aw * 0.92)))
+            prefer_h = min(max_h, max(520, int(ah * 0.70)))
+        min_w = min(640, max_w) if aw >= 700 else min(480, max_w)
+        min_h = min(360, max_h) if ah >= 500 else min(280, max_h)
+        self.setMinimumWidth(min_w)
+        self.setMinimumHeight(min_h)
         self.setMaximumWidth(max_w)
         self.setMaximumHeight(max_h)
-        self.resize(prefer_w, prefer_h)
+        self.resize(max(min_w, prefer_w), max(min_h, prefer_h))
 
     def showEvent(self, event) -> None:
         super().showEvent(event)

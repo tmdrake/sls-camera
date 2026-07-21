@@ -33,17 +33,31 @@ After first appliance boot on a unit:
 - Xbox 360 Kinect + **portable power** (not bus-powered)  
 - Details: [FW kinect-portable-power.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/devices/kinect-portable-power.md)
 
-## App UI expectations by resolution
+## Product display target: **16:10 landscape**
+
+Fleet tablets (after firmware landscape lock) are designed for **16:10**:
+
+| Ratio | Example | Fleet role |
+|-------|---------|------------|
+| **16:10** | **1280×800**, **1920×1200** | **Primary** — tablet-01 / tablet-02 / KVM |
+| 16:9 | 1280×720, 1920×1080 | Supported (slightly shorter); Settings still scrolls |
+| 3:2 | Surface-class | Usually more vertical room |
+| Portrait | 800×1280 raw glass | Firmware **locks landscape** before app |
+
+Same **aspect**, different **pixel count**: 1920×1200 is a sharper 16:10, not a different shape.  
+App Settings `_fit_to_screen` prefers a wide two-pane dialog on 16:10-ish panels.
+
+### App UI expectations by resolution
 
 | Class | Typical | Settings / UI |
 |-------|---------|----------------|
-| Fleet tablet-01 | 1280×800 landscape | Two-pane Settings; left scroll if needed |
-| Fleet tablet-02 | 1920×1200 landscape | Usually no control scroll |
-| Phase 1 VM | 1280×800 | Same as tablet-01 class |
-| Short / old | 1024×600 | Scroll required; log geometry |
+| Fleet tablet-01 | **1280×800** 16:10 | Two-pane Settings; left scroll if needed |
+| Fleet tablet-02 | **1920×1200** 16:10 | More room; usually little control scroll |
+| Phase 1 VM | 1280×800 16:10 | Same as tablet-01 class |
+| Short / old | 1024×600 (~17:10) | Scroll required; log geometry |
 | HiDPI 200% on 800p | logical ~640×400 | High risk — note dpr in matrix |
 
-App depth canvas remains **1280×720** composite (independent of panel).
+App depth canvas remains **1280×720** (16:9 composite) scaled with keep-aspect on the 16:10 panel (letterbox/pillarbox as needed).
 
 ## App features that support this matrix
 

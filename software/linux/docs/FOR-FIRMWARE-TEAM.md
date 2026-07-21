@@ -67,6 +67,17 @@ Env: `SLS_DEB_CACHE`, `SLS_OFFLINE=1`, `SLS_APT_YES=1`.
 
 ---
 
+## Display target (fleet)
+
+| Target | Detail |
+|--------|--------|
+| **Aspect** | **16:10 landscape** after `sls-lock-landscape` |
+| **Examples** | tablet-01 **1280×800** · tablet-02 **1920×1200** · KVM **1280×800** |
+| **App Settings** | Sized for 16:10 two-pane dialog; scrolls if short |
+| **Geometry log** | Startup line includes `ar=16:10` when detected — paste into hardware matrix |
+
+Portrait native glass must be rotated **before** the app (firmware). Do not leave the session in portrait for field use.
+
 ## Appliance contracts the app already honors
 
 | Contract | App behavior |
