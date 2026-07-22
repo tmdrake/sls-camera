@@ -196,6 +196,7 @@ Viewer CLI table: [viewer/README.md](../viewer/README.md) · issue [#10](https:/
 | **`SLS_ON_QUIT=app`** + **`SLS_QUIT_FALLBACK=none`** | Power off **only** on exit 10 |
 | **Wake lock** | Always on while field UI runs (not host power-off) |
 | **Format media** | UDisks2 then mkfs; two Yes confirms; FAT32 `SLS-MEDIA` |
+| **Date & time** | Settings → **Date & time…**; needs polkit/sudoers ([DATE-TIME-PRIVS.md](DATE-TIME-PRIVS.md)) |
 | **Field tilt** | Launcher passes **`--no-auto-level`** (see above) |
 
 **Host power-off is firmware-owned** (launcher + `sudoers.d/sls-poweroff`).  
@@ -224,6 +225,7 @@ Do **not** put Microsoft Kinect UAC audio firmware in public trees (`kinect-audi
 - [ ] Captures: `/data/sls-captures` and/or Auto SD/USB  
 - [ ] Quit → exit 10 → poweroff (appliance)  
 - [ ] **Polkit format rule** installed; Format media works without root password  
+- [ ] **Polkit timedate rule** (+ optional sudoers); Settings → Date & time works without password  
 - [ ] Launcher passes **`--no-auto-level`** (no tilt motor on open)  
 - [ ] Landscape **16:10**; geometry log → hardware matrix  
 - [ ] SDDM autologin (not LightDM) on Lubuntu 26.04  
@@ -242,5 +244,7 @@ Do **not** put Microsoft Kinect UAC audio firmware in public trees (`kinect-audi
 | [#7](https://github.com/tmdrake/sls-camera/issues/7) Hardware matrix | **Open** — fill post-wipe row on real tablet |
 | [#8](https://github.com/tmdrake/sls-camera/issues/8) Format media | **Closed** — ship polkit for kiosk UX |
 | [#9](https://github.com/tmdrake/sls-camera/issues/9) Wake lock | **Closed** |
+| [#10](https://github.com/tmdrake/sls-camera/issues/10) Kinect tilt | **Closed** — `--no-auto-level` + no motor command |
+| [#11](https://github.com/tmdrake/sls-camera/issues/11) Date & time | **App + polkit docs** — ship [DATE-TIME-PRIVS.md](DATE-TIME-PRIVS.md) |
 
 App backlog: [docs/TODO.md](../../../docs/TODO.md).

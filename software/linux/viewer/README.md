@@ -18,7 +18,7 @@
 | **Brightness** | Settings ±10% (sysfs / brightnessctl / xrandr) |
 | **Quit** | Confirms before exit; on appliance firmware powers off (exit 10) |
 | **DrakeVox** | 5–15 min timer + TTS; ~2k-word list; under IR PiP; key **O** |
-| **Settings** | Two-pane panel; pose, DrakeVox, captures, Format removable media, … |
+| **Settings** | Two-pane panel; pose, DrakeVox, captures, Format media, Date & time, … |
 | **On open** | LED green, tilt auto-level 0°, IR sensor gain **50** (fixed) |
 
 Browser UI is optional (`--ui web`).
@@ -110,6 +110,7 @@ Firmware should leave the session in **16:10 landscape** before launch. Issue: [
 | **Captures to** | **Auto** (default) or **Local** — see [Captures](#captures) |
 | **Copy local→media** | Only visible when USB/SD is mounted; confirm then copy |
 | **Format removable media…** | Confirm twice → erase + FAT32 the mounted SD/USB → `SLS-MEDIA` + `sls-captures/` (needs admin) — [#8](https://github.com/tmdrake/sls-camera/issues/8) |
+| **Date & time…** | Set host local date/time (24h) + common timezone via `timedatectl` — [#11](https://github.com/tmdrake/sls-camera/issues/11); appliance needs [DATE-TIME-PRIVS](../docs/DATE-TIME-PRIVS.md) |
 
 ## Captures
 

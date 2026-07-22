@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import calendar
 import sys
+from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
 import cv2
@@ -36,6 +38,12 @@ from .battery import BatteryMonitor
 from .drakevox import DrakeVoxEngine, paint_drakevox_bgr
 from .display_inhibit import DisplayInhibit
 from .host_power import EXIT_OK, EXIT_POWEROFF
+from .host_time import (
+    next_common_timezone,
+    read_host_time,
+    set_host_time,
+    set_host_timezone,
+)
 from .media_format import (
     DEFAULT_LABEL,
     device_size_bytes,
@@ -150,6 +158,253 @@ def bgr_to_qpixmap(bgr: np.ndarray) -> QPixmap:
     bytes_per_line = ch * w
     qimg = QImage(rgb.data, w, h, bytes_per_line, QImage.Format.Format_RGB888).copy()
     return QPixmap.fromImage(qimg)
+
+
+def _days_in_month(year: int, month: int) -> int:
+    return calendar.monthrange(int(year), int(month))[1]
+
+
+class DateTimeDialog(QDialog):
+    """Touch-friendly set local date/time + common timezone (#11)."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Date & time")
+        self.setModal(True)
+        self.setWindowFlags(
+            Qt.WindowType.Dialog
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+        )
+        self.setStyleSheet(_STYLE)
+        self.setMinimumWidth(520)
+        self.setMinimumHeight(420)
+
+        info = read_host_time()
+        self._year = info.local.year
+        self._month = info.local.month
+        self._day = info.local.day
+        self._hour = info.local.hour
+        self._minute = info.local.minute
+        self._timezone = info.timezone or "UTC"
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(14, 12, 14, 12)
+        root.setSpacing(8)
+
+        top = QHBoxLayout()
+        hdr = QLabel("DATE & TIME")
+        hdr.setObjectName("hdr")
+        top.addWidget(hdr)
+        top.addStretch(1)
+        self.btn_close = QPushButton("Close")
+        self.btn_close.setObjectName("wide")
+        self.btn_close.clicked.connect(self.accept)
+        top.addWidget(self.btn_close)
+        root.addLayout(top)
+
+        self.now_label = QLabel("")
+        self.now_label.setStyleSheet(
+            "color: #00ffb4; font-size: 14px; font-family: monospace;"
+        )
+        self.now_label.setWordWrap(True)
+        root.addWidget(self.now_label)
+
+        # Editable fields: − value + rows (touch)
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(6)
+        grid.setVerticalSpacing(6)
+
+        def _row(r: int, title: str, down, up, label_attr: str) -> QLabel:
+            grid.addWidget(QLabel(title), r, 0)
+            bd = QPushButton("−")
+            bd.clicked.connect(down)
+            bu = QPushButton("+")
+            bu.clicked.connect(up)
+            lab = QLabel("")
+            lab.setObjectName("vallabel")
+            lab.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            setattr(self, label_attr, lab)
+            grid.addWidget(bd, r, 1)
+            grid.addWidget(lab, r, 2)
+            grid.addWidget(bu, r, 3)
+            return lab
+
+        _row(0, "Year", lambda: self._nudge_year(-1), lambda: self._nudge_year(+1), "lab_year")
+        _row(1, "Month", lambda: self._nudge_month(-1), lambda: self._nudge_month(+1), "lab_month")
+        _row(2, "Day", lambda: self._nudge_day(-1), lambda: self._nudge_day(+1), "lab_day")
+        _row(3, "Hour (24h)", lambda: self._nudge_hour(-1), lambda: self._nudge_hour(+1), "lab_hour")
+        _row(4, "Minute", lambda: self._nudge_minute(-1), lambda: self._nudge_minute(+1), "lab_minute")
+        root.addLayout(grid)
+
+        tz_row = QHBoxLayout()
+        tz_row.addWidget(QLabel("Timezone"))
+        self.btn_tz = QPushButton()
+        self.btn_tz.setObjectName("wide")
+        self.btn_tz.setToolTip(
+            "Cycle common timezones (US + UTC + a few extras). "
+            "Apply zone separately from date/time."
+        )
+        self.btn_tz.clicked.connect(self._cycle_tz)
+        tz_row.addWidget(self.btn_tz, stretch=1)
+        self.btn_apply_tz = QPushButton("Apply zone")
+        self.btn_apply_tz.setObjectName("wide")
+        self.btn_apply_tz.clicked.connect(self._apply_tz)
+        tz_row.addWidget(self.btn_apply_tz)
+        root.addLayout(tz_row)
+
+        act = QHBoxLayout()
+        self.btn_load_now = QPushButton("Load now")
+        self.btn_load_now.setObjectName("wide")
+        self.btn_load_now.setToolTip("Reload editors from the current system clock")
+        self.btn_load_now.clicked.connect(self._load_from_system)
+        self.btn_apply = QPushButton("Apply date & time")
+        self.btn_apply.setObjectName("wide")
+        self.btn_apply.setToolTip(
+            "Set the system clock (persists across reboot). "
+            "Needs timedatectl privilege (firmware polkit / sudoers)."
+        )
+        self.btn_apply.clicked.connect(self._apply_time)
+        act.addWidget(self.btn_load_now)
+        act.addWidget(self.btn_apply)
+        root.addLayout(act)
+
+        self.status = QLabel("")
+        self.status.setStyleSheet("color: #88ccaa; font-size: 12px;")
+        self.status.setWordWrap(True)
+        root.addWidget(self.status)
+
+        hint = QLabel(
+            "Sets the host clock via timedatectl (not app-only). "
+            "Field tablets: firmware polkit for user sls — see DATE-TIME-PRIVS.md. "
+            "Manual set turns NTP off so offline time sticks."
+        )
+        hint.setStyleSheet("color: #555; font-size: 10px;")
+        hint.setWordWrap(True)
+        root.addWidget(hint)
+        root.addStretch(1)
+
+        self._tick = QTimer(self)
+        self._tick.timeout.connect(self._refresh_now_label)
+        self._tick.start(1000)
+
+        self._sync_labels()
+        self._refresh_now_label()
+
+    def _clamp_day(self) -> None:
+        dim = _days_in_month(self._year, self._month)
+        if self._day > dim:
+            self._day = dim
+        if self._day < 1:
+            self._day = 1
+
+    def _sync_labels(self) -> None:
+        self._clamp_day()
+        self.lab_year.setText(str(self._year))
+        self.lab_month.setText(f"{self._month:02d}")
+        self.lab_day.setText(f"{self._day:02d}")
+        self.lab_hour.setText(f"{self._hour:02d}")
+        self.lab_minute.setText(f"{self._minute:02d}")
+        self.btn_tz.setText(self._timezone)
+
+    def _refresh_now_label(self) -> None:
+        info = read_host_time()
+        self.now_label.setText(f"System now:  {info.summary()}")
+
+    def _load_from_system(self) -> None:
+        info = read_host_time()
+        self._year = info.local.year
+        self._month = info.local.month
+        self._day = info.local.day
+        self._hour = info.local.hour
+        self._minute = info.local.minute
+        self._timezone = info.timezone or self._timezone
+        self._sync_labels()
+        self.status.setText("Loaded current system clock into editors.")
+        self._refresh_now_label()
+
+    def _nudge_year(self, d: int) -> None:
+        self._year = max(2000, min(2100, self._year + d))
+        self._sync_labels()
+
+    def _nudge_month(self, d: int) -> None:
+        m = self._month + d
+        if m < 1:
+            m = 12
+            self._year = max(2000, self._year - 1)
+        elif m > 12:
+            m = 1
+            self._year = min(2100, self._year + 1)
+        self._month = m
+        self._sync_labels()
+
+    def _nudge_day(self, d: int) -> None:
+        dim = _days_in_month(self._year, self._month)
+        self._day = ((self._day - 1 + d) % dim) + 1
+        self._sync_labels()
+
+    def _nudge_hour(self, d: int) -> None:
+        self._hour = (self._hour + d) % 24
+        self._sync_labels()
+
+    def _nudge_minute(self, d: int) -> None:
+        self._minute = (self._minute + d) % 60
+        self._sync_labels()
+
+    def _cycle_tz(self) -> None:
+        self._timezone = next_common_timezone(self._timezone)
+        self._sync_labels()
+        self.status.setText(f"Timezone selection: {self._timezone} (press Apply zone)")
+
+    def _apply_tz(self) -> None:
+        ok, msg = set_host_timezone(self._timezone)
+        self.status.setText(msg)
+        self._refresh_now_label()
+        if ok:
+            info = read_host_time()
+            self._timezone = info.timezone or self._timezone
+            self._sync_labels()
+
+    def _apply_time(self) -> None:
+        self._clamp_day()
+        when = datetime(
+            self._year, self._month, self._day, self._hour, self._minute, 0
+        )
+        ok, msg = set_host_time(when)
+        self.status.setText(msg)
+        self._refresh_now_label()
+        if ok:
+            # Re-sync editors from system (HW clock may round seconds)
+            self._load_from_system()
+            self.status.setText(msg)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._refresh_now_label()
+        # Center over parent / screen
+        parent = self.parentWidget()
+        screen = self.screen()
+        if screen is None:
+            app = QApplication.instance()
+            screen = app.primaryScreen() if app is not None else None
+        avail = screen.availableGeometry() if screen is not None else None
+        if parent is not None:
+            pg = parent.geometry()
+            x = pg.x() + (pg.width() - self.width()) // 2
+            y = pg.y() + (pg.height() - self.height()) // 2
+        elif avail is not None:
+            x = avail.x() + (avail.width() - self.width()) // 2
+            y = avail.y() + (avail.height() - self.height()) // 2
+        else:
+            return
+        if avail is not None:
+            x = max(avail.x(), min(x, avail.x() + avail.width() - self.width()))
+            y = max(avail.y(), min(y, avail.y() + avail.height() - self.height()))
+        self.move(int(x), int(y))
+
+    def closeEvent(self, event) -> None:
+        self._tick.stop()
+        super().closeEvent(event)
 
 
 def _aspect_label(w: int, h: int) -> str:
@@ -447,6 +702,16 @@ class SettingsDialog(QDialog):
         )
         self.btn_format_media.clicked.connect(self._format_media)
         left_layout.addWidget(self.btn_format_media)
+
+        # System date/time for kiosk tablets without a desktop clock UI (#11)
+        self.btn_datetime = QPushButton("Date & time…")
+        self.btn_datetime.setObjectName("wide")
+        self.btn_datetime.setToolTip(
+            "Set host local date, time, and common timezone via timedatectl. "
+            "Needs firmware polkit/sudoers for passwordless apply (DATE-TIME-PRIVS)."
+        )
+        self.btn_datetime.clicked.connect(self._open_datetime)
+        left_layout.addWidget(self.btn_datetime)
         left_layout.addStretch(1)
 
         self._scroll.setWidget(left)
@@ -581,7 +846,11 @@ class SettingsDialog(QDialog):
                 inh = f"\nwake-lock: {di.detail}"
             else:
                 inh = "\nwake-lock: (not active)"
-        self.display_label.setText(geom + inh)
+        try:
+            clock = "\n" + read_host_time().summary()
+        except Exception:
+            clock = ""
+        self.display_label.setText(geom + inh + clock)
 
         cap_mode = self.pipeline.s.captures_target
         has_media = False
@@ -707,6 +976,11 @@ class SettingsDialog(QDialog):
         parent = self.parent()
         if parent is not None and hasattr(parent, "format_removable_media"):
             parent.format_removable_media()
+        self._refresh()
+
+    def _open_datetime(self) -> None:
+        dlg = DateTimeDialog(self)
+        dlg.exec()
         self._refresh()
 
     def _drakevox_now(self) -> None:
