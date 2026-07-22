@@ -338,10 +338,11 @@ def ensure_max_output_volume() -> None:
                 ("LOUT R Playback Switch", "on"),
                 ("LOUT MIX DAC L1 Switch", "on"),
                 ("LOUT MIX DAC R1 Switch", "on"),
-                # Leave HP off so internal speakers get the path
-                ("Headphone Switch", "off"),
-                ("HPO L Playback Switch", "off"),
-                ("HPO R Playback Switch", "off"),
+                # Keep HP path on: PipeWire default sink is often "Headphones";
+                # forcing HPO off silences DrakeVox even with Speaker on.
+                ("Headphone Switch", "on"),
+                ("HPO L Playback Switch", "on"),
+                ("HPO R Playback Switch", "on"),
                 # RCA: UCM often leaves OUT at 0 → silent
                 ("OUT Playback Volume", "39"),
             ):
@@ -358,6 +359,16 @@ def ensure_max_output_volume() -> None:
             try:
                 subprocess.run(
                     [amixer, "-c", card, "-q", "sset", "Speaker", "on"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=2,
+                    check=False,
+                )
+            except Exception:
+                pass
+            try:
+                subprocess.run(
+                    [amixer, "-c", card, "-q", "sset", "Headphone", "100%", "unmute"],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     timeout=2,
