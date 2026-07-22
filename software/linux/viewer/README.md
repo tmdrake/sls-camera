@@ -287,6 +287,17 @@ When Linux exposes a battery under `/sys/class/power_supply` (or UPower), the bo
 
 Tooltip has status string + sysfs name. Code: `battery.py` (read) + `battery_ui.py` (paint) — [#12](https://github.com/tmdrake/sls-camera/issues/12).
 
+### Desktop preview (no battery)
+
+The gauge sits on the **bottom bar**, left of **Settings** (after the status text). On a desktop/VM with no pack it is hidden. To preview placement:
+
+```bash
+SLS_FAKE_BATTERY=64 ./run.sh --demo          # normal green ~64%
+SLS_FAKE_BATTERY=12 ./run.sh --demo          # low (red)
+SLS_FAKE_BATTERY=87,charging ./run.sh --demo # blue + bolt
+SLS_FAKE_BATTERY=1 ./run.sh --demo           # show mid pack (55%)
+```
+
 ### Display brightness (Settings)
 
 | Backend | When |

@@ -1,11 +1,18 @@
 """System battery readout for tablet status bar.
 
 Reads /sys/class/power_supply (type=Battery). Optional upower fallback.
-Desktop hosts without a battery return present=False (status token omitted).
+Desktop hosts without a battery return present=False (gauge hidden).
+
+Desktop layout preview (no pack):
+  SLS_FAKE_BATTERY=64           # show gauge at 64%
+  SLS_FAKE_BATTERY=12           # low (red)
+  SLS_FAKE_BATTERY=87,charging  # blue fill + bolt
+  SLS_FAKE_BATTERY=1            # same as 50% discharging
 """
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import time
@@ -178,8 +185,57 @@ def _upower_fallback() -> Optional[BatteryReading]:
     return None
 
 
+def _fake_battery_from_env() -> Optional[BatteryReading]:
+    """Optional desktop preview via SLS_FAKE_BATTERY (see module docstring)."""
+    raw = (os.environ.get("SLS_FAKE_BATTERY") or "").strip()
+    if not raw:
+        return None
+    # Truthy without a percent → mid pack so the widget is easy to spot
+    if raw.lower() in ("1", "true", "yes", "on"):
+        return BatteryReading(
+            present=True,
+            percent=55,
+            charging=False,
+            status="Fake (SLS_FAKE_BATTERY)",
+            name="FAKE",
+        )
+    charging = False
+    percent_s = raw
+    if "," in raw:
+        parts = [p.strip() for p in raw.split(",")]
+        percent_s = parts[0]
+        for p in parts[1:]:
+            pl = p.lower()
+            if pl in ("charging", "charge", "ac", "bolt", "1", "true", "yes"):
+                charging = True
+    try:
+        percent = int(float(percent_s.replace("%", "")))
+    except ValueError:
+        return BatteryReading(
+            present=True,
+            percent=55,
+            charging=charging,
+            status="Fake (SLS_FAKE_BATTERY)",
+            name="FAKE",
+        )
+    return BatteryReading(
+        present=True,
+        percent=max(0, min(100, percent)),
+        charging=charging,
+        status="Charging" if charging else "Discharging",
+        name="FAKE",
+    )
+
+
 def read_battery() -> BatteryReading:
-    """Best available battery reading, or present=False."""
+    """Best available battery reading, or present=False.
+
+    Fake env (``SLS_FAKE_BATTERY``) wins so desktops can preview the gauge
+    layout even when no pack is present.
+    """
+    fake = _fake_battery_from_env()
+    if fake is not None:
+        return fake
     bats = _sysfs_batteries()
     if bats:
         # Prefer highest capacity (main pack)
