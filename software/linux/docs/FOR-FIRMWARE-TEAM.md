@@ -223,6 +223,7 @@ Do **not** put Microsoft Kinect UAC audio firmware in public trees (`kinect-audi
 - [ ] Offline seed install works (`SLS_OFFLINE=1` or appliance script)  
 - [ ] Wheels + pose model offline  
 - [ ] App smoke `--demo`; Kinect + spectrum when audio firmware present  
+- [ ] DrakeVox TTS under **tablet-class VM** (2 GiB / 2 vCPU) or real RCA — [#13](https://github.com/tmdrake/sls-camera/issues/13)
 - [ ] Captures: `/data/sls-captures` and/or Auto SD/USB  
 - [ ] Quit → exit 10 → poweroff (appliance)  
 - [ ] **Polkit format rule** installed; Format media works without root password  

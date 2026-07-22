@@ -59,7 +59,7 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] **Settings date & time (#11)** — host clock via `timedatectl`; touch dialog; FW polkit/sudoers in DATE-TIME-PRIVS  
 - [x] **Better visual battery gauge (#12)** — status-bar icon + fill + %; charging bolt; low red; hidden without battery  
   - Code: `battery.py`, `battery_ui.py`, `qt_app.py`  
-- [ ] **DrakeVox TTS performance (priority on 2 GB tablets)** — stop full mixer storm every word; async synth/play; keep AVI inject; live path reliable under freenect/spectrum — [#13](https://github.com/tmdrake/sls-camera/issues/13)
+- [ ] **DrakeVox TTS performance (priority on 2 GB tablets)** — code shipped; **verify** under load on real RCA or **tablet-class VM (2 GiB / 2 vCPU)** — not a fat host VM. FW: [VM-REBUILD.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/VM-REBUILD.md) tablet-class · [#13](https://github.com/tmdrake/sls-camera/issues/13)
 - [x] **Quit confirmation** — dialog before exit (stops REC cleanly)
 - [x] **Quit → power off (firmware contract)** — env `SLS_QUIT_ACTION=shutdown` (appliance launcher); app dialog + exit **10**; **no** Settings toggle (firmware owns host poweroff). Dev stays exit-only.
   - Closed: [GitHub #4](https://github.com/tmdrake/sls-camera/issues/4)
