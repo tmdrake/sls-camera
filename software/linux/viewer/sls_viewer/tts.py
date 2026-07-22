@@ -336,10 +336,14 @@ def ensure_max_output_volume() -> None:
                 ("Speaker Switch", "on"),
                 ("LOUT L Playback Switch", "on"),
                 ("LOUT R Playback Switch", "on"),
+                ("LOUT MIX DAC L1 Switch", "on"),
+                ("LOUT MIX DAC R1 Switch", "on"),
                 # Leave HP off so internal speakers get the path
                 ("Headphone Switch", "off"),
                 ("HPO L Playback Switch", "off"),
                 ("HPO R Playback Switch", "off"),
+                # RCA: UCM often leaves OUT at 0 → silent
+                ("OUT Playback Volume", "39"),
             ):
                 try:
                     subprocess.run(
