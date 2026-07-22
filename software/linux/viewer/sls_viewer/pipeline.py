@@ -260,8 +260,9 @@ class FramePipeline:
             self._kinect.prepare()
             depth, _ir = self._kinect.get_depth_and_ir()
             self._reconnect_attempt = 0
+            tilt_note = "tilt 0°" if self.s.auto_level else "tilt as-is"
             self._status = (
-                f"live · {depth.shape[1]}x{depth.shape[0]} · LED green · tilt 0°"
+                f"live · {depth.shape[1]}x{depth.shape[0]} · LED green · {tilt_note}"
             )
             return True
         except Exception as e:
@@ -455,8 +456,11 @@ class FramePipeline:
                     time.sleep(self.RECONNECT_SLEEP_S)
                     use_kinect = self._open_kinect()
                     if use_kinect:
+                        tilt_note = (
+                            "tilt 0°" if self.s.auto_level else "tilt as-is"
+                        )
                         self._status = (
-                            "live · reconnected · LED green · tilt 0°"
+                            f"live · reconnected · LED green · {tilt_note}"
                         )
             except Exception as e:
                 # Treat unexpected freenect/USB failures like a disconnect

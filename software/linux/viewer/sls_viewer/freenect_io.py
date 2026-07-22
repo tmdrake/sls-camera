@@ -295,11 +295,12 @@ class FreenectSync:
 
         # LED green
         lib.freenect_set_led(dev, self.led if self.led is not None else LED_GREEN)
-        # Auto-level
+        # Tilt: only command motor when auto-leveling (or explicit tilt_degs with
+        # auto_level=True path). --no-auto-level must leave the head where it is
+        # (field fixed mounts: no freenect_set_tilt_degs traffic).
         if self.auto_level:
             lib.freenect_set_tilt_degs(dev, 0.0)
-        else:
-            lib.freenect_set_tilt_degs(dev, float(self.tilt_degs))
+        # else: do not call freenect_set_tilt_degs — motor stays at current angle
 
         # IR sensor brightness (1–50). Does not change IR projector power.
         if self.video_mode == "ir":

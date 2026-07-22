@@ -224,6 +224,7 @@ Do **not** put Microsoft Kinect UAC audio firmware in public trees (`kinect-audi
 - [ ] Captures: `/data/sls-captures` and/or Auto SD/USB  
 - [ ] Quit → exit 10 → poweroff (appliance)  
 - [ ] **Polkit format rule** installed; Format media works without root password  
+- [ ] Launcher passes **`--no-auto-level`** (no tilt motor on open)  
 - [ ] Landscape **16:10**; geometry log → hardware matrix  
 - [ ] SDDM autologin (not LightDM) on Lubuntu 26.04  
 
