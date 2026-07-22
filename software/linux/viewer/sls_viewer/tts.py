@@ -6,6 +6,10 @@ Synthesis order:
   3) Live-only: espeak CLI / spd-say (no PCM for AVI)
 
 PCM is mono float32 at DEFAULT_SAMPLE_RATE for mixing into AVI recordings.
+
+Performance (field tablets): full ensure_max_output_volume() + espeak CLI on the
+UI thread every speak is expensive on 2 GB Atom devices. Prefer once-per-session
+mixer setup and async synth/play — track sls-camera#13.
 """
 
 from __future__ import annotations
