@@ -56,7 +56,7 @@ class Settings:
     # Defaults match MediaPipe PoseLandmarker (0.5). Rebuilds model on change.
     pose_min_confidence: float = MEDIAPIPE_DEFAULT_CONFIDENCE
     pose_conf_min: float = 0.25
-    pose_conf_max: float = 0.99  # UI max
+    pose_conf_max: float = 0.95  # UI max (0.05 steps: 0.25 … 0.95)
     pose_conf_step: float = 0.05
     pose_every_n_frames: int = 1
     # Simultaneous people (MediaPipe default num_poses=1); UI allows 1–6
@@ -170,9 +170,13 @@ class Settings:
 
     def clamp_pose_confidence(self) -> None:
         lo, hi = float(self.pose_conf_min), float(self.pose_conf_max)
-        self.pose_min_confidence = float(
-            max(lo, min(hi, round(float(self.pose_min_confidence), 2)))
-        )
+        step = float(self.pose_conf_step) or 0.05
+        v = float(self.pose_min_confidence)
+        # Snap to step grid from lo so +/− never lands on 0.99 / 0.94 orphans
+        n = round((v - lo) / step)
+        v = lo + n * step
+        v = max(lo, min(hi, round(v, 2)))
+        self.pose_min_confidence = float(v)
         # Drawing threshold tracks confidence (slightly looser so limbs still connect)
         self.skeleton_min_vis = max(0.20, self.pose_min_confidence - 0.10)
 

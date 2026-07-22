@@ -104,8 +104,8 @@ class PoseEstimator:
             except Exception:
                 pass
         conf = float(self.min_confidence)
-        # MediaPipe expects (0, 1]; clamp
-        conf = max(0.05, min(0.99, conf))
+        # MediaPipe expects (0, 1]; UI max is 0.95
+        conf = max(0.05, min(0.95, conf))
         base_options = self._mp_python.BaseOptions(
             model_asset_path=str(self.model_path)
         )
@@ -157,8 +157,8 @@ class PoseEstimator:
         ls, rs = pts[_L_SHOULDER], pts[_R_SHOULDER]
         lh, rh = pts[_L_HIP], pts[_R_HIP]
 
-        # Scale minimum sizes with confidence (0.25 → looser, 0.99 → stricter)
-        t = (self.min_confidence - 0.25) / (0.99 - 0.25)
+        # Scale minimum sizes with confidence (0.25 → looser, 0.95 → stricter)
+        t = (self.min_confidence - 0.25) / (0.95 - 0.25)
         t = max(0.0, min(1.0, t))
         min_shoulder_frac = 0.04 + 0.08 * t  # 4% → 12% of width
         min_torso_frac = 0.06 + 0.10 * t  # 6% → 16% of height

@@ -99,7 +99,7 @@ Firmware should leave the session in **16:10 landscape** before launch. Issue: [
 | Setting | Range / default |
 |---------|-----------------|
 | **Max people** | 1–6; MediaPipe default **1** |
-| **Confidence** | 0.25–0.99; MediaPipe default **0.5** |
+| **Confidence** | 0.25–0.95 in 0.05 steps; MediaPipe default **0.5** |
 | **Defaults** | Confirm → Max=1, Conf=0.5, **Captures to Auto** |
 | **Clear captures** | Confirm, then delete files under `captures/` (blocked while REC) |
 | **Mirror** | Off by default |
