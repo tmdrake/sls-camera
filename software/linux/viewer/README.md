@@ -279,11 +279,13 @@ When Linux exposes a battery under `/sys/class/power_supply` (or UPower), the st
 
 | Backend | When |
 |---------|------|
-| **sysfs** `/sys/class/backlight` | Laptops/tablets with a real panel backlight |
+| **sysfs** `/sys/class/backlight` | Laptops/tablets with a real panel backlight (prefers `intel_backlight` over `acpi_video0`) |
 | **brightnessctl** | If installed and permitted |
 | **xrandr --brightness** | Desktop/HDMI software dim (works on many monitors) |
 
 Settings → **Brightness − / +** (±10%). Tooltip shows which backend is active. If nothing works, shows **n/a**. Value is saved in `user_settings.json` when changed.
+
+**Tablets:** sysfs `brightness` is often root-only. Appliance firmware adds udev `video` group write + `brightnessctl`. Older app builds greys out ± when sysfs is read-only even if xrandr could set — current `backlight.py` enables ± when any set path exists. Field notes: firmware `docs/devices/rca-w101as23t2.md` (brightness section).
 
 ## Display wake lock (always on while running)
 

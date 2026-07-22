@@ -2,11 +2,18 @@
 
 Order of backends:
   1) /sys/class/backlight (real panel backlight — typical tablets/laptops)
-  2) brightnessctl (if installed and working)
+  2) brightnessctl (if installed and permitted)
   3) xrandr --brightness (software gamma on the primary output — desktop/HDMI)
 
 Desktop towers with only HDMI often have no sysfs backlight; xrandr may still
 dim the image. Tablets usually use (1).
+
+Notes for Cherry Trail / RCA tablets:
+  - Prefer intel_backlight (etc.) over acpi_video0 — alphabetical order alone
+    often picks a dead ACPI node first.
+  - brightness sysfs is often root-only until udev grants video-group write
+    (appliance: 99-sls-backlight.rules). Read-only sysfs must not disable ±
+    if brightnessctl or xrandr can still set.
 """
 
 from __future__ import annotations
@@ -49,51 +56,88 @@ def _write_int(path: Path, value: int) -> bool:
         return False
 
 
+def _sysfs_rank(name: str) -> int:
+    """Lower = preferred. Avoid acpi_video* when a real DRM backlight exists."""
+    n = name.lower()
+    if n == "intel_backlight" or n.startswith("intel_backlight"):
+        return 0
+    if "amdgpu" in n or n.startswith("nvidia") or "gmux" in n:
+        return 1
+    if n.startswith("acpi_video") or n.startswith("acpi_"):
+        return 50
+    return 10
+
+
 def _sysfs_devices() -> List[Path]:
     if not BACKLIGHT_ROOT.is_dir():
         return []
     try:
-        return sorted(p for p in BACKLIGHT_ROOT.iterdir() if p.is_dir())
+        devs = [p for p in BACKLIGHT_ROOT.iterdir() if p.is_dir()]
     except OSError:
         return []
+    return sorted(devs, key=lambda p: (_sysfs_rank(p.name), p.name))
 
 
-def _sysfs_read() -> Optional[BrightnessInfo]:
+def _sysfs_pick() -> Optional[Path]:
     for dev in _sysfs_devices():
         mx = _read_int(dev / "max_brightness")
         cur = _read_int(dev / "brightness")
-        if mx is None or mx <= 0 or cur is None:
-            continue
-        pct = int(round(100.0 * cur / mx))
-        bpath = dev / "brightness"
-        writable = os.access(bpath, os.W_OK)
-        return BrightnessInfo(
-            available=True,
-            percent=max(0, min(100, pct)),
-            backend=f"sysfs:{dev.name}",
-            writable=writable,
-            detail="" if writable else "backlight read-only (try brightnessctl / video group)",
-        )
+        if mx is not None and mx > 0 and cur is not None:
+            return dev
     return None
 
 
-def _sysfs_set(percent: int) -> Optional[BrightnessInfo]:
-    info = _sysfs_read()
-    if info is None or not info.writable:
+def _sysfs_read() -> Optional[BrightnessInfo]:
+    dev = _sysfs_pick()
+    if dev is None:
         return None
+    mx = _read_int(dev / "max_brightness")
+    cur = _read_int(dev / "brightness")
+    if mx is None or mx <= 0 or cur is None:
+        return None
+    pct = int(round(100.0 * cur / mx))
+    bpath = dev / "brightness"
+    writable = os.access(bpath, os.W_OK)
+    return BrightnessInfo(
+        available=True,
+        percent=max(0, min(100, pct)),
+        backend=f"sysfs:{dev.name}",
+        writable=writable,
+        detail="" if writable else "backlight read-only (need video group / udev)",
+    )
+
+
+def _sysfs_set(percent: int) -> Optional[BrightnessInfo]:
+    # Try preferred device first, then any other writable node
+    tried: List[str] = []
     for dev in _sysfs_devices():
         mx = _read_int(dev / "max_brightness")
         if mx is None or mx <= 0:
             continue
+        bpath = dev / "brightness"
+        if not os.access(bpath, os.W_OK):
+            tried.append(f"{dev.name}:ro")
+            continue
         raw = max(1, min(mx, int(round(mx * percent / 100.0))))
-        if _write_int(dev / "brightness", raw):
-            return _sysfs_read()
+        if _write_int(bpath, raw):
+            # Re-read from the device we wrote (not a re-pick that might differ)
+            cur = _read_int(bpath)
+            pct = int(round(100.0 * (cur if cur is not None else raw) / mx))
+            return BrightnessInfo(
+                available=True,
+                percent=max(0, min(100, pct)),
+                backend=f"sysfs:{dev.name}",
+                writable=True,
+                detail="",
+            )
+        tried.append(f"{dev.name}:fail")
+    if tried:
         return BrightnessInfo(
             available=True,
-            percent=info.percent,
-            backend=info.backend,
+            percent=None,
+            backend="sysfs",
             writable=False,
-            detail="write failed (permission)",
+            detail="write failed (permission): " + ",".join(tried)[:60],
         )
     return None
 
@@ -194,6 +238,12 @@ def _xrandr_primary() -> Optional[str]:
     return primary or first_conn
 
 
+def _can_software_or_bctl() -> bool:
+    if shutil.which("brightnessctl"):
+        return True
+    return bool(_xrandr_primary())
+
+
 # Soft-brightness via xrandr (not hardware backlight). Keep last set value.
 _xrandr_percent: Optional[int] = None
 
@@ -251,16 +301,38 @@ def _xrandr_set(percent: int) -> Optional[BrightnessInfo]:
 
 
 def get_brightness() -> BrightnessInfo:
-    """Current brightness, or available=False if nothing works."""
-    info = _sysfs_read()
-    if info is not None:
-        return info
-    info = _brightnessctl_read()
-    if info is not None:
-        return info
-    info = _xrandr_read()
-    if info is not None:
-        return info
+    """Current brightness, or available=False if nothing works.
+
+    If sysfs is readable but not writable, still mark writable=True when
+    brightnessctl or xrandr can set — otherwise Settings greys out ±.
+    """
+    sys_info = _sysfs_read()
+    if sys_info is not None and sys_info.writable:
+        return sys_info
+
+    bctl = _brightnessctl_read()
+    if bctl is not None:
+        return bctl
+
+    if sys_info is not None:
+        if _can_software_or_bctl():
+            how = (
+                "brightnessctl/xrandr"
+                if shutil.which("brightnessctl")
+                else "xrandr software"
+            )
+            return BrightnessInfo(
+                available=True,
+                percent=sys_info.percent,
+                backend=sys_info.backend,
+                writable=True,
+                detail=f"sysfs read-only; set via {how}",
+            )
+        return sys_info
+
+    xr = _xrandr_read()
+    if xr is not None:
+        return xr
     return BrightnessInfo(
         available=False,
         detail="no backlight or xrandr control found",
@@ -270,16 +342,15 @@ def get_brightness() -> BrightnessInfo:
 def set_brightness_percent(percent: int) -> BrightnessInfo:
     """Set brightness 5–100%. Tries sysfs → brightnessctl → xrandr."""
     percent = int(max(MIN_PERCENT, min(MAX_PERCENT, percent)))
-    sys_info = _sysfs_read()
-    if sys_info is not None and sys_info.writable:
-        got = _sysfs_set(percent)
-        if got is not None and got.percent is not None:
-            return got
+    # Always try sysfs write (may work even if access() lied after udev)
+    got = _sysfs_set(percent)
+    if got is not None and got.writable and got.percent is not None:
+        return got
     if shutil.which("brightnessctl"):
         got = _brightnessctl_set(percent)
         if got is not None and got.available and got.percent is not None:
             return got
-    # Desktop / HDMI: software brightness (still useful on OptiPlex + monitor)
+    # Desktop / HDMI / last-resort software dim on panel
     got = _xrandr_set(percent)
     if got is not None and got.available and got.writable:
         return got
