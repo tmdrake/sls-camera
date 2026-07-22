@@ -167,6 +167,11 @@ def bgr_to_qpixmap(bgr: np.ndarray) -> QPixmap:
     return QPixmap.fromImage(qimg)
 
 
+def confidence_percent_label(value: float) -> str:
+    """UI display: 0.50 → '50%' (internal still 0–1)."""
+    return f"{int(round(float(value) * 100.0))}%"
+
+
 def _days_in_month(year: int, month: int) -> int:
     return calendar.monthrange(int(year), int(month))[1]
 
@@ -579,14 +584,19 @@ class SettingsDialog(QDialog):
         grid.addWidget(self.btn_max_up, row, 3)
         row += 1
 
-        # Confidence
+        # Confidence (shown as %; stored 0–1 with 5% / 0.05 steps)
         grid.addWidget(QLabel("Confidence"), row, 0)
         self.btn_conf_down = QPushButton("−")
+        self.btn_conf_down.setToolTip("Lower pose confidence (−5%)")
         self.btn_conf_down.clicked.connect(lambda: self._nudge_conf(-step))
         self.conf_label = QLabel()
         self.conf_label.setObjectName("vallabel")
         self.conf_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.conf_label.setToolTip(
+            "MediaPipe pose confidence (25%–95% in 5% steps; default 50%)"
+        )
         self.btn_conf_up = QPushButton("+")
+        self.btn_conf_up.setToolTip("Raise pose confidence (+5%)")
         self.btn_conf_up.clicked.connect(lambda: self._nudge_conf(+step))
         grid.addWidget(self.btn_conf_down, row, 1)
         grid.addWidget(self.conf_label, row, 2)
@@ -668,7 +678,7 @@ class SettingsDialog(QDialog):
         self.btn_defaults = QPushButton("Defaults")
         self.btn_defaults.setObjectName("wide")
         self.btn_defaults.setToolTip(
-            "Reset Max people=1, Confidence=0.5, Captures to Auto, "
+            "Reset Max people=1, Confidence=50%, Captures to Auto, "
             "and Spectrum style to Phosphor"
         )
         self.btn_defaults.clicked.connect(self._reset_defaults)
@@ -802,7 +812,9 @@ class SettingsDialog(QDialog):
 
     def _refresh(self) -> None:
         self.max_label.setText(f"{self.pipeline.max_poses}")
-        self.conf_label.setText(f"{self.pipeline.pose_confidence:.2f}")
+        self.conf_label.setText(
+            confidence_percent_label(self.pipeline.pose_confidence)
+        )
         self.btn_mirror.setText("ON" if self.pipeline.mirror else "OFF")
         self.btn_spectrum.setText(
             "ON" if self.pipeline.s.spectrum_enabled else "OFF"
@@ -1019,7 +1031,7 @@ class SettingsDialog(QDialog):
             "Reset defaults",
             "Reset to field defaults?\n\n"
             "• Max people = 1\n"
-            "• Confidence = 0.5\n"
+            "• Confidence = 50%\n"
             "• Captures to = Auto (USB/SD if mounted, else local)\n"
             "• Spectrum style = Phosphor",
             yes_label="Reset",
@@ -1744,9 +1756,11 @@ class SlsMainWindow(QMainWindow):
             self.display_inhibit.refresh_x11()
         cap = self.session.captures_label
         cap_s = f" · CAP:{cap}" if cap else ""
+        conf_s = confidence_percent_label(self.pipeline.pose_confidence)
         base = (
             f"{self.pipeline.status}  ·  "
-            f"Detected:{self.pipeline.poses_count}/{mx}{rec}{dv}{cap_s}"
+            f"Detected:{self.pipeline.poses_count}/{mx}"
+            f"  ·  Conf:{conf_s}{rec}{dv}{cap_s}"
         )
         self.status.setText(f"{flash}  ·  {base}" if flash else base)
 

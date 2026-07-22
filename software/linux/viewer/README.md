@@ -99,8 +99,8 @@ Firmware should leave the session in **16:10 landscape** before launch. Issue: [
 | Setting | Range / default |
 |---------|-----------------|
 | **Max people** | 1–6; MediaPipe default **1** |
-| **Confidence** | 0.25–0.95 in 0.05 steps; MediaPipe default **0.5** |
-| **Defaults** | Confirm → Max=1, Conf=0.5, **Captures to Auto** |
+| **Confidence** | **25%–95%** in 5% steps (shown as %); MediaPipe default **50%** |
+| **Defaults** | Confirm → Max=1, Conf=50%, **Captures to Auto** |
 | **Clear captures** | Confirm, then delete files under `captures/` (blocked while REC) |
 | **Mirror** | Off by default |
 | **Spectrum** | On/off; strip height always reserved (no layout jump) |
@@ -127,7 +127,7 @@ Field rule of thumb: **tablets will usually use an SD card**; pen drives are fin
 | **Both SD and USB mounted** | **SD wins** (priority); then USB; then other removable |
 | **Captures = Local** | Always local, even if media is plugged in |
 | **Shot local, then plug media** | Settings → **Copy local→media** (keeps local files; skips same-name same-size) |
-| **Defaults** button | Also sets **Captures to Auto** (and Max=1, Conf=0.5) |
+| **Defaults** button | Also sets **Captures to Auto** (and Max=1, Conf=50%) |
 
 We do **not** auto-copy old local files when you plug media (avoids surprise full disks / duplicates). One explicit button is easier in the field.
 
