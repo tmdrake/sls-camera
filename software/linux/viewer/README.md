@@ -83,7 +83,7 @@ Settings is a **wide two-pane** dialog sized for fleet **16:10 landscape** (1280
 | Pane | Content |
 |------|---------|
 | **Left** | Controls (pose, spectrum, DrakeVox, captures, actions) — scrolls if needed |
-| **Right** | Status / log (display geometry, mic, DrakeVox history, keys) |
+| **Right** | Status / log (display geometry, clock, mic, DrakeVox history, keyboard hint) |
 
 **Close** is in the header. At startup the app logs geometry (also shown on the right pane):
 
