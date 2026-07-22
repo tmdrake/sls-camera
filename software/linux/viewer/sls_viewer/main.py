@@ -28,6 +28,7 @@ def parse_args(argv=None):
             "  ./run.sh --led-off --no-auto-level --device 0\n"
             "\n"
             "Keyboard (Qt): S settings · C snap · R record · O DrakeVox · "
+            "[ and ] confidence · , and . max people · "
             "Q quit · Esc close settings then quit · F fullscreen · M mirror"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,

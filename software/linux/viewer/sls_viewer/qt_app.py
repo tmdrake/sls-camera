@@ -472,7 +472,7 @@ class SettingsDialog(QDialog):
     """Field Settings: horizontal two-pane layout for landscape tablets.
 
     Left  — controls (pose, spectrum, DrakeVox, captures, actions)
-    Right — status / log (display geometry, mic, DrakeVox history, keys)
+    Right — status / log (display geometry, mic, DrakeVox history, keyboard hint)
 
     Height/width capped to ~90% of availableGeometry; left pane scrolls if needed (#6).
     """
@@ -781,7 +781,8 @@ class SettingsDialog(QDialog):
         right_layout.addWidget(hist_scroll, stretch=1)
 
         hint = QLabel(
-            "Keys: [ ] conf  ·  , . max  ·  M mirror  ·  O DrakeVox  ·  S settings  ·  Esc close"
+            "Keys: [ and ] confidence −/+  ·  , and . max people −/+  ·  "
+            "M mirror  ·  O DrakeVox now  ·  S settings  ·  Esc close"
         )
         hint.setStyleSheet("color: #555; font-size: 10px;")
         hint.setWordWrap(True)

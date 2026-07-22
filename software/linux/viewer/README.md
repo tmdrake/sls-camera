@@ -61,18 +61,20 @@ If `kinect_fetch_fw` fails with **Invalid hash**, see [UBUNTU-SETUP.md](../docs/
 
 ### Keyboard
 
-| Key | Action |
-|-----|--------|
+| Key(s) | Action |
+|--------|--------|
 | `S` | Settings |
 | `C` | Snap |
 | `R` | Record toggle |
 | `O` | DrakeVox generate now |
-| `[` `]` | Confidence − / + |
-| `,` `.` | Max people − / + |
+| `[` and `]` | Confidence − / + (bracket keys, not an empty `[]`) |
+| `,` and `.` | Max people − / + |
 | `M` | Mirror |
 | `F` | Fullscreen |
 | `Esc` | Close Settings, then quit |
 | `Q` | Quit (with confirmation) |
+
+Settings right pane shows the same shortcuts as a short hint line.
 
 ## Settings details
 
