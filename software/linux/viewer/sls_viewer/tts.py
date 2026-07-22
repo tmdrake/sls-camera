@@ -249,28 +249,43 @@ def synthesize(
     sample_rate: int = DEFAULT_SAMPLE_RATE,
     rate_wpm: int = 140,
 ) -> Optional[np.ndarray]:
-    """Mono float32 PCM in [-1, 1] at sample_rate, or None."""
+    """Mono float32 PCM in [-1, 1] at sample_rate, or None.
+
+    Prefer in-process libespeak (no process spawn) then CLI WAV (#13).
+    """
     word = (text or "").strip()
     if not word:
         return None
-    got = _synthesize_cli(word, rate_wpm)
+    got = _synthesize_lib(word, rate_wpm)
     if got is None:
-        got = _synthesize_lib(word, rate_wpm)
+        got = _synthesize_cli(word, rate_wpm)
     if got is None:
         return None
     pcm, sr = got
     return _resample_mono(pcm, int(sr), int(sample_rate))
 
 
-def ensure_max_output_volume() -> None:
-    """Unmute + raise system playback to full before DrakeVox speaks.
+# Once-per-session mixer setup — full amixer/wpctl every word is slow on Atom (#13)
+_volume_ready = False
+_volume_lock = threading.Lock()
 
-    Field tablets often leave PipeWire/ALSA muted or low after idle or
-    LXQt volume applets. Best-effort; silent if tools missing.
 
-    Does **not** create speakers when the kernel only has Dummy Output
-    (e.g. RCA SOF probe failure) — see device notes.
+def ensure_max_output_volume(*, force: bool = False) -> None:
+    """Unmute + raise system playback (once per session unless force=True).
+
+    Field tablets often leave PipeWire/ALSA muted or low after idle.
+    Best-effort; silent if tools missing. Does not fix Dummy Output —
+    firmware sls-audio-speakers handles RCA panel path at boot.
     """
+    global _volume_ready
+    with _volume_lock:
+        if _volume_ready and not force:
+            return
+        _ensure_max_output_volume_impl()
+        _volume_ready = True
+
+
+def _ensure_max_output_volume_impl() -> None:
     # PipeWire (Lubuntu default)
     wp = shutil.which("wpctl")
     if wp:
