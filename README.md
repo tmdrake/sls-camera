@@ -40,9 +40,11 @@ AGENTS.md           Windows app notes + Linux path pointer
 - Spectrum strip (prefers **Kinect USB Audio** after `kinect-audio-setup`)  
 - Main bar: **Settings · Snap · Record · Quit** (timestamped AVI **with mic audio**, REC elapsed)  
 - Kinect disconnect → RECONNECTING screen + infinite retry; spectrum mic auto-retry  
-- LED green + auto-level on open; IR sensor gain fixed at 50 (not in UI)  
+- LED green + auto-level on open (field: **`--no-auto-level`**); IR gain fixed at 50  
+- Status bar: compact mode · people · conf% · captures; battery **gauge** when present  
+- Settings: large two-pane, date/time, format media, conf as %  
 
-Docs: [linux README](software/linux/README.md) · [viewer README](software/linux/viewer/README.md) · [Ubuntu setup](software/linux/docs/UBUNTU-SETUP.md) · [M0 bring-up](software/linux/notes/BRINGUP-FREENECT.md).
+Docs: [linux README](software/linux/README.md) · [viewer README](software/linux/viewer/README.md) · [Ubuntu setup](software/linux/docs/UBUNTU-SETUP.md) · [M0 bring-up](software/linux/notes/BRINGUP-FREENECT.md) · **[2026-07-22 session](software/linux/docs/SESSION-2026-07-22.md)**.
 
 **Firmware team (offline debs / appliance):** start at  
 [**FOR-FIRMWARE-TEAM.md**](software/linux/docs/FOR-FIRMWARE-TEAM.md) — golden rules, `install-apt-deps.sh`, exit codes, smoke checklist.  
@@ -52,8 +54,11 @@ Sibling image repo: [`sls-camera-firmware`](https://github.com/tmdrake/sls-camer
 # Kinect depth check
 ./software/linux/scripts/check-kinect.sh
 
-# Field app
+# Field app (examples)
 cd software/linux/viewer && ./run.sh
+./run.sh --demo                    # UI without Kinect
+./run.sh --demo --hide-cursor      # touch-kiosk style
+SLS_FAKE_BATTERY=64 ./run.sh --demo  # battery gauge preview
 
 # Host apt seeds (online, or --deb-cache from firmware vendor/debs)
 ./software/linux/scripts/install-field-app.sh --with-apt-deps

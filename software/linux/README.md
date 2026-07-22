@@ -78,6 +78,7 @@ software/linux/
 cd software/linux/viewer
 ./run.sh
 ./run.sh --help    # all flags; --demo = synthetic frames (no camera needed)
+# See also: docs/SESSION-2026-07-22.md (recent field UI/CLI handoff)
 ```
 
 Main bar: **Settings · Snap · Record · Quit**.  

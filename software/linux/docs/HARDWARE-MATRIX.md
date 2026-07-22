@@ -45,15 +45,15 @@ Fleet tablets (after firmware landscape lock) are designed for **16:10**:
 | Portrait | 800×1280 raw glass | Firmware **locks landscape** before app |
 
 Same **aspect**, different **pixel count**: 1920×1200 is a sharper 16:10, not a different shape.  
-App Settings `_fit_to_screen` prefers a wide two-pane dialog on 16:10-ish panels.
+App Settings `_fit_to_screen` uses a wide two-pane dialog at ~**94–96%** of available geometry on 16:10-ish panels (enlarged 2026-07-22; left pane may still scroll).
 
 ### App UI expectations by resolution
 
 | Class | Typical | Settings / UI |
 |-------|---------|----------------|
 | Fleet tablet-01 | **1280×800** 16:10 | Two-pane Settings; left scroll if needed |
-| Fleet tablet-02 | **1920×1200** 16:10 | More room; usually little control scroll |
-| Phase 1 VM | 1280×800 16:10 | Same as tablet-01 class |
+| Fleet tablet-02 | **1920×1200** 16:10 | Same shape as 800p; more pixels |
+| Phase 1 VM | 1280×800 or 1920×1200 16:10 | Both OK; Settings dialog ~**94–96%** avail (2026-07-22); left scrollbar if needed |
 | Short / old | 1024×600 (~17:10) | Scroll required; log geometry |
 | HiDPI 200% on 800p | logical ~640×400 | High risk — note dpr in matrix |
 

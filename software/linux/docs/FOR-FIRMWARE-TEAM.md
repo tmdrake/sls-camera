@@ -247,6 +247,8 @@ Do **not** put Microsoft Kinect UAC audio firmware in public trees (`kinect-audi
 | [#8](https://github.com/tmdrake/sls-camera/issues/8) Format media | **Closed** — ship polkit for kiosk UX |
 | [#9](https://github.com/tmdrake/sls-camera/issues/9) Wake lock | **Closed** |
 | [#10](https://github.com/tmdrake/sls-camera/issues/10) Kinect tilt | **Closed** — `--no-auto-level` + no motor command |
-| [#11](https://github.com/tmdrake/sls-camera/issues/11) Date & time | **App + polkit docs** — ship [DATE-TIME-PRIVS.md](DATE-TIME-PRIVS.md) |
+| [#11](https://github.com/tmdrake/sls-camera/issues/11) Date & time | **App + FW polkit shipped** — field smoke to close · [DATE-TIME-PRIVS.md](DATE-TIME-PRIVS.md) |
+| [#12](https://github.com/tmdrake/sls-camera/issues/12) Battery gauge | **Closed** — icon + fill on status bar |
+| [#13](https://github.com/tmdrake/sls-camera/issues/13) DrakeVox TTS | **Code shipped** — smoke on tablet-class VM (2 GiB/2 vCPU) or RCA |
 
-App backlog: [docs/TODO.md](../../../docs/TODO.md).
+Day log (2026-07-22): [SESSION-2026-07-22.md](SESSION-2026-07-22.md) · App backlog: [docs/TODO.md](../../../docs/TODO.md).

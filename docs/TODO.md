@@ -33,10 +33,10 @@ policy come later.
 | [#7](https://github.com/tmdrake/sls-camera/issues/7) | Hardware matrix — **docs v1** (post-wipe geometry still pending) |
 | [#8](https://github.com/tmdrake/sls-camera/issues/8) | Format/prepare media from Settings — **closed** |
 | [#9](https://github.com/tmdrake/sls-camera/issues/9) | Keep display awake while UI runs — **closed** |
-| [#10](https://github.com/tmdrake/sls-camera/issues/10) | Kinect tilt disable (field) — **closed** (`--no-auto-level`) |
-| [#11](https://github.com/tmdrake/sls-camera/issues/11) | Settings date/time — **app done**; ship FW polkit |
-| [#12](https://github.com/tmdrake/sls-camera/issues/12) | Visual battery gauge — **done** (icon + fill) |
-| [#13](https://github.com/tmdrake/sls-camera/issues/13) | DrakeVox TTS latency (verify on tablet) |
+| [#10](https://github.com/tmdrake/sls-camera/issues/10) | Kinect tilt — **closed** (`--no-auto-level` real skip) |
+| [#11](https://github.com/tmdrake/sls-camera/issues/11) | Settings date/time — **app + FW polkit shipped**; field smoke to close |
+| [#12](https://github.com/tmdrake/sls-camera/issues/12) | Visual battery gauge — **closed** (icon + fill; `SLS_FAKE_BATTERY` preview) |
+| [#13](https://github.com/tmdrake/sls-camera/issues/13) | DrakeVox TTS — **code shipped**; verify tablet-class VM 2 GiB/2 vCPU or RCA |
 
 Firmware may implement offline mirrors; **product install-path and app-behavior decisions stay tracked here**.
 
@@ -55,11 +55,18 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [ ] **Hardware BOM photos / wiring** in `hardware/` (Kinect + tablet + external power).
 - [ ] **Permanent captures on appliance image** — firmware/locked rootfs may be read-only; store snaps/recordings on writable permanent media (`/data`, SD, data partition, USB), not only `viewer/captures` inside the image. Path via env/config for packaging.
   - Related: **Captures → removable media / SD** (runtime detect + prefer external volume)
-- [x] **Battery % + charge indicator** — status bar `BAT n%` / `⚡` when sysfs battery exists; hidden on desktop  
+- [x] **Battery % + charge indicator** — superseded by visual gauge (#12)  
 - [x] **Settings date & time (#11)** — host clock via `timedatectl`; touch dialog; FW polkit/sudoers in DATE-TIME-PRIVS  
-- [x] **Better visual battery gauge (#12)** — status-bar icon + fill + %; charging bolt; low red; hidden without battery  
+- [x] **Better visual battery gauge (#12)** — status-bar icon + fill + %; charging bolt; low red; hidden without battery; desktop preview `SLS_FAKE_BATTERY`  
   - Code: `battery.py`, `battery_ui.py`, `qt_app.py`  
-- [ ] **DrakeVox TTS performance (priority on 2 GB tablets)** — code shipped; **verify** under load on real RCA or **tablet-class VM (2 GiB / 2 vCPU)** — not a fat host VM. FW: [VM-REBUILD.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/VM-REBUILD.md) tablet-class · [#13](https://github.com/tmdrake/sls-camera/issues/13)
+- [x] **Settings popup larger (~94–96% avail)** — less wasted margin; left scrollbar OK · 2026-07-22  
+- [x] **Copy/Format always shown, greyed when N/A** — layout stable; dark tooltips · 2026-07-22  
+- [x] **Status bar simplified** — mode · people · conf% · captures (+ REC) · 2026-07-22  
+- [x] **Confidence 25–95% in 5% steps, default 25%, UI as %** · 2026-07-22  
+- [x] **`--demo` force synthetic** (no freenect) · 2026-07-22  
+- [x] **`--hide-cursor` / `SLS_HIDE_CURSOR`** · 2026-07-22  
+- [ ] **DrakeVox TTS performance (priority on 2 GB tablets)** — code shipped; **verify** under load on real RCA or **tablet-class VM (2 GiB / 2 vCPU)** — not a fat host VM. FW: [VM-REBUILD.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/VM-REBUILD.md) tablet-class · [#13](https://github.com/tmdrake/sls-camera/issues/13)  
+  - Day log: [SESSION-2026-07-22.md](../software/linux/docs/SESSION-2026-07-22.md)
 - [x] **Quit confirmation** — dialog before exit (stops REC cleanly)
 - [x] **Quit → power off (firmware contract)** — env `SLS_QUIT_ACTION=shutdown` (appliance launcher); app dialog + exit **10**; **no** Settings toggle (firmware owns host poweroff). Dev stays exit-only.
   - Closed: [GitHub #4](https://github.com/tmdrake/sls-camera/issues/4)
@@ -67,7 +74,7 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] **Display brightness** (Settings) — sysfs backlight / brightnessctl / xrandr software fallback
 - [x] **Settings fit small tablets (#6)** — log `display: WxH avail=… dpr=… dpi=…` at Qt start; Settings in `QScrollArea` capped ~90% available height; Close pinned; action buttons 2×2
   - Closed: [GitHub #6](https://github.com/tmdrake/sls-camera/issues/6)
-- [ ] **Settings left-pane density polish** — VM QA (1280×800 + 1920×1200 16:10): layout looks good but **minor left-pane scroll** remains; scale left-pane buttons a little smaller so common controls fit without scroll. Track: [#7](https://github.com/tmdrake/sls-camera/issues/7)
+- [ ] **Settings left-pane density polish** — optional; dialog now ~94–96% of screen (2026-07-22). Scrollbar/wheel still OK if content overflows. Track: [#7](https://github.com/tmdrake/sls-camera/issues/7)
 - [x] **Keep display awake (#9)** — always-on wake lock while UI runs (no Settings toggle); D-Bus screensaver inhibit + `systemd-inhibit idle:sleep` + `xset -dpms`; release on Quit
   - Code: `display_inhibit.py`, `qt_app.py`
   - Closed: [GitHub #9](https://github.com/tmdrake/sls-camera/issues/9)

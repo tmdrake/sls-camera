@@ -54,9 +54,13 @@ Ubuntu / freenect work lives under `software/linux/`. **Same UI goal** as this W
 - **Field app (working):** `software/linux/viewer/` — `./run.sh` / `./run.sh --help`  
   Depth + IR PiP, skeletons, spectrum (Kinect USB Audio), Snap/Record **AVI+mic**,  
   reconnect splash, DrakeVox (5–15 min, TTS, auto-snap option), LED cues (REC red),  
-  battery/brightness/Quit confirm, Settings (Defaults/Clear confirm)  
-  **CLI:** `--demo` = force synthetic depth/IR (no freenect); use for UI test without a Kinect.  
-  Details: `software/linux/viewer/README.md` § CLI  
+  battery **gauge**/brightness/Quit confirm, Settings (date/time, format media, …)  
+  **CLI (highlights):**  
+  - `--demo` — force synthetic frames (no freenect)  
+  - `--no-auto-level` — field: no tilt motor command (FW launcher injects)  
+  - `--hide-cursor` / `SLS_HIDE_CURSOR=1` — touch kiosk  
+  - `--led-off`, `--mirror`, `--device N`  
+  Details: `software/linux/viewer/README.md` § CLI · day log: [SESSION-2026-07-22.md](software/linux/docs/SESSION-2026-07-22.md)  
 - Parity plan: `software/linux/docs/LINUX-SLS-PLAN.md`  
 - Product vision: `docs/PRODUCT-VISION.md`  
 - Setup: `software/linux/docs/UBUNTU-SETUP.md` (freenect + `kinect-audio-setup`)  
