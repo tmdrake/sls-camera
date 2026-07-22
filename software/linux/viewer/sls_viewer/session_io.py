@@ -86,10 +86,17 @@ class SessionRecorder:
         self._via_spectrum = False
         # DrakeVox TTS clips: (offset_seconds from record start, float32 mono)
         self._tts_clips: List[tuple] = []
+        # Bumps each start_record so async TTS from a prior take is dropped
+        self._record_gen: int = 0
 
     @property
     def captures_label(self) -> str:
         return self._captures_label
+
+    @property
+    def record_generation(self) -> int:
+        """Monotonic id of the current/last recording take (for async TTS)."""
+        return int(self._record_gen)
 
     def set_captures_target(self, mode: str) -> str:
         """local | auto — resolve path (USB/SD when auto and media present)."""
@@ -270,8 +277,18 @@ class SessionRecorder:
             self._has_audio = False
             return False
 
-    def inject_tts(self, pcm: np.ndarray, wall_time: float) -> None:
-        """Queue TTS PCM to mix into the recording at wall_time (epoch)."""
+    def inject_tts(
+        self,
+        pcm: np.ndarray,
+        wall_time: float,
+        record_gen: Optional[int] = None,
+    ) -> None:
+        """Queue TTS PCM to mix into the recording at wall_time (epoch).
+
+        Safe with async DrakeVox (#13): drops clips that belong to another take
+        (stale worker after Stop/Start) or that started before this recording.
+        ``record_gen`` should be :attr:`record_generation` captured at speak().
+        """
         if not self._recording or pcm is None:
             return
         try:
@@ -283,7 +300,14 @@ class SessionRecorder:
         with self._lock:
             if not self._recording or self._record_started <= 0:
                 return
-            offset = max(0.0, float(wall_time) - float(self._record_started))
+            if record_gen is not None and int(record_gen) != int(self._record_gen):
+                return
+            offset = float(wall_time) - float(self._record_started)
+            # Negative offset ⇒ speak was queued before this take (or clock skew).
+            # Do NOT clamp to 0 — that used to paste stale TTS at t=0 of the next REC.
+            if offset < -0.05:
+                return
+            offset = max(0.0, offset)
             self._tts_clips.append((offset, arr.copy()))
             self._has_audio = True
 
@@ -465,6 +489,7 @@ class SessionRecorder:
             self._recording = True
             self._fps = float(fps)
             self._record_started = time.time()
+            self._record_gen = int(self._record_gen) + 1
             self._tts_clips = []
 
         if audio_ok:

@@ -1443,8 +1443,14 @@ class SlsMainWindow(QMainWindow):
         if not word:
             return
         self.session.note_drakevox(word)
-        # speak() also calls inject_tts via set_record_callback while REC
-        self.tts.speak(word)
+        # speak() injects via set_record_callback while REC. Pass record_gen so
+        # a late async worker cannot paste into the next take after Stop/Start.
+        gen = (
+            self.session.record_generation
+            if self.session.recording
+            else None
+        )
+        self.tts.speak(word, record_gen=gen)
         if self._settings_open():
             self._settings_dlg._refresh()
 
@@ -1619,6 +1625,8 @@ class SlsMainWindow(QMainWindow):
 
     def _toggle_record(self) -> None:
         if self.session.recording:
+            # Finish in-flight DrakeVox inject before mixing AVI (async TTS #13)
+            self.tts.flush(timeout=2.5)
             self.session.stop_record()
             self.pipeline.set_recording_led(False)
         else:
@@ -1754,6 +1762,7 @@ class SlsMainWindow(QMainWindow):
             return
         self._timer.stop()
         if self.session.recording:
+            self.tts.flush(timeout=2.5)
             self.session.stop_record()
             self.pipeline.set_recording_led(False)
         self.spectrum.stop()

@@ -459,12 +459,17 @@ class DrakeVoxTTS:
 
     Latency notes (#13): mixer setup once; libespeak preferred; speak() runs
     synth+play on a worker so the Qt UI thread is not blocked.
+
+    Recording safety: AVI inject uses wall-time captured at queue time and an
+    optional ``record_gen`` so a late worker cannot paste into the next REC.
+    Call :meth:`flush` before ``stop_record`` so in-flight words still mux.
     """
 
     def __init__(self, sample_rate: int = DEFAULT_SAMPLE_RATE):
         self.sample_rate = int(sample_rate)
         self._lock = threading.Lock()
-        self._on_pcm: Optional[Callable[[np.ndarray, float], None]] = None
+        # cb(pcm, wall_time) or cb(pcm, wall_time, record_gen=…)
+        self._on_pcm: Optional[Callable[..., None]] = None
         self._last_error = ""
         self._worker: Optional[threading.Thread] = None
         self._warmed = False
@@ -478,7 +483,7 @@ class DrakeVoxTTS:
         return synthesize("test", sample_rate=self.sample_rate) is not None
 
     def set_record_callback(
-        self, cb: Optional[Callable[[np.ndarray, float], None]]
+        self, cb: Optional[Callable[..., None]]
     ) -> None:
         with self._lock:
             self._on_pcm = cb
@@ -499,33 +504,67 @@ class DrakeVoxTTS:
 
         threading.Thread(target=_job, name="tts-warm", daemon=True).start()
 
+    def flush(self, timeout: float = 2.5) -> None:
+        """Wait for in-flight speak worker (inject + play start) before stop REC."""
+        with self._lock:
+            prev = self._worker
+        if prev is not None and prev.is_alive():
+            prev.join(timeout=max(0.0, float(timeout)))
+
     def speak(
-        self, text: str, *, when: Optional[float] = None
+        self,
+        text: str,
+        *,
+        when: Optional[float] = None,
+        record_gen: Optional[int] = None,
     ) -> Tuple[bool, Optional[np.ndarray]]:
         """Queue word for synth+play off the UI thread. Returns immediately.
 
-        PCM for AVI is injected from the worker when ready (offset ≈ play start).
+        PCM for AVI is injected from the worker when ready. ``when`` (epoch) is
+        the mix offset anchor — default is **queue time**, not post-synth, so
+        AVI placement matches when the operator heard the word trigger.
+        ``record_gen`` ties the clip to one SessionRecorder take.
         """
+        import time as _time
+
         word = (text or "").strip()
         if not word:
             return False, None
 
-        def _job() -> None:
-            import time as _time
+        # Capture before worker so long synth does not slide the AVI offset
+        t0 = float(when if when is not None else _time.time())
+        gen = record_gen
 
+        with self._lock:
+            prev = self._worker
+
+        def _job() -> None:
+            # Serialize on the worker (not UI): wait for prior inject+play start
+            if prev is not None and prev.is_alive():
+                prev.join(timeout=3.0)
             try:
                 # First word (or cold start): ensure volume once; cheap no-op after
                 ensure_max_output_volume(force=False)
                 pcm = synthesize(word, sample_rate=self.sample_rate)
-                t0 = float(when if when is not None else _time.time())
                 if pcm is not None and pcm.size > 0:
                     with self._lock:
                         cb = self._on_pcm
                     if cb is not None:
                         try:
-                            cb(pcm, t0)
+                            if gen is not None:
+                                cb(pcm, t0, record_gen=gen)
+                            else:
+                                cb(pcm, t0)
+                        except TypeError:
+                            # Older callback without record_gen kw
+                            try:
+                                cb(pcm, t0)
+                            except Exception:
+                                pass
                         except Exception:
                             pass
+                    # Live speakers only — never open/close mic; PortAudio output
+                    # is separate from the spectrum/session InputStream.
                     if not play_pcm(pcm, self.sample_rate, ensure_volume=False):
                         # One forced volume pass if first play failed (sink switched)
                         ensure_max_output_volume(force=True)
@@ -534,16 +573,11 @@ class DrakeVoxTTS:
                     self._last_error = ""
                     return
                 self._last_error = "TTS synth unavailable (install espeak-ng)"
+                # Live-only fallback: no PCM → nothing to inject (recording keeps mic)
                 play_live_fallback(word, ensure_volume=True)
             except Exception as exc:
                 self._last_error = str(exc)[:120]
 
-        # Serialize speaks so overlapping words do not stomp PortAudio
-        with self._lock:
-            prev = self._worker
-        if prev is not None and prev.is_alive():
-            # Soft join short: avoid pile-up; drop if still busy
-            prev.join(timeout=0.05)
         t = threading.Thread(target=_job, name="tts-speak", daemon=True)
         with self._lock:
             self._worker = t
