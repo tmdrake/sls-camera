@@ -55,7 +55,7 @@ Ubuntu / freenect work lives under `software/linux/`. **Same UI goal** as this W
   Depth + IR PiP, skeletons, spectrum (Kinect USB Audio), Snap/Record **AVI+mic**,  
   reconnect splash, DrakeVox (5–15 min, TTS, auto-snap option), LED cues (REC red),  
   battery/brightness/Quit confirm, Settings (Defaults/Clear confirm)  
-  **CLI:** `--demo` = synthetic frames only if freenect open fails (not force-demo).  
+  **CLI:** `--demo` = force synthetic depth/IR (no freenect); use for UI test without a Kinect.  
   Details: `software/linux/viewer/README.md` § CLI  
 - Parity plan: `software/linux/docs/LINUX-SLS-PLAN.md`  
 - Product vision: `docs/PRODUCT-VISION.md`  

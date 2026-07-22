@@ -61,8 +61,8 @@ def parse_args(argv=None):
         "--demo",
         action="store_true",
         help=(
-            "If freenect cannot open the Kinect, use synthetic depth/IR "
-            "instead of reconnecting forever (does not skip a working camera)"
+            "Test without a Kinect: synthetic depth/IR only "
+            "(does not open freenect / USB camera)"
         ),
     )
     p.add_argument(

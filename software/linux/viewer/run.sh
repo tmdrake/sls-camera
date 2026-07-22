@@ -4,7 +4,7 @@
 # Usage:
 #   ./run.sh --help
 #   ./run.sh
-#   ./run.sh --demo              # synthetic frames ONLY if freenect cannot open
+#   ./run.sh --demo              # synthetic depth/IR — test UI without a Kinect
 #   ./run.sh --mirror --led-off
 #
 # See software/linux/viewer/README.md § CLI for full flag table and --demo rules.
@@ -73,6 +73,6 @@ fi
 
 # Pass-through args, e.g.:
 #   ./run.sh --help
-#   ./run.sh --demo          # fallback synthetic frames only if Kinect will not open
+#   ./run.sh --demo          # force synthetic frames (no freenect / no camera needed)
 #   ./run.sh --mirror --led-off
 exec .venv/bin/python -m sls_viewer "$@"

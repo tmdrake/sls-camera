@@ -77,7 +77,7 @@ software/linux/
 
 cd software/linux/viewer
 ./run.sh
-./run.sh --help    # all flags; --demo is freenect-open fallback only
+./run.sh --help    # all flags; --demo = synthetic frames (no camera needed)
 ```
 
 Main bar: **Settings · Snap · Record · Quit**.  

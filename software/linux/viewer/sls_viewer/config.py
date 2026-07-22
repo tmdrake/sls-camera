@@ -115,6 +115,7 @@ class Settings:
     quit_powers_off: bool = False
 
     model_path: Path = field(default_factory=lambda: MODEL_PATH)
+    # --demo: force synthetic depth/IR (no freenect open). Lab / VM UI test.
     allow_demo_without_kinect: bool = False
 
     def load_persisted(self, path: Path = SETTINGS_PATH) -> None:

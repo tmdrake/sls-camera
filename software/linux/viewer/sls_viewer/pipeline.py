@@ -383,6 +383,7 @@ class FramePipeline:
         return fps_smooth
 
     def _loop(self) -> None:
+        # --demo: force synthetic depth/IR (no freenect). Lab / VM without camera.
         demo = bool(self.s.allow_demo_without_kinect)
 
         # Splash immediately so startup is not a blank screen
@@ -392,41 +393,46 @@ class FramePipeline:
         # Pose model can load while user sees splash (before freenect open)
         try:
             self._ensure_pose()
-            self._paint_splash("Starting SLS Camera", "Opening camera…")
+            if demo:
+                self._paint_splash("Demo mode", "Synthetic depth/IR (no camera)")
+            else:
+                self._paint_splash("Starting SLS Camera", "Opening camera…")
         except Exception as e:
             self._status = f"pose model error: {e}"
             self._paint_splash("Starting SLS Camera", f"pose: {e}")
 
-        use_kinect = self._open_kinect()
-
-        # Infinite reconnect until first success (unless --demo allows fallback)
-        while self._running and not use_kinect and not demo:
-            self._reconnect_attempt += 1
-            self._status = (
-                f"reconnecting… attempt {self._reconnect_attempt}"
-            )
-            self._paint_reconnect(self._status)
-            time.sleep(self.RECONNECT_SLEEP_S)
-            use_kinect = self._open_kinect()
-
-        if not use_kinect and demo:
+        use_kinect = False
+        if demo:
+            # Never open freenect — even if a Kinect is plugged in
             self._status = "demo mode (no camera)"
+            self._close_kinect()
+        else:
+            use_kinect = self._open_kinect()
+            # Infinite reconnect until first success (live field path)
+            while self._running and not use_kinect:
+                self._reconnect_attempt += 1
+                self._status = (
+                    f"reconnecting… attempt {self._reconnect_attempt}"
+                )
+                self._paint_reconnect(self._status)
+                time.sleep(self.RECONNECT_SLEEP_S)
+                use_kinect = self._open_kinect()
 
         fps_smooth = 0.0
 
         while self._running:
             t0 = time.time()
             try:
-                if use_kinect and self._kinect:
+                if demo or not use_kinect or self._kinect is None:
+                    depth_u16, ir_u8 = self._demo_frames()
+                    if demo:
+                        self._status = "demo mode (no camera)"
+                else:
                     if self._kinect.is_dead():
                         raise freenect_io.FreenectError(
                             self._kinect.dead_reason() or "USB camera dead"
                         )
                     depth_u16, ir_u8 = self._kinect.get_depth_and_ir()
-                else:
-                    depth_u16, ir_u8 = self._demo_frames()
-                    if not use_kinect:
-                        self._status = "demo mode (no kinect)"
 
                 fps_smooth = self._process_frames(depth_u16, ir_u8, fps_smooth)
                 dt = time.time() - t0
@@ -440,7 +446,12 @@ class FramePipeline:
                     time.sleep(sleep_t)
 
             except freenect_io.FreenectError as e:
-                # Device lost / stale frames — full close + infinite reopen
+                # Live path only: device lost — reopen forever (never in --demo)
+                if demo:
+                    use_kinect = False
+                    self._close_kinect()
+                    self._status = "demo mode (no camera)"
+                    continue
                 self._status = f"reconnecting… {e}"
                 self._close_kinect()
                 use_kinect = False
@@ -469,6 +480,11 @@ class FramePipeline:
                     k in msg
                     for k in ("usb", "freenect", "transfer", "libusb", "kinect")
                 ):
+                    if demo:
+                        use_kinect = False
+                        self._close_kinect()
+                        self._status = "demo mode (no camera)"
+                        continue
                     self._status = f"reconnecting… {e}"
                     self._close_kinect()
                     use_kinect = False

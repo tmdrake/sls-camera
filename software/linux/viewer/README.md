@@ -367,7 +367,7 @@ viewer/
 ```bash
 ./run.sh --help              # argparse help only (no gspca/portaudio preflight noise)
 ./run.sh                     # live Kinect; reconnects forever if missing
-./run.sh --demo              # fallback synthetic frames if freenect cannot open
+./run.sh --demo              # synthetic depth/IR — test UI **without** a Kinect
 ./run.sh --mirror            # horizontal mirror
 ./run.sh --no-auto-level     # leave tilt as-is
 ./run.sh --led-off           # no green idle LED
@@ -390,7 +390,7 @@ Equivalent without the wrapper (after venv exists):
 | `--host ADDR` | `127.0.0.1` | Web bind address |
 | `--port N` | `8765` | Web port |
 | `--mirror` | off | Mirror depth/IR |
-| `--demo` | off | **Fallback only:** if freenect open fails, use synthetic depth/IR instead of reconnecting forever. **Does not** skip a working Kinect |
+| `--demo` | off | **Test without a camera:** synthetic depth/IR only; **does not open freenect** (Kinect may stay plugged in unused) |
 | `--no-auto-level` | auto-level on | Skip tilt to 0° on start (**field / appliance should pass this**) |
 | `--led-off` | green idle LED | Leave Kinect LED off |
 | `--device INDEX` | `0` | Freenect device index |
@@ -409,13 +409,24 @@ Full text (examples + keyboard shortcuts) is always from argparse:
 | PortAudio | Probes `libportaudio.so.2` via Python ctypes (and multiarch paths). NOTE only if truly missing: `sudo apt install libportaudio2` |
 | Startup banner | Printed for normal launches; **skipped** for `--help` / `-h` |
 
-### `--demo` behavior (important)
+### `--demo` — test without a Kinect
 
-| Situation | Result |
-|-----------|--------|
-| Kinect opens OK | **Live camera** (same as without `--demo`) |
-| Kinect will not open, **no** `--demo` | Splash **Reconnecting to SLS Camera** forever |
-| Kinect will not open, **with** `--demo` | Synthetic depth/IR UI (“demo mode”) |
+Use this on a **desktop / VM / tablet without a camera**, or when you want UI work without claiming USB.
+
+| | |
+|--|--|
+| **What it does** | Synthetic moving depth + IR frames; status **`demo mode (no camera)`** |
+| **What it skips** | freenect open, tilt, LED, USB camera entirely |
+| **What still runs** | Qt field UI, Settings, pose on synthetic frames, DrakeVox/TTS, spectrum (system mic if any), Snap/Record of the synthetic view |
+| **Without `--demo`** | Live freenect; if open fails → reconnect splash forever |
+
+```bash
+# Lab / VM — no Kinect required
+./run.sh --demo
+
+# Live field / with camera
+./run.sh
+```
 
 ## Troubleshooting
 
@@ -431,8 +442,8 @@ Full text (examples + keyboard shortcuts) is always from argparse:
 | DrakeVox silent on speakers | App unmutes + max volume each speak; if PipeWire shows **Dummy Output** only (RCA SOF), there is no panel speaker path — hardware/ACPI, not TTS |
 | DrakeVox lag / silent live but OK in AVI | Synth + heavy volume setup on UI thread; AVI uses inject path. Perf redesign: [#13](https://github.com/tmdrake/sls-camera/issues/13) |
 | Kinect RECONNECTING | Power brick + USB; freenect retries automatically |
-| No Kinect / test UI only | `./run.sh --demo` (synthetic frames **if** open fails) |
-| Black window | Wait for first frame; or `--demo` if no camera |
+| No Kinect / test UI only | `./run.sh --demo` (always synthetic; no freenect) |
+| Black window | Wait for first frame; or `--demo` for synthetic without camera |
 | No DISPLAY | Need a desktop session |
 
 Firmware / tablet image packaging: [PRODUCT-VISION.md](../../../docs/PRODUCT-VISION.md).
