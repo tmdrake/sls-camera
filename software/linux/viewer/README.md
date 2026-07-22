@@ -112,7 +112,7 @@ Firmware should leave the session in **16:10 landscape** before launch. Issue: [
 | **DrakeVox on auto-snap** | Default **ON**; only when auto-snap fires (not manual Snap) |
 | **Brightness** | ±10%; n/a if no backlight/xrandr |
 | **Captures to** | **Auto** (default) or **Local** — see [Captures](#captures) |
-| **Copy local→media** | Only visible when USB/SD is mounted; confirm then copy |
+| **Copy local→media** | Always shown; **greyed out** until USB/SD is mounted (or while recording) |
 | **Format removable media…** | Confirm twice → erase + FAT32 the mounted SD/USB → `SLS-MEDIA` + `sls-captures/` (needs admin) — [#8](https://github.com/tmdrake/sls-camera/issues/8) |
 | **Date & time…** | Set host local date/time (24h) + common timezone via `timedatectl` — [#11](https://github.com/tmdrake/sls-camera/issues/11); appliance needs [DATE-TIME-PRIVS](../docs/DATE-TIME-PRIVS.md) |
 
