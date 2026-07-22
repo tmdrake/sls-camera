@@ -78,12 +78,14 @@ Settings right pane shows the same shortcuts as a short hint line.
 
 ## Settings details
 
-Settings is a **wide two-pane** dialog sized for fleet **16:10 landscape** (1280×800 / 1920×1200):
+Settings is a **wide two-pane** dialog that uses most of the panel (~94–96% of available geometry) on fleet **16:10 landscape** (1280×800 / 1920×1200):
 
 | Pane | Content |
 |------|---------|
-| **Left** | Controls (pose, spectrum, DrakeVox, captures, actions) — scrolls if needed |
+| **Left** | Controls (pose, spectrum, DrakeVox, captures, actions) — **scrollbar / wheel** if content still overflows |
 | **Right** | Status / log (display geometry, clock, mic, DrakeVox history, keyboard hint) |
+
+Click-drag on empty content does not scroll (Qt default); use the **scrollbar** or mouse wheel.
 
 **Close** is in the header. At startup the app logs geometry (also shown on the right pane):
 

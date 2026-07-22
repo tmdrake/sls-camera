@@ -1083,9 +1083,9 @@ class SettingsDialog(QDialog):
     def _fit_to_screen(self) -> None:
         """Fit Settings for fleet **16:10 landscape** (1280×800 / 1920×1200).
 
-        Wide two-pane dialog, capped to availableGeometry; left pane scrolls.
-        16:10-ish panels get a wider/taller preferred size so controls + status
-        sit side-by-side without feeling like a phone column.
+        Use most of availableGeometry so the two-pane dialog is large enough
+        for field tablets; left pane may still scroll (scrollbar / wheel).
+        Prefer ~94–96% size — not 100% so a thin margin remains around the frame.
         """
         screen = self.screen()
         if screen is None:
@@ -1096,21 +1096,22 @@ class SettingsDialog(QDialog):
         avail = screen.availableGeometry()
         aw, ah = max(1, avail.width()), max(1, avail.height())
         ar = aw / float(ah)
-        max_h = max(300, int(ah * 0.90))
-        max_w = max(560, int(aw * 0.94))
+        # Cap near full panel; thin outer margin for frame + Close affordance
+        max_h = max(300, int(ah * 0.96))
+        max_w = max(560, int(aw * 0.96))
         # Fleet target: 16:10 landscape (1.6). Also treat near-16:10 as such.
         if 1.50 <= ar <= 1.70 and aw >= ah:
-            # e.g. 1280×800 → ~1080×640; 1920×1200 → ~1620×960
-            prefer_w = min(max_w, int(aw * 0.84))
-            prefer_h = min(max_h, int(ah * 0.84))
+            # e.g. 1280×768 avail → ~1203×737 (was ~1075×645 at 84%)
+            prefer_w = min(max_w, int(aw * 0.94))
+            prefer_h = min(max_h, int(ah * 0.94))
         elif aw >= ah:
-            # Other landscape (16:9, ultrawide): keep wide but not full height
-            prefer_w = min(max_w, max(720, int(aw * 0.75)))
-            prefer_h = min(max_h, max(400, int(ah * 0.78)))
+            # Other landscape (16:9, ultrawide): still large
+            prefer_w = min(max_w, max(720, int(aw * 0.92)))
+            prefer_h = min(max_h, max(400, int(ah * 0.92)))
         else:
             # Portrait fallback (should be rare after FW landscape lock)
-            prefer_w = min(max_w, max(480, int(aw * 0.92)))
-            prefer_h = min(max_h, max(520, int(ah * 0.70)))
+            prefer_w = min(max_w, max(480, int(aw * 0.94)))
+            prefer_h = min(max_h, max(520, int(ah * 0.90)))
         min_w = min(640, max_w) if aw >= 700 else min(480, max_w)
         min_h = min(360, max_h) if ah >= 500 else min(280, max_h)
         self.setMinimumWidth(min_w)
