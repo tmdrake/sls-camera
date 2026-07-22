@@ -390,7 +390,7 @@ Equivalent without the wrapper (after venv exists):
 | `--port N` | `8765` | Web port |
 | `--mirror` | off | Mirror depth/IR |
 | `--demo` | off | **Fallback only:** if freenect open fails, use synthetic depth/IR instead of reconnecting forever. **Does not** skip a working Kinect |
-| `--no-auto-level` | auto-level on | Skip tilt to 0° on start |
+| `--no-auto-level` | auto-level on | Skip tilt to 0° on start (**field / appliance should pass this**) |
 | `--led-off` | green idle LED | Leave Kinect LED off |
 | `--device INDEX` | `0` | Freenect device index |
 

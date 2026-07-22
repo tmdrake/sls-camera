@@ -160,6 +160,31 @@ Portrait native glass must be rotated **before** the app (firmware).
 
 ---
 
+## Kinect tilt — use `--no-auto-level` on field units (#10)
+
+Field kits use a **fixed mount** (no operator tilt). The app **default** still auto-levels the motor to **0°** on open/reconnect (lab/tripod convenience).
+
+**Do not change the app default for this.** Appliance launcher should pass the existing CLI flag:
+
+```bash
+# In overlay /usr/local/bin/sls-camera (or desktop Exec):
+./run.sh --no-auto-level "$@"
+# or ensure the flag is always present for field:
+./run.sh --no-auto-level
+```
+
+| Flag | Effect |
+|------|--------|
+| **`--no-auto-level`** | **No tilt command** on start/reconnect (recommended field) |
+| *(default, no flag)* | Auto-level tilt to 0° (lab / adjustable mounts) |
+| **`--led-off`** | Optional — turns off idle green LED; **keep LED on** for REC/snap cues |
+
+**Keep the Kinect LED** (green idle / red REC / snap flash). LED is separate from tilt; only skip auto-level.
+
+App still **enumerates** the motor USB ID via freenect — that is fine. Flag only stops **commanding** the motor.
+
+Viewer CLI table: [viewer/README.md](../viewer/README.md) · issue [#10](https://github.com/tmdrake/sls-camera/issues/10).
+
 ## Appliance contracts the app already honors
 
 | Contract | App behavior |
@@ -171,6 +196,7 @@ Portrait native glass must be rotated **before** the app (firmware).
 | **`SLS_ON_QUIT=app`** + **`SLS_QUIT_FALLBACK=none`** | Power off **only** on exit 10 |
 | **Wake lock** | Always on while field UI runs (not host power-off) |
 | **Format media** | UDisks2 then mkfs; two Yes confirms; FAT32 `SLS-MEDIA` |
+| **Field tilt** | Launcher passes **`--no-auto-level`** (see above) |
 
 **Host power-off is firmware-owned** (launcher + `sudoers.d/sls-poweroff`).  
 App does **not** call `poweroff` itself — only exit code 10.
