@@ -383,29 +383,36 @@ def ensure_max_output_volume() -> None:
             break
 
 
-def play_pcm(pcm: np.ndarray, sample_rate: int = DEFAULT_SAMPLE_RATE) -> bool:
+def play_pcm(
+    pcm: np.ndarray,
+    sample_rate: int = DEFAULT_SAMPLE_RATE,
+    *,
+    ensure_volume: bool = False,
+) -> bool:
     try:
         import sounddevice as sd
     except Exception:
         return False
     try:
-        ensure_max_output_volume()
+        if ensure_volume:
+            ensure_max_output_volume()
         # Peak-normalize soft espeak so panel speakers aren't tiny at 100%
         x = np.asarray(pcm, dtype=np.float32).reshape(-1)
         peak = float(np.max(np.abs(x))) if x.size else 0.0
         if peak > 1e-6 and peak < 0.85:
             x = np.clip(x * (0.95 / peak), -1.0, 1.0)
-        sd.play(x, samplerate=int(sample_rate))
+        sd.play(x, samplerate=int(sample_rate), blocking=False)
         return True
     except Exception:
         return False
 
 
-def play_live_fallback(text: str) -> bool:
+def play_live_fallback(text: str, *, ensure_volume: bool = False) -> bool:
     word = (text or "").strip()
     if not word:
         return False
-    ensure_max_output_volume()
+    if ensure_volume:
+        ensure_max_output_volume()
     eng = find_espeak_cli()
     if eng:
         try:
@@ -433,13 +440,19 @@ def play_live_fallback(text: str) -> bool:
 
 
 class DrakeVoxTTS:
-    """Synthesize + speak DrakeVox words; PCM callback for AVI mix."""
+    """Synthesize + speak DrakeVox words; PCM callback for AVI mix.
+
+    Latency notes (#13): mixer setup once; libespeak preferred; speak() runs
+    synth+play on a worker so the Qt UI thread is not blocked.
+    """
 
     def __init__(self, sample_rate: int = DEFAULT_SAMPLE_RATE):
         self.sample_rate = int(sample_rate)
         self._lock = threading.Lock()
         self._on_pcm: Optional[Callable[[np.ndarray, float], None]] = None
         self._last_error = ""
+        self._worker: Optional[threading.Thread] = None
+        self._warmed = False
 
     @property
     def last_error(self) -> str:
@@ -455,30 +468,69 @@ class DrakeVoxTTS:
         with self._lock:
             self._on_pcm = cb
 
+    def warm(self) -> None:
+        """Once at app start: mixer + load espeak (background, non-blocking)."""
+        if self._warmed:
+            return
+        self._warmed = True
+
+        def _job() -> None:
+            try:
+                ensure_max_output_volume(force=True)
+                # Preload lib / first-synth cost off the first DrakeVox trigger
+                synthesize("ok", sample_rate=self.sample_rate)
+            except Exception:
+                pass
+
+        threading.Thread(target=_job, name="tts-warm", daemon=True).start()
+
     def speak(
         self, text: str, *, when: Optional[float] = None
     ) -> Tuple[bool, Optional[np.ndarray]]:
-        import time as _time
+        """Queue word for synth+play off the UI thread. Returns immediately.
 
+        PCM for AVI is injected from the worker when ready (offset ≈ play start).
+        """
         word = (text or "").strip()
         if not word:
             return False, None
-        ensure_max_output_volume()
-        t0 = float(when if when is not None else _time.time())
-        pcm = synthesize(word, sample_rate=self.sample_rate)
-        if pcm is not None and pcm.size > 0:
-            with self._lock:
-                cb = self._on_pcm
-            if cb is not None:
-                try:
-                    cb(pcm, t0)
-                except Exception:
-                    pass
-            if not play_pcm(pcm, self.sample_rate):
-                play_live_fallback(word)
-            self._last_error = ""
-            return True, pcm
 
-        self._last_error = "TTS synth unavailable (install espeak-ng)"
-        ok = play_live_fallback(word)
-        return ok, None
+        def _job() -> None:
+            import time as _time
+
+            try:
+                # First word (or cold start): ensure volume once; cheap no-op after
+                ensure_max_output_volume(force=False)
+                pcm = synthesize(word, sample_rate=self.sample_rate)
+                t0 = float(when if when is not None else _time.time())
+                if pcm is not None and pcm.size > 0:
+                    with self._lock:
+                        cb = self._on_pcm
+                    if cb is not None:
+                        try:
+                            cb(pcm, t0)
+                        except Exception:
+                            pass
+                    if not play_pcm(pcm, self.sample_rate, ensure_volume=False):
+                        # One forced volume pass if first play failed (sink switched)
+                        ensure_max_output_volume(force=True)
+                        if not play_pcm(pcm, self.sample_rate, ensure_volume=False):
+                            play_live_fallback(word, ensure_volume=False)
+                    self._last_error = ""
+                    return
+                self._last_error = "TTS synth unavailable (install espeak-ng)"
+                play_live_fallback(word, ensure_volume=True)
+            except Exception as exc:
+                self._last_error = str(exc)[:120]
+
+        # Serialize speaks so overlapping words do not stomp PortAudio
+        with self._lock:
+            prev = self._worker
+        if prev is not None and prev.is_alive():
+            # Soft join short: avoid pile-up; drop if still busy
+            prev.join(timeout=0.05)
+        t = threading.Thread(target=_job, name="tts-speak", daemon=True)
+        with self._lock:
+            self._worker = t
+        t.start()
+        return True, None

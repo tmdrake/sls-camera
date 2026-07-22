@@ -842,6 +842,8 @@ class SlsMainWindow(QMainWindow):
         self.tts = DrakeVoxTTS(sample_rate=AUDIO_SAMPLE_RATE)
         # Mix spoken words into AVI whenever recording
         self.tts.set_record_callback(self.session.inject_tts)
+        # Warm mixer + espeak off UI thread so first DrakeVox is faster (#13)
+        self.tts.warm()
         self.battery = BatteryMonitor(poll_s=5.0)
         self.display_inhibit = DisplayInhibit()
         self._settings_dlg: Optional[SettingsDialog] = None
