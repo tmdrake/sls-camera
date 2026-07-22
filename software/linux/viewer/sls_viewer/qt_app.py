@@ -35,6 +35,7 @@ from .backlight import (
 )
 from . import freenect_io
 from .battery import BatteryMonitor
+from .battery_ui import battery_gauge_pixmap, battery_tooltip
 from .drakevox import DrakeVoxEngine, paint_drakevox_bgr
 from .display_inhibit import DisplayInhibit
 from .host_power import EXIT_OK, EXIT_POWEROFF
@@ -73,6 +74,12 @@ QLabel#status {
 QLabel#title {
     color: #00ffb4; font-size: 16px; font-weight: 700;
     letter-spacing: 2px; padding: 4px 8px;
+}
+QLabel#batteryGauge {
+    background-color: transparent;
+    min-width: 96px;
+    min-height: 36px;
+    padding: 2px 4px;
 }
 QLabel#hdr {
     color: #00ffb4; font-size: 15px; font-weight: 700;
@@ -1175,6 +1182,15 @@ class SlsMainWindow(QMainWindow):
         self.status = QLabel("starting…")
         self.status.setObjectName("status")
 
+        # Visual battery gauge (#12) — hidden when no system battery
+        self.battery_gauge = QLabel()
+        self.battery_gauge.setObjectName("batteryGauge")
+        self.battery_gauge.setAlignment(
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight
+        )
+        self.battery_gauge.setVisible(False)
+        self._battery_gauge_key: Optional[str] = None
+
         self.btn_settings = QPushButton("Settings")
         self.btn_settings.setObjectName("wide")
         self.btn_settings.clicked.connect(self._open_settings)
@@ -1194,6 +1210,7 @@ class SlsMainWindow(QMainWindow):
 
         bar_layout.addWidget(self.title)
         bar_layout.addWidget(self.status, stretch=1)
+        bar_layout.addWidget(self.battery_gauge)
         bar_layout.addWidget(self.btn_settings)
         bar_layout.addWidget(self.btn_snap)
         bar_layout.addWidget(self.btn_record)
@@ -1715,8 +1732,8 @@ class SlsMainWindow(QMainWindow):
         dv = ""
         if self.pipeline.s.drakevox_enabled and self.drakevox.current:
             dv = f" · DRAKEVOX:{self.drakevox.current}"
-        bat = self.battery.status_token()
-        bat_s = f" · {bat}" if bat else ""
+        # Battery: visual gauge on the bar (#12); no duplicate BAT text in status
+        self._refresh_battery_gauge()
         # Refresh auto media path occasionally (plug pen drive / SD mid-session)
         self._media_poll_i = getattr(self, "_media_poll_i", 0) + 1
         if self._media_poll_i % 90 == 0:  # ~3s at 33ms tick
@@ -1729,7 +1746,7 @@ class SlsMainWindow(QMainWindow):
         cap_s = f" · CAP:{cap}" if cap else ""
         base = (
             f"{self.pipeline.status}  ·  "
-            f"Detected:{self.pipeline.poses_count}/{mx}{rec}{dv}{bat_s}{cap_s}"
+            f"Detected:{self.pipeline.poses_count}/{mx}{rec}{dv}{cap_s}"
         )
         self.status.setText(f"{flash}  ·  {base}" if flash else base)
 
@@ -1755,6 +1772,31 @@ class SlsMainWindow(QMainWindow):
                 self.video.setPixmap(scaled)
 
         self._paint_spectrum_strip()
+
+    def _refresh_battery_gauge(self) -> None:
+        """Update icon+fill battery widget; hide when no pack (desktop/VM)."""
+        reading = self.battery.update()
+        if not reading.present or reading.percent is None:
+            if self.battery_gauge.isVisible():
+                self.battery_gauge.clear()
+                self.battery_gauge.setVisible(False)
+                self.battery_gauge.setToolTip("")
+            self._battery_gauge_key = None
+            return
+        p = max(0, min(100, int(reading.percent)))
+        key = f"{p}|{int(reading.charging)}|{(reading.status or '')[:16]}"
+        if key == self._battery_gauge_key and self.battery_gauge.isVisible():
+            return
+        self._battery_gauge_key = key
+        pix = battery_gauge_pixmap(reading, height=36)
+        if pix is None:
+            self.battery_gauge.clear()
+            self.battery_gauge.setVisible(False)
+            return
+        self.battery_gauge.setPixmap(pix)
+        self.battery_gauge.setFixedSize(pix.size())
+        self.battery_gauge.setToolTip(battery_tooltip(reading))
+        self.battery_gauge.setVisible(True)
 
     def closeEvent(self, event) -> None:
         if not self._quit_confirmed:

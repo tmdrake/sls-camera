@@ -35,7 +35,7 @@ policy come later.
 | [#9](https://github.com/tmdrake/sls-camera/issues/9) | Keep display awake while UI runs — **closed** |
 | [#10](https://github.com/tmdrake/sls-camera/issues/10) | Kinect tilt disable (field) — **closed** (`--no-auto-level`) |
 | [#11](https://github.com/tmdrake/sls-camera/issues/11) | Settings date/time — **app done**; ship FW polkit |
-| [#12](https://github.com/tmdrake/sls-camera/issues/12) | Visual battery gauge |
+| [#12](https://github.com/tmdrake/sls-camera/issues/12) | Visual battery gauge — **done** (icon + fill) |
 | [#13](https://github.com/tmdrake/sls-camera/issues/13) | DrakeVox TTS latency (verify on tablet) |
 
 Firmware may implement offline mirrors; **product install-path and app-behavior decisions stay tracked here**.
@@ -57,7 +57,8 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
   - Related: **Captures → removable media / SD** (runtime detect + prefer external volume)
 - [x] **Battery % + charge indicator** — status bar `BAT n%` / `⚡` when sysfs battery exists; hidden on desktop  
 - [x] **Settings date & time (#11)** — host clock via `timedatectl`; touch dialog; FW polkit/sudoers in DATE-TIME-PRIVS  
-- [ ] **Better visual battery gauge** — icon/fill UI (not text-only); charging + low states; field glanceable — [#12](https://github.com/tmdrake/sls-camera/issues/12)  
+- [x] **Better visual battery gauge (#12)** — status-bar icon + fill + %; charging bolt; low red; hidden without battery  
+  - Code: `battery.py`, `battery_ui.py`, `qt_app.py`  
 - [ ] **DrakeVox TTS performance (priority on 2 GB tablets)** — stop full mixer storm every word; async synth/play; keep AVI inject; live path reliable under freenect/spectrum — [#13](https://github.com/tmdrake/sls-camera/issues/13)
 - [x] **Quit confirmation** — dialog before exit (stops REC cleanly)
 - [x] **Quit → power off (firmware contract)** — env `SLS_QUIT_ACTION=shutdown` (appliance launcher); app dialog + exit **10**; **no** Settings toggle (firmware owns host poweroff). Dev stays exit-only.

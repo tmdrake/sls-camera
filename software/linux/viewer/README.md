@@ -14,7 +14,7 @@
 | **Auto-snap** | Optional on pose appear; **DrakeVox on auto-snap** (default ON) adds word+TTS into that JPEG |
 | **Record** | AVI + mic + TTS at **20 FPS** (matches live `target_fps`); LED solid **red** while REC |
 | **Reconnect** | Splash **Starting / Reconnecting to SLS Camera**; infinite retry |
-| **Battery** | Status `BAT n%` / `⚡` when a battery exists (hidden on desktop). **Better visual gauge** tracked: [#12](https://github.com/tmdrake/sls-camera/issues/12) |
+| **Battery** | Status-bar **icon + fill + %** when a pack exists (charging bolt, low = red); hidden on desktop — [#12](https://github.com/tmdrake/sls-camera/issues/12) |
 | **Brightness** | Settings ±10% (sysfs / brightnessctl / xrandr) |
 | **Quit** | Confirms before exit; on appliance firmware powers off (exit 10) |
 | **DrakeVox** | 5–15 min timer + TTS; ~2k-word list; under IR PiP; key **O** |
@@ -276,7 +276,16 @@ Power/USB loss often prints `USB camera marked dead` / iso transfer `-4` in the 
 
 ## Battery (tablet)
 
-When Linux exposes a battery under `/sys/class/power_supply` (or UPower), the status bar shows e.g. `BAT 64%` or `BAT 87% ⚡` (charging). **Hidden** on desktops with no battery.
+When Linux exposes a battery under `/sys/class/power_supply` (or UPower), the bottom bar shows a **glanceable gauge** (outline + fill level + percent):
+
+| State | Look |
+|-------|------|
+| Normal | Green fill + `n%` |
+| Low (≤15%) | Red outline/fill |
+| Charging / AC | Blue fill + bolt on the icon |
+| No battery (desktop/VM) | Widget **hidden** |
+
+Tooltip has status string + sysfs name. Code: `battery.py` (read) + `battery_ui.py` (paint) — [#12](https://github.com/tmdrake/sls-camera/issues/12).
 
 ### Display brightness (Settings)
 
@@ -355,6 +364,7 @@ viewer/
     drakevox.py           # 5–15 min timer, word bank, overlay
     tts.py                # espeak TTS for DrakeVox + AVI mix
     battery.py
+    battery_ui.py
     backlight.py
     audio_device.py       # Kinect mic picker
     config.py
