@@ -265,7 +265,9 @@ class FreenectSync:
         hints = []
         if gspca_loaded():
             hints.append("sudo modprobe -r gspca_kinect")
-        hints.append("power brick on; free USB; no other freenect app")
+        hints.append(
+            "power brick on (unplug charger if charge relay cuts 12V); free USB; no other freenect app"
+        )
         raise FreenectError(
             f"Could not open camera: {last_err}. " + " | ".join(hints)
         )

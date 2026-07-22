@@ -210,7 +210,8 @@ class FramePipeline:
             lines.append(
                 f"Retry #{self._reconnect_attempt} · every {self.RECONNECT_SLEEP_S:.0f}s"
             )
-            lines.append("Check power brick and USB")
+            # Portable PSU: charge mode may switch a relay that drops 12 V to the camera
+            lines.append("Check power brick and USB · Unplug charger")
         else:
             lines.append("Opening depth sensor…")
             lines.append("Please wait")

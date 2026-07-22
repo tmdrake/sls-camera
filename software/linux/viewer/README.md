@@ -468,7 +468,7 @@ Use this on a **desktop / VM / tablet without a camera**, or when you want UI wo
 | Soft / loud mic | App does not set gain — use `pavucontrol` or `alsamixer` on the capture source |
 | DrakeVox silent on speakers | App unmutes + max volume each speak; if PipeWire shows **Dummy Output** only (RCA SOF), there is no panel speaker path — hardware/ACPI, not TTS |
 | DrakeVox lag / silent live but OK in AVI | Synth + heavy volume setup on UI thread; AVI uses inject path. Perf redesign: [#13](https://github.com/tmdrake/sls-camera/issues/13) |
-| Kinect RECONNECTING | Power brick + USB; freenect retries automatically |
+| Kinect RECONNECTING | Power brick + USB; **unplug charger** if the 12 V path uses a charge relay that disables the camera; freenect retries automatically |
 | No Kinect / test UI only | `./run.sh --demo` (always synthetic; no freenect) |
 | Black window | Wait for first frame; or `--demo` for synthetic without camera |
 | No DISPLAY | Need a desktop session |
