@@ -122,7 +122,7 @@ class PoseEstimator:
 
     def set_min_confidence(self, value: float) -> None:
         """Update confidence and rebuild MediaPipe so the setting actually applies."""
-        value = float(max(0.05, min(0.99, value)))
+        value = float(max(0.05, min(0.95, value)))
         if abs(value - self.min_confidence) < 0.001:
             return
         self.min_confidence = value
