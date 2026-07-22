@@ -101,8 +101,8 @@ Firmware should leave the session in **16:10 landscape** before launch. Issue: [
 | Setting | Range / default |
 |---------|-----------------|
 | **Max people** | 1–6; MediaPipe default **1** |
-| **Confidence** | **25%–95%** in 5% steps (shown as %); MediaPipe default **50%** |
-| **Defaults** | Confirm → Max=1, Conf=50%, **Captures to Auto** |
+| **Confidence** | **25%–95%** in 5% steps (shown as %); field default **25%** |
+| **Defaults** | Confirm → Max=1, Conf=25%, **Captures to Auto** |
 | **Clear captures** | Confirm, then delete files under `captures/` (blocked while REC) |
 | **Mirror** | Off by default |
 | **Spectrum** | On/off; strip height always reserved (no layout jump) |

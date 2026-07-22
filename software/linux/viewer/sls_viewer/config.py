@@ -17,8 +17,9 @@ SETTINGS_PATH = VIEWER_ROOT / "user_settings.json"
 
 # MediaPipe PoseLandmarker official defaults
 # (https://ai.google.dev/edge/api/mediapipe/python/mp/tasks/vision/PoseLandmarkerOptions)
-# num_poses=1, min_*_confidence=0.5
-MEDIAPIPE_DEFAULT_CONFIDENCE = 0.5
+# Field default confidence (UI 25%). MediaPipe stock is often 0.5; we start
+# looser so depth/SLS sticks appear more readily on tablets.
+MEDIAPIPE_DEFAULT_CONFIDENCE = 0.25
 MEDIAPIPE_DEFAULT_MAX_POSES = 1
 
 # User-tweakable prefs (IR gain fixed, not UI)

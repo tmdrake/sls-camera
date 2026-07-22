@@ -637,7 +637,7 @@ class SettingsDialog(QDialog):
         self.conf_label.setObjectName("vallabel")
         self.conf_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.conf_label.setToolTip(
-            "MediaPipe pose confidence (25%–95% in 5% steps; default 50%)"
+            "MediaPipe pose confidence (25%–95% in 5% steps; default 25%)"
         )
         self.btn_conf_up = QPushButton("+")
         self.btn_conf_up.setToolTip("Raise pose confidence (+5%)")
