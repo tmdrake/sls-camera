@@ -172,6 +172,30 @@ def confidence_percent_label(value: float) -> str:
     return f"{int(round(float(value) * 100.0))}%"
 
 
+def _status_mode_short(raw: str) -> str:
+    """Collapse long pipeline status into a short field-bar mode token."""
+    s = (raw or "").strip()
+    if not s:
+        return "…"
+    low = s.lower()
+    if "demo" in low:
+        return "Demo"
+    if "reconnect" in low:
+        return "Reconnect"
+    if "opening" in low or s.startswith("starting"):
+        return "Starting"
+    if "camera error" in low or "pose model error" in low:
+        return "Error"
+    if "pose:" in low:
+        return "Pose?"
+    if low.startswith("live") or "reconnected" in low:
+        return "Live"
+    # Keep short; drop LED/tilt detail (still in tooltip)
+    if len(s) > 28:
+        return s[:26] + "…"
+    return s
+
+
 def _days_in_month(year: int, month: int) -> int:
     return calendar.monthrange(int(year), int(month))[1]
 
@@ -1735,15 +1759,9 @@ class SlsMainWindow(QMainWindow):
         mx = self.pipeline.max_poses
         flash = self.session.flash_message()
         if self.session.recording:
-            rec = f" · REC {self.session.recording_elapsed_str()}"
             self._refresh_record_button()
-        else:
-            rec = ""
-            if self.btn_record.text() != "Record":
-                self.btn_record.setText("Record")
-        dv = ""
-        if self.pipeline.s.drakevox_enabled and self.drakevox.current:
-            dv = f" · DRAKEVOX:{self.drakevox.current}"
+        elif self.btn_record.text() != "Record":
+            self.btn_record.setText("Record")
         # Battery: visual gauge on the bar (#12); no duplicate BAT text in status
         self._refresh_battery_gauge()
         # Refresh auto media path occasionally (plug pen drive / SD mid-session)
@@ -1754,15 +1772,27 @@ class SlsMainWindow(QMainWindow):
         self._inhibit_refresh_i = getattr(self, "_inhibit_refresh_i", 0) + 1
         if self.display_inhibit.active and self._inhibit_refresh_i % 1800 == 0:
             self.display_inhibit.refresh_x11()
-        cap = self.session.captures_label
-        cap_s = f" · CAP:{cap}" if cap else ""
+        # Compact status: mode · people · conf · captures (+ REC while recording).
+        # DrakeVox stays on the video overlay; long freenect detail stays in Settings.
+        mode = _status_mode_short(self.pipeline.status)
         conf_s = confidence_percent_label(self.pipeline.pose_confidence)
-        base = (
-            f"{self.pipeline.status}  ·  "
-            f"Detected:{self.pipeline.poses_count}/{mx}"
-            f"  ·  Conf:{conf_s}{rec}{dv}{cap_s}"
+        cap = self.session.captures_label or "local"
+        parts = [
+            mode,
+            f"{self.pipeline.poses_count}/{mx}",
+            conf_s,
+            cap,
+        ]
+        if self.session.recording:
+            parts.insert(1, f"REC {self.session.recording_elapsed_str()}")
+        base = "  ·  ".join(parts)
+        # Temporary flash replaces the line (snap saved, format, errors)
+        self.status.setText(flash if flash else base)
+        self.status.setToolTip(
+            f"{self.pipeline.status}\n"
+            f"People {self.pipeline.poses_count}/{mx}  ·  "
+            f"Confidence {conf_s}  ·  Captures {cap}"
         )
-        self.status.setText(f"{flash}  ·  {base}" if flash else base)
 
         frame = self.pipeline.get_bgr()
         if frame is not None:
