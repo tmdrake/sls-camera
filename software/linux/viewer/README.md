@@ -113,7 +113,7 @@ Firmware should leave the session in **16:10 landscape** before launch. Issue: [
 | **Brightness** | ±10%; n/a if no backlight/xrandr |
 | **Captures to** | **Auto** (default) or **Local** — see [Captures](#captures) |
 | **Copy local→media** | Always shown; **greyed out** until USB/SD is mounted (or while recording) |
-| **Format removable media…** | Confirm twice → erase + FAT32 the mounted SD/USB → `SLS-MEDIA` + `sls-captures/` (needs admin) — [#8](https://github.com/tmdrake/sls-camera/issues/8) |
+| **Format removable media…** | Always shown; **greyed out** until formattable USB/SD is mounted; then two Yes confirms → FAT32 `SLS-MEDIA` — [#8](https://github.com/tmdrake/sls-camera/issues/8) |
 | **Date & time…** | Set host local date/time (24h) + common timezone via `timedatectl` — [#11](https://github.com/tmdrake/sls-camera/issues/11); appliance needs [DATE-TIME-PRIVS](../docs/DATE-TIME-PRIVS.md) |
 
 ## Captures
@@ -184,7 +184,7 @@ viewer/captures/
 **Detection:** `lsblk` (USB RM/HOTPLUG + SD `mmcblk*`) and desktop automounts under `/media/$USER` and `/run/media/$USER`.  
 **Status:** `CAP:SD:Label · xG free` / `CAP:USB:…` / `CAP:local` / `CAP:local (no media)`.
 
-**Copy local→media** is hidden until media is mounted (nothing to copy to).
+**Copy local→media** stays visible but **disabled** until media is mounted (tooltip explains).
 
 Local `viewer/captures/` is gitignored. Revisit priority/UX later if field use says USB-first is better; file management UI is a later TODO.
 

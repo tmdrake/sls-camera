@@ -161,6 +161,18 @@ QScrollBar::handle:vertical:hover { background: #00ffb4; }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0;
 }
+/* Tooltips are separate top-level windows — must be styled explicitly
+   (default system tooltips look broken on dark frameless SLS chrome). */
+QToolTip {
+    background-color: #0a1612;
+    color: #e0fff0;
+    border: 1px solid #00ffb4;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 255;
+}
 """
 
 
@@ -218,6 +230,7 @@ class DateTimeDialog(QDialog):
             | Qt.WindowType.WindowStaysOnTopHint
         )
         self.setStyleSheet(_STYLE)
+        self.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
         self.setMinimumWidth(520)
         self.setMinimumHeight(420)
 
@@ -539,6 +552,8 @@ class SettingsDialog(QDialog):
             | Qt.WindowType.WindowStaysOnTopHint
         )
         self.setStyleSheet(_STYLE)
+        # Show tooltips even on disabled buttons (greyed Copy / Format / …)
+        self.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
         self.setMinimumWidth(640)
         self.setMinimumHeight(360)
 
@@ -719,11 +734,16 @@ class SettingsDialog(QDialog):
         self.btn_clear_captures.clicked.connect(self._clear_captures)
         self.btn_copy_to_media = QPushButton("Copy local→media")
         self.btn_copy_to_media.setObjectName("wide")
-        self.btn_copy_to_media.setToolTip(
+        self._copy_tip_ready = (
             "Copy existing viewer/captures files onto the mounted USB/SD "
             "(into sls-captures/). Does not delete local files. "
             "Use when you shot to local first, then plug in a stick/card."
         )
+        self._copy_tip_no_media = (
+            "Mount a USB stick or SD card first, then copy local captures "
+            "into sls-captures/ on that media."
+        )
+        self.btn_copy_to_media.setToolTip(self._copy_tip_no_media)
         self.btn_copy_to_media.clicked.connect(self._copy_local_to_media)
         self.btn_drakevox_now = QPushButton("DrakeVox now")
         self.btn_drakevox_now.setObjectName("wide")
@@ -737,15 +757,18 @@ class SettingsDialog(QDialog):
         act.addWidget(self.btn_drakevox_now, 1, 1)
         left_layout.addLayout(act)
 
-        # Format USB/SD for field captures (#8) — only button; no separate Prepare
+        # Format USB/SD for field captures (#8) — always shown; greyed without media
         self.btn_format_media = QPushButton("Format removable media…")
         self.btn_format_media.setObjectName("wide")
-        self.btn_format_media.setToolTip(
+        self._format_tip_ready = (
             "ERASE the mounted USB stick or SD card, then format for SLS "
             "(FAT32, label SLS-MEDIA, folder sls-captures/). "
-            "Two Yes/Cancel confirms (no typing). Needs admin (pkexec/sudo). "
-            "Hidden when no stick/card is mounted."
+            "Two Yes/Cancel confirms (no typing). Needs admin (pkexec/sudo)."
         )
+        self._format_tip_no_media = (
+            "Mount a USB stick or SD card first, then format it for SLS captures."
+        )
+        self.btn_format_media.setToolTip(self._format_tip_no_media)
         self.btn_format_media.clicked.connect(self._format_media)
         left_layout.addWidget(self.btn_format_media)
 
@@ -911,28 +934,50 @@ class SettingsDialog(QDialog):
             else:
                 self.btn_captures.setText("Local")
             self.btn_captures.setEnabled(not parent.session.recording)
-            # Only show Copy when USB/SD is mounted (nothing to copy to otherwise)
-            self.btn_copy_to_media.setVisible(has_media)
-            self.btn_copy_to_media.setEnabled(
-                has_media and not parent.session.recording
-            )
+            # Always show Copy; grey out when no media or while recording
             rec = bool(parent.session.recording)
+            can_copy = has_media and not rec
+            self.btn_copy_to_media.setVisible(True)
+            self.btn_copy_to_media.setEnabled(can_copy)
+            if not has_media:
+                self.btn_copy_to_media.setToolTip(self._copy_tip_no_media)
+            elif rec:
+                self.btn_copy_to_media.setToolTip(
+                    "Stop recording before copying captures to media."
+                )
+            else:
+                self.btn_copy_to_media.setToolTip(self._copy_tip_ready)
             can_fmt = False
             if has_media and not rec:
                 for _vol, ok, _why in list_format_candidates():
                     if ok:
                         can_fmt = True
                         break
-            self.btn_format_media.setVisible(has_media)
+            self.btn_format_media.setVisible(True)
             self.btn_format_media.setEnabled(can_fmt)
+            if not has_media:
+                self.btn_format_media.setToolTip(self._format_tip_no_media)
+            elif rec:
+                self.btn_format_media.setToolTip(
+                    "Stop recording before formatting removable media."
+                )
+            elif not can_fmt:
+                self.btn_format_media.setToolTip(
+                    "Media is mounted but not formattable "
+                    "(need a removable block device; system disks are blocked)."
+                )
+            else:
+                self.btn_format_media.setToolTip(self._format_tip_ready)
         else:
             self.btn_captures.setText(
                 "Auto" if cap_mode == "auto" else "Local"
             )
-            self.btn_copy_to_media.setVisible(False)
+            self.btn_copy_to_media.setVisible(True)
             self.btn_copy_to_media.setEnabled(False)
-            self.btn_format_media.setVisible(False)
+            self.btn_copy_to_media.setToolTip(self._copy_tip_no_media)
+            self.btn_format_media.setVisible(True)
             self.btn_format_media.setEnabled(False)
+            self.btn_format_media.setToolTip(self._format_tip_no_media)
 
         mic = self.spectrum.device_name or "(no mic)"
         err = self.spectrum.error
@@ -1182,6 +1227,7 @@ class SlsMainWindow(QMainWindow):
         # Captures path: local or auto USB/SD
         self.session.set_captures_target(pipeline.s.captures_target)
         self.setStyleSheet(_STYLE)
+        self.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
         # Always hold wake lock while field UI is up (#9) — not a Settings toggle
         self.display_inhibit.start()
 
@@ -1877,6 +1923,8 @@ def run_qt(pipeline: FramePipeline) -> int:
     )
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("SLS Camera")
+    # App-level sheet so QToolTip (separate window) gets dark SLS chrome
+    app.setStyleSheet(_STYLE)
     # Primary-screen geometry for hardware matrix / tablet bring-up (#6)
     geom_line = log_display_geometry(app)
     win = SlsMainWindow(pipeline)
