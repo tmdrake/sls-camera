@@ -153,13 +153,42 @@ class SpectrumAnalyzer:
         self._close_stream()
 
     def ensure_running(self) -> None:
-        """Call from UI tick: reopen mic if enabled/sunk but dead."""
+        """Call from UI tick: reopen mic if enabled/sunk but dead.
+
+        Also upgrades from non-Kinect (e.g. ALSA \"default\") to Kinect when
+        the array appears later — common on KVM after ``vm-kinect-usb.sh``
+        reattach, or tablet USB late plug. Not related to RCA SST/speakers.
+        """
         need = self._want_enabled or bool(self._pcm_sinks)
         if not need:
             return
-        if self.active:
-            return
         now = time.time()
+        if self.active:
+            # Sticky wrong device: re-pick when Kinect becomes available
+            if now - self._last_retry >= self.retry_interval_s:
+                low = (self._device_name or "").lower()
+                on_kinect = any(
+                    h in low
+                    for h in ("kinect", "microsoft", "usb audio", "xbox", "nui", "uac")
+                )
+                if not on_kinect:
+                    try:
+                        import sounddevice as sd
+
+                        _dev, label = pick_input_device(sd)
+                        lab = (label or "").lower()
+                        if any(
+                            h in lab
+                            for h in ("kinect", "microsoft", "usb audio", "xbox", "nui")
+                        ):
+                            self._last_retry = now
+                            self._close_stream()
+                            self._open_stream()
+                            return
+                    except Exception:
+                        pass
+                    self._last_retry = now
+            return
         if now - self._last_retry < self.retry_interval_s:
             return
         self._last_retry = now
