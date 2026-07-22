@@ -317,6 +317,51 @@ def ensure_max_output_volume() -> None:
                 )
             except Exception:
                 pass
+        # Cherry Trail RT5651 (RCA): false "Headphone Jack" sense keeps UCM on
+        # Headphones and mutes Speaker. Force UCM Speaker enable sequence on
+        # any card that has a Speaker Switch (bytcr-rt5651 is usually card 1).
+        for card in ("0", "1", "2"):
+            try:
+                r = subprocess.run(
+                    [amixer, "-c", card, "sget", "Speaker"],
+                    capture_output=True,
+                    timeout=2,
+                    check=False,
+                )
+                if r.returncode != 0:
+                    continue
+            except Exception:
+                continue
+            for name, val in (
+                ("Speaker Switch", "on"),
+                ("LOUT L Playback Switch", "on"),
+                ("LOUT R Playback Switch", "on"),
+                # Leave HP off so internal speakers get the path
+                ("Headphone Switch", "off"),
+                ("HPO L Playback Switch", "off"),
+                ("HPO R Playback Switch", "off"),
+            ):
+                try:
+                    subprocess.run(
+                        [amixer, "-c", card, "-q", "cset", f"name={name}", val],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        timeout=2,
+                        check=False,
+                    )
+                except Exception:
+                    pass
+            try:
+                subprocess.run(
+                    [amixer, "-c", card, "-q", "sset", "Speaker", "on"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=2,
+                    check=False,
+                )
+            except Exception:
+                pass
+            break
 
 
 def play_pcm(pcm: np.ndarray, sample_rate: int = DEFAULT_SAMPLE_RATE) -> bool:
