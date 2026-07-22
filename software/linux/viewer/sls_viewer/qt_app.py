@@ -116,6 +116,11 @@ QDialog QPushButton {
 QDialog QPushButton#wide {
     min-width: 80px;
 }
+QDialog QPushButton:disabled {
+    color: #556666;
+    border-color: #334440;
+    background-color: rgba(20, 28, 24, 200);
+}
 QDialog QLabel#vallabel {
     font-size: 12px;
     min-width: 56px;
