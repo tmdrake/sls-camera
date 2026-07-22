@@ -5,6 +5,7 @@
 #   ./run.sh --help
 #   ./run.sh
 #   ./run.sh --demo              # synthetic depth/IR — test UI without a Kinect
+#   ./run.sh --hide-cursor       # blank mouse pointer (touch kiosk)
 #   ./run.sh --mirror --led-off
 #
 # See software/linux/viewer/README.md § CLI for full flag table and --demo rules.

@@ -52,9 +52,11 @@ class Settings:
     ir_brightness: int = 50
 
     mirror: bool = False
+    # Field/touch kiosk: hide mouse pointer (CLI --hide-cursor / SLS_HIDE_CURSOR)
+    hide_cursor: bool = False
 
     # Pose confidence (UI-adjustable). Higher = fewer false skeletons.
-    # Defaults match MediaPipe PoseLandmarker (0.5). Rebuilds model on change.
+    # Default 25% (field); range 25–95% in 5% steps. Rebuilds model on change.
     pose_min_confidence: float = MEDIAPIPE_DEFAULT_CONFIDENCE
     pose_conf_min: float = 0.25
     pose_conf_max: float = 0.95  # UI max (0.05 steps: 0.25 … 0.95)

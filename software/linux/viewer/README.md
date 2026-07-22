@@ -129,7 +129,7 @@ Field rule of thumb: **tablets will usually use an SD card**; pen drives are fin
 | **Both SD and USB mounted** | **SD wins** (priority); then USB; then other removable |
 | **Captures = Local** | Always local, even if media is plugged in |
 | **Shot local, then plug media** | Settings → **Copy local→media** (keeps local files; skips same-name same-size) |
-| **Defaults** button | Also sets **Captures to Auto** (and Max=1, Conf=50%) |
+| **Defaults** button | Also sets **Captures to Auto** (and Max=1, Conf=25%) |
 
 We do **not** auto-copy old local files when you plug media (avoids surprise full disks / duplicates). One explicit button is easier in the field.
 
@@ -396,6 +396,7 @@ viewer/
 ./run.sh --mirror            # horizontal mirror
 ./run.sh --no-auto-level     # leave tilt as-is
 ./run.sh --led-off           # no green idle LED
+./run.sh --hide-cursor       # hide mouse pointer (touch kiosk / field)
 ./run.sh --ui web            # browser UI (default host/port 127.0.0.1:8765)
 ./run.sh --host 0.0.0.0 --port 8765 --ui web
 ./run.sh --device 0          # freenect device index (multi-Kinect)
@@ -418,6 +419,7 @@ Equivalent without the wrapper (after venv exists):
 | `--demo` | off | **Test without a camera:** synthetic depth/IR only; **does not open freenect** (Kinect may stay plugged in unused) |
 | `--no-auto-level` | auto-level on | Skip tilt to 0° on start (**field / appliance should pass this**) |
 | `--led-off` | green idle LED | Leave Kinect LED off |
+| `--hide-cursor` | show cursor | Hide mouse pointer (field / touch). Also: `SLS_HIDE_CURSOR=1` |
 | `--device INDEX` | `0` | Freenect device index |
 
 Full text (examples + keyboard shortcuts) is always from argparse:

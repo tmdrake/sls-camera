@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Optional
 import cv2
 import numpy as np
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QImage, QKeySequence, QPixmap, QShortcut
+from PySide6.QtGui import QCursor, QImage, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -722,7 +722,7 @@ class SettingsDialog(QDialog):
         self.btn_defaults = QPushButton("Defaults")
         self.btn_defaults.setObjectName("wide")
         self.btn_defaults.setToolTip(
-            "Reset Max people=1, Confidence=50%, Captures to Auto, "
+            "Reset Max people=1, Confidence=25%, Captures to Auto, "
             "and Spectrum style to Phosphor"
         )
         self.btn_defaults.clicked.connect(self._reset_defaults)
@@ -1105,7 +1105,7 @@ class SettingsDialog(QDialog):
             "Reset defaults",
             "Reset to field defaults?\n\n"
             "• Max people = 1\n"
-            "• Confidence = 50%\n"
+            "• Confidence = 25%\n"
             "• Captures to = Auto (USB/SD if mounted, else local)\n"
             "• Spectrum style = Phosphor",
             yes_label="Reset",
@@ -1925,6 +1925,10 @@ def run_qt(pipeline: FramePipeline) -> int:
     app.setApplicationName("SLS Camera")
     # App-level sheet so QToolTip (separate window) gets dark SLS chrome
     app.setStyleSheet(_STYLE)
+    hide_cursor = bool(getattr(pipeline.s, "hide_cursor", False))
+    if hide_cursor:
+        # App-wide blank pointer (covers main window + Settings dialogs)
+        app.setOverrideCursor(QCursor(Qt.CursorShape.BlankCursor))
     # Primary-screen geometry for hardware matrix / tablet bring-up (#6)
     geom_line = log_display_geometry(app)
     win = SlsMainWindow(pipeline)
@@ -1940,7 +1944,14 @@ def run_qt(pipeline: FramePipeline) -> int:
             win.session._set_flash(line, seconds=4.0)
 
     QTimer.singleShot(250, _relog_geometry)
-    code = app.exec()
+    code = 0
+    try:
+        code = app.exec()
+    finally:
+        if hide_cursor:
+            # Restore desktop cursor after quit (best-effort)
+            while app.overrideCursor() is not None:
+                app.restoreOverrideCursor()
     # Prefer window exit intent (10 = power off) over default Qt 0
     out = int(getattr(win, "_app_exit_code", code) or 0)
     if out == 0 and int(code) != 0:

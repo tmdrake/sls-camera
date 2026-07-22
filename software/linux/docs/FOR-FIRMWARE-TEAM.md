@@ -198,6 +198,7 @@ Viewer CLI table: [viewer/README.md](../viewer/README.md) · issue [#10](https:/
 | **Format media** | UDisks2 then mkfs; two Yes confirms; FAT32 `SLS-MEDIA` |
 | **Date & time** | Settings → **Date & time…**; needs polkit/sudoers ([DATE-TIME-PRIVS.md](DATE-TIME-PRIVS.md)) |
 | **Field tilt** | Launcher passes **`--no-auto-level`** (see above) |
+| **Hide cursor** | Optional **`--hide-cursor`** or **`SLS_HIDE_CURSOR=1`** (touch kiosk) |
 
 **Host power-off is firmware-owned** (launcher + `sudoers.d/sls-poweroff`).  
 App does **not** call `poweroff` itself — only exit code 10.

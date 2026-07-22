@@ -83,6 +83,14 @@ def parse_args(argv=None):
         metavar="INDEX",
         help="Freenect device index when multiple Kinects are present (default: 0)",
     )
+    p.add_argument(
+        "--hide-cursor",
+        action="store_true",
+        help=(
+            "Hide the mouse pointer (field / touch kiosk). "
+            "Also enabled by SLS_HIDE_CURSOR=1. Default: show cursor."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -167,6 +175,13 @@ def run_web(pipeline: FramePipeline) -> int:
     return 0
 
 
+def _env_hide_cursor() -> bool:
+    import os
+
+    raw = (os.environ.get("SLS_HIDE_CURSOR") or "").strip().lower()
+    return raw in ("1", "true", "yes", "on", "hide")
+
+
 def main(argv=None):
     args = parse_args(argv)
     settings.host = args.host
@@ -176,12 +191,14 @@ def main(argv=None):
     settings.allow_demo_without_kinect = bool(args.demo)
     settings.auto_level = not bool(args.no_auto_level)
     settings.led_green = not bool(args.led_off)
+    settings.hide_cursor = bool(args.hide_cursor) or _env_hide_cursor()
 
     pipeline = FramePipeline(settings)
     pipeline.start()
     print(
         f"UI={args.ui} mirror={settings.mirror} demo={settings.allow_demo_without_kinect} "
-        f"led_green={settings.led_green} auto_level={settings.auto_level}"
+        f"led_green={settings.led_green} auto_level={settings.auto_level} "
+        f"hide_cursor={settings.hide_cursor}"
     )
 
     try:
