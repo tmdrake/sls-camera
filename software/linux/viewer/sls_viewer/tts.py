@@ -258,13 +258,80 @@ def synthesize(
     return _resample_mono(pcm, int(sr), int(sample_rate))
 
 
+def ensure_max_output_volume() -> None:
+    """Unmute + raise system playback to full before DrakeVox speaks.
+
+    Field tablets often leave PipeWire/ALSA muted or low after idle or
+    LXQt volume applets. Best-effort; silent if tools missing.
+
+    Does **not** create speakers when the kernel only has Dummy Output
+    (e.g. RCA SOF probe failure) — see device notes.
+    """
+    # PipeWire (Lubuntu default)
+    wp = shutil.which("wpctl")
+    if wp:
+        for args in (
+            [wp, "set-mute", "@DEFAULT_AUDIO_SINK@", "0"],
+            [wp, "set-volume", "@DEFAULT_AUDIO_SINK@", "1.0"],
+            # Some builds accept percent form
+            [wp, "set-volume", "@DEFAULT_AUDIO_SINK@", "100%"],
+        ):
+            try:
+                subprocess.run(
+                    args,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=2,
+                    check=False,
+                )
+            except Exception:
+                pass
+    # PulseAudio-compatible (PipeWire pulse shim)
+    pactl = shutil.which("pactl")
+    if pactl:
+        for args in (
+            [pactl, "set-sink-mute", "@DEFAULT_SINK@", "0"],
+            [pactl, "set-sink-volume", "@DEFAULT_SINK@", "100%"],
+        ):
+            try:
+                subprocess.run(
+                    args,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=2,
+                    check=False,
+                )
+            except Exception:
+                pass
+    # ALSA Master / PCM (when present)
+    amixer = shutil.which("amixer")
+    if amixer:
+        for ctl in ("Master", "PCM", "Speaker", "Headphone"):
+            try:
+                subprocess.run(
+                    [amixer, "-q", "sset", ctl, "100%", "unmute"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=2,
+                    check=False,
+                )
+            except Exception:
+                pass
+
+
 def play_pcm(pcm: np.ndarray, sample_rate: int = DEFAULT_SAMPLE_RATE) -> bool:
     try:
         import sounddevice as sd
     except Exception:
         return False
     try:
-        sd.play(np.asarray(pcm, dtype=np.float32), samplerate=int(sample_rate))
+        ensure_max_output_volume()
+        # Peak-normalize soft espeak so panel speakers aren't tiny at 100%
+        x = np.asarray(pcm, dtype=np.float32).reshape(-1)
+        peak = float(np.max(np.abs(x))) if x.size else 0.0
+        if peak > 1e-6 and peak < 0.85:
+            x = np.clip(x * (0.95 / peak), -1.0, 1.0)
+        sd.play(x, samplerate=int(sample_rate))
         return True
     except Exception:
         return False
@@ -274,11 +341,13 @@ def play_live_fallback(text: str) -> bool:
     word = (text or "").strip()
     if not word:
         return False
+    ensure_max_output_volume()
     eng = find_espeak_cli()
     if eng:
         try:
+            # -a amplitude 0–200; max for field audibility
             subprocess.Popen(
-                [eng, "-s", "140", "-v", "en", word],
+                [eng, "-s", "140", "-a", "200", "-v", "en", word],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -330,6 +399,7 @@ class DrakeVoxTTS:
         word = (text or "").strip()
         if not word:
             return False, None
+        ensure_max_output_volume()
         t0 = float(when if when is not None else _time.time())
         pcm = synthesize(word, sample_rate=self.sample_rate)
         if pcm is not None and pcm.size > 0:

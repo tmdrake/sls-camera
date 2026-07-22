@@ -427,6 +427,7 @@ Full text (examples + keyboard shortcuts) is always from argparse:
 | False “libportaudio not found” | Should be rare after `run.sh` ctypes check; confirm `ldconfig -p \| grep portaudio` or `ls /usr/lib/*/libportaudio.so*` |
 | Record AVI has no sound | Install `ffmpeg` or `imageio-ffmpeg` (in venv); check flash for sidecar WAV |
 | Soft / loud mic | App does not set gain — use `pavucontrol` or `alsamixer` on the capture source |
+| DrakeVox silent on speakers | App unmutes + max volume each speak; if PipeWire shows **Dummy Output** only (RCA SOF), there is no panel speaker path — hardware/ACPI, not TTS |
 | Kinect RECONNECTING | Power brick + USB; freenect retries automatically |
 | No Kinect / test UI only | `./run.sh --demo` (synthetic frames **if** open fails) |
 | Black window | Wait for first frame; or `--demo` if no camera |
