@@ -14,7 +14,7 @@
 | **Auto-snap** | Optional on pose appear; **DrakeVox on auto-snap** (default ON) adds word+TTS into that JPEG |
 | **Record** | AVI + mic + TTS at **20 FPS** (matches live `target_fps`); LED solid **red** while REC |
 | **Reconnect** | Splash **Starting / Reconnecting to SLS Camera**; infinite retry |
-| **Battery** | Status `BAT n%` / `⚡` when a battery exists (hidden on desktop) |
+| **Battery** | Status `BAT n%` / `⚡` when a battery exists (hidden on desktop). **Better visual gauge** tracked: [#12](https://github.com/tmdrake/sls-camera/issues/12) |
 | **Brightness** | Settings ±10% (sysfs / brightnessctl / xrandr) |
 | **Quit** | Confirms before exit; on appliance firmware powers off (exit 10) |
 | **DrakeVox** | 5–15 min timer + TTS; ~2k-word list; under IR PiP; key **O** |

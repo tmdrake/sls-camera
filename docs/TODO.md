@@ -51,7 +51,8 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [ ] **Hardware BOM photos / wiring** in `hardware/` (Kinect + tablet + external power).
 - [ ] **Permanent captures on appliance image** — firmware/locked rootfs may be read-only; store snaps/recordings on writable permanent media (`/data`, SD, data partition, USB), not only `viewer/captures` inside the image. Path via env/config for packaging.
   - Related: **Captures → removable media / SD** (runtime detect + prefer external volume)
-- [x] **Battery % + charge indicator** — status bar `BAT n%` / `⚡` when sysfs battery exists; hidden on desktop
+- [x] **Battery % + charge indicator** — status bar `BAT n%` / `⚡` when sysfs battery exists; hidden on desktop  
+- [ ] **Better visual battery gauge** — icon/fill UI (not text-only); charging + low states; field glanceable — [#12](https://github.com/tmdrake/sls-camera/issues/12)
 - [x] **Quit confirmation** — dialog before exit (stops REC cleanly)
 - [x] **Quit → power off (firmware contract)** — env `SLS_QUIT_ACTION=shutdown` (appliance launcher); app dialog + exit **10**; **no** Settings toggle (firmware owns host poweroff). Dev stays exit-only.
   - Closed: [GitHub #4](https://github.com/tmdrake/sls-camera/issues/4)
