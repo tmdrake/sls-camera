@@ -1873,8 +1873,15 @@ class SlsMainWindow(QMainWindow):
         mode = _status_mode_short(self.pipeline.status)
         conf_s = confidence_percent_label(self.pipeline.pose_confidence)
         cap = self.session.captures_label or "local"
+        # Mode load badge (matches video HUD LITE/NORM)
+        load = (
+            f"LITE {self.pipeline.s.target_fps:g}"
+            if self.pipeline.s.field_lite
+            else "NORM"
+        )
         parts = [
             mode,
+            load,
             f"{self.pipeline.poses_count}/{mx}",
             conf_s,
             cap,

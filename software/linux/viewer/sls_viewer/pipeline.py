@@ -324,6 +324,39 @@ class FramePipeline:
                 hold_frames=self.s.pose_hold_frames,
             )
 
+    def _draw_mode_badge(self, canvas: np.ndarray) -> None:
+        """Top-left pill: LITE (Atom caps) vs NORM — burned into live + AVI."""
+        if self.s.field_lite:
+            label = f"LITE {self.s.target_fps:g}"
+            fill = (40, 90, 20)  # dark green BGR
+            edge = (0, 255, 180)
+            ink = (0, 255, 180)
+        else:
+            label = "NORM"
+            fill = (40, 40, 48)
+            edge = (120, 120, 130)
+            ink = (180, 180, 190)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        scale = 0.55
+        thick = 2
+        (tw, th), baseline = cv2.getTextSize(label, font, scale, thick)
+        x0, y0 = 14, 48  # under "DEPTH + SLS"
+        pad_x, pad_y = 8, 5
+        x1 = x0 + tw + pad_x * 2
+        y1 = y0 + th + pad_y * 2 + baseline
+        cv2.rectangle(canvas, (x0, y0), (x1, y1), fill, -1)
+        cv2.rectangle(canvas, (x0, y0), (x1, y1), edge, 1)
+        cv2.putText(
+            canvas,
+            label,
+            (x0 + pad_x, y0 + pad_y + th),
+            font,
+            scale,
+            ink,
+            thick,
+            cv2.LINE_AA,
+        )
+
     def _compose(self, depth_bgr: np.ndarray, ir_bgr: np.ndarray) -> np.ndarray:
         W, H = self.s.frame_width, self.s.frame_height
         canvas = cv2.resize(depth_bgr, (W, H), interpolation=cv2.INTER_AREA)
@@ -338,6 +371,8 @@ class FramePipeline:
             2,
             cv2.LINE_AA,
         )
+        # Mode badge: obvious on bench vs tablet (field-lite is subtle otherwise)
+        self._draw_mode_badge(canvas)
 
         pip_w = max(80, int(self.s.ir_pip_width))
         pip_h = max(60, int(self.s.ir_pip_height))
