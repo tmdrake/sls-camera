@@ -34,11 +34,11 @@ policy come later.
 | [#8](https://github.com/tmdrake/sls-camera/issues/8) | Format/prepare media from Settings — **closed** |
 | [#9](https://github.com/tmdrake/sls-camera/issues/9) | Keep display awake while UI runs — **closed** |
 | [#10](https://github.com/tmdrake/sls-camera/issues/10) | Kinect tilt — **closed** (`--no-auto-level` real skip) |
-| [#11](https://github.com/tmdrake/sls-camera/issues/11) | Settings date/time — **app + FW polkit shipped**; field smoke to close |
-| [#12](https://github.com/tmdrake/sls-camera/issues/12) | Visual battery gauge — **closed** (icon + fill; `SLS_FAKE_BATTERY` preview) |
-| [#13](https://github.com/tmdrake/sls-camera/issues/13) | DrakeVox TTS — **code shipped**; verify tablet-class VM 2 GiB/2 vCPU or RCA |
-| [#14](https://github.com/tmdrake/sls-camera/issues/14) | Field Atom FPS caps — **`--field-lite` / env** shipped; FW should export on RCA |
-| [#15](https://github.com/tmdrake/sls-camera/issues/15) | Spectrum **Win98 wave** — **closed** (time-domain PCM, not FFT) |
+| [#11](https://github.com/tmdrake/sls-camera/issues/11) | Settings date/time — **closed** (UI + DATE-TIME-PRIVS) |
+| [#12](https://github.com/tmdrake/sls-camera/issues/12) | Visual battery gauge — **closed** |
+| [#13](https://github.com/tmdrake/sls-camera/issues/13) | DrakeVox TTS — **closed** (async, pose-pause on speak; use field-lite on Atom) |
+| [#14](https://github.com/tmdrake/sls-camera/issues/14) | Field Atom — **caps shipped**, FPS log **opt-in**; residual optional GPU blit |
+| [#15](https://github.com/tmdrake/sls-camera/issues/15) | Spectrum **Win98 wave** — **closed** |
 
 Firmware may implement offline mirrors; **product install-path and app-behavior decisions stay tracked here**.
 

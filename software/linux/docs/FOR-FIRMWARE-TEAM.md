@@ -227,7 +227,7 @@ Do **not** put Microsoft Kinect UAC audio firmware in public trees (`kinect-audi
 - [ ] Wheels + pose model offline  
 - [ ] App smoke `--demo`; Kinect + spectrum when audio firmware present  
 - [ ] DrakeVox TTS under **tablet-class VM** (2 GiB / 2 vCPU) or real RCA — [#13](https://github.com/tmdrake/sls-camera/issues/13)  
-- [ ] Field tablets: launcher **`SLS_FIELD_LITE=1`** or `--field-lite`; check `effective_fps=` in logs — [#14](https://github.com/tmdrake/sls-camera/issues/14)  
+- [ ] Field tablets: launcher **`SLS_FIELD_LITE=1`** or `--field-lite` (FPS log **off** by default; optional `SLS_SHOW_FPS=1`) — [#14](https://github.com/tmdrake/sls-camera/issues/14)  
 - [ ] Captures: `/data/sls-captures` and/or Auto SD/USB  
 - [ ] Quit → exit 10 → poweroff (appliance)  
 - [ ] **Polkit format rule** installed; Format media works without root password  
@@ -251,10 +251,10 @@ Do **not** put Microsoft Kinect UAC audio firmware in public trees (`kinect-audi
 | [#8](https://github.com/tmdrake/sls-camera/issues/8) Format media | **Closed** — ship polkit for kiosk UX |
 | [#9](https://github.com/tmdrake/sls-camera/issues/9) Wake lock | **Closed** |
 | [#10](https://github.com/tmdrake/sls-camera/issues/10) Kinect tilt | **Closed** — `--no-auto-level` + no motor command |
-| [#11](https://github.com/tmdrake/sls-camera/issues/11) Date & time | **App + FW polkit shipped** — field smoke to close · [DATE-TIME-PRIVS.md](DATE-TIME-PRIVS.md) |
+| [#11](https://github.com/tmdrake/sls-camera/issues/11) Date & time | **Closed** — Settings UI + [DATE-TIME-PRIVS.md](DATE-TIME-PRIVS.md) polkit/sudoers |
 | [#12](https://github.com/tmdrake/sls-camera/issues/12) Battery gauge | **Closed** — icon + fill on status bar |
-| [#13](https://github.com/tmdrake/sls-camera/issues/13) DrakeVox TTS | **Code shipped** — smoke on tablet-class VM (2 GiB/2 vCPU) or RCA |
-| [#14](https://github.com/tmdrake/sls-camera/issues/14) Field Atom FPS | **`--field-lite` / env caps + FPS log** — export from launcher |
+| [#13](https://github.com/tmdrake/sls-camera/issues/13) DrakeVox TTS | **Closed** — async/once mixer/pose-pause; use with `SLS_FIELD_LITE=1` on Atom |
+| [#14](https://github.com/tmdrake/sls-camera/issues/14) Field Atom FPS | **Caps shipped**; FPS log **opt-in only**; residual = optional GPU blit |
 | [#15](https://github.com/tmdrake/sls-camera/issues/15) Win98 spectrum | **Closed** — time-domain PCM wave style |
 
 Day logs: [SESSION-2026-07-22.md](SESSION-2026-07-22.md) · [SESSION-2026-07-24.md](SESSION-2026-07-24.md) · App backlog: [docs/TODO.md](../../../docs/TODO.md).

@@ -117,7 +117,7 @@ class Settings:
     display_fast: bool = False
     # Show effective FPS in status bar + denser logs
     show_fps: bool = False
-    # Log effective_fps=… every N seconds (0 = off). field_lite defaults to 5.
+    # Log effective_fps=… every N seconds (0 = off). Never on by default (#14 RCA).
     fps_log_interval_s: float = 0.0
 
     # DrakeVox (random word every 5–15 min; timestamped + TTS)

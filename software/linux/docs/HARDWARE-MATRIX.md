@@ -24,9 +24,9 @@ After first appliance boot on a unit:
 
 | Unit ID | Make / model | Native (Windows) | Appliance target | RAM | CPU | Qt geometry @ boot | Settings UI | Kinect USB | Captures | Quit power-off | Status |
 |---------|--------------|------------------|------------------|-----|-----|--------------------|-------------|------------|----------|----------------|--------|
-| **tablet-01** | RCA **W101AS23T2** | 800×1280 portrait | **1280×800** landscape | 2 GB | Atom x5-Z8350 | *fill after wipe* | *pending* | kit ready | *pending* | *pending* | Wipe candidate — [FW note](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/devices/rca-w101as23t2.md) |
-| **tablet-02** | TMAX **TM800W610L** | 1200×1920 portrait | **1920×1200** landscape | 2 GB | Atom x5-Z8300 | *fill after wipe* | *pending* | kit ready | *pending* | *pending* | Wipe candidate — [FW note](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/devices/tablet-02.md) |
-| **kvm-phase1** | QEMU/KVM Lubuntu 26.04 | — | **1280×800** / **1920×1200** | VM | host | 1280×800 avail≈1280×768 · 1920×1200 avail≈1920×1168 · ar=16:10 dpr=1 dpi=96 | Two-pane **OK**; left pane **minor scroll** at both sizes — try slightly smaller left-pane buttons | passthrough lab | Auto/local OK | exit 10 OK | **Packaging reference** (layout QA 2026-07-21) |
+| **tablet-01** | RCA **W101AS23T2** | 800×1280 portrait | **1280×800** landscape | 2 GB | Atom x5-Z8350 | *log after wipe* | Two-pane ~94–96% avail; scroll OK | kit ready | Auto SD/USB | exit 10 + sudoers | **Active field** — use `SLS_FIELD_LITE=1`; [FW note](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/devices/rca-w101as23t2.md) |
+| **tablet-02** | TMAX **TM800W610L** | 1200×1920 portrait | **1920×1200** landscape | 2 GB | Atom x5-Z8300 | *log after wipe* | Same Settings layout as 800p | kit ready | Auto SD/USB | exit 10 + sudoers | Wipe candidate — [FW note](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/devices/tablet-02.md) |
+| **kvm-phase1** | QEMU/KVM Lubuntu 26.04 | — | **1280×800** / **1920×1200** | **2 GiB / 2 vCPU** tablet-class | host | 1280×800 avail≈1280×768 · 1920×1200 avail≈1920×1168 · ar=16:10 dpr=1 dpi=96 | Two-pane **OK**; Settings ~94–96%; left scroll if needed | passthrough lab | Auto/local OK | exit 10 OK | **Packaging + TTS stress** (2 GiB/2 vCPU required) |
 
 ### Shared field kit
 
