@@ -453,6 +453,7 @@ Equivalent without the wrapper (after venv exists):
 | `--pose-every-n N` | 1 | MediaPipe every N frames. Env: `SLS_POSE_EVERY_N` |
 | `--show-fps` | off | Show effective FPS on status bar. Env: `SLS_SHOW_FPS=1` |
 | `--display-fast` | off | Fast Qt scale (less CPU). Implied by field-lite. Env: `SLS_DISPLAY_FAST=1` |
+| `--freenect-inproc` | isolate ON | Load libfreenect in UI process (legacy). Default: **subprocess isolate** so unplug GPF ≠ app death (#16). Env: `SLS_FREENECT_ISOLATE=0` |
 | `--device INDEX` | `0` | Freenect device index |
 
 ### Field Atom performance (#14)
@@ -530,6 +531,7 @@ Use this on a **desktop / VM / tablet without a camera**, or when you want UI wo
 | Kinect RECONNECTING | Power brick + USB; **unplug charger** if the 12 V path uses a charge relay that disables the camera; freenect retries automatically |
 | No Kinect / test UI only | `./run.sh --demo` (always synthetic; no freenect) |
 | Black window | Wait for first frame; or `--demo` for synthetic without camera |
+| Unplug Kinect → app dies (exit 139) | Default **freenect isolate** (subprocess); worker may die, UI should reconnect. Legacy: `SLS_FREENECT_ISOLATE=0`. Issue [#16](https://github.com/tmdrake/sls-camera/issues/16) |
 | No DISPLAY | Need a desktop session |
 
 Firmware / tablet image packaging: [PRODUCT-VISION.md](../../../docs/PRODUCT-VISION.md).

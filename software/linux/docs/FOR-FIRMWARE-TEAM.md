@@ -201,7 +201,8 @@ Viewer CLI table: [viewer/README.md](../viewer/README.md) · issue [#10](https:/
 | **Hide cursor** | Optional **`--hide-cursor`** or **`SLS_HIDE_CURSOR=1`** (touch kiosk) |
 | **Field lite (Atom)** | **`SLS_FIELD_LITE=1`** or **`--field-lite`** — 7.5 FPS live+record, pose every 2, fast scale ([#14](https://github.com/tmdrake/sls-camera/issues/14)) |
 | **Perf knobs** | `SLS_TARGET_FPS` · `SLS_RECORD_FPS` · `SLS_POSE_EVERY_N` · `SLS_SHOW_FPS` · `SLS_DISPLAY_FAST` |
-| **App pin (2026-07-24)** | Prefer `main` ≥ **WAV→PipeWire TTS** (field-lite DrakeVox play; PortAudio flaky on RCA) — [SESSION-2026-07-24.md](SESSION-2026-07-24.md) · [viewer README](../viewer/README.md#drakevox-tts-playback-field--rca-vs-vm) |
+| **App pin (2026-07-24)** | Prefer latest `main` (WAV→PipeWire TTS, freenect isolate) — [SESSION-2026-07-24.md](SESSION-2026-07-24.md) |
+| **Freenect isolate (#16)** | Default **ON**: libfreenect in **subprocess**; USB unplug GPF kills worker only → app reconnects. `SLS_FREENECT_ISOLATE=0` / `--freenect-inproc` = legacy in-process |
 
 **Host power-off is firmware-owned** (launcher + `sudoers.d/sls-poweroff`).  
 App does **not** call `poweroff` itself — only exit code 10.

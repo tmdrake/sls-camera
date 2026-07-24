@@ -136,6 +136,15 @@ def parse_args(argv=None):
             "Implied by --field-lite. Env: SLS_DISPLAY_FAST=1"
         ),
     )
+    p.add_argument(
+        "--freenect-inproc",
+        action="store_true",
+        help=(
+            "Load libfreenect in-process (legacy). Default isolates freenect in a "
+            "subprocess so USB unplug GPF does not kill the UI (#16). "
+            "Env: SLS_FREENECT_ISOLATE=0"
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -252,6 +261,11 @@ def main(argv=None):
     if bool(args.display_fast):
         settings.display_fast = True
     settings.apply_perf_from_env()
+    # Freenect isolate default ON; --freenect-inproc or SLS_FREENECT_ISOLATE=0 disables
+    if bool(getattr(args, "freenect_inproc", False)):
+        import os as _os
+
+        _os.environ["SLS_FREENECT_ISOLATE"] = "0"
 
     pipeline = FramePipeline(settings)
     pipeline.start()

@@ -100,12 +100,12 @@ def _load_lib():
     raise FreenectError("Could not load libfreenect. Install libfreenect0.5t64")
 
 
-class FreenectSync:
+class FreenectNative:
     """
-    Live Kinect capture (depth + IR).
+    Live Kinect capture (depth + IR) **in-process** via libfreenect.
 
-    Named FreenectSync for compatibility with pipeline imports; implemented with
-    the async device API so we can set IR sensor brightness, LED, and tilt.
+    Prefer :func:`FreenectSync` (subprocess isolate by default) so a GPF in
+    libfreenect on USB unplug does not kill the Qt UI (#16).
     """
 
     def __init__(
@@ -497,3 +497,23 @@ def gspca_loaded() -> bool:
             return any(line.startswith("gspca_kinect") for line in f)
     except OSError:
         return False
+
+
+def freenect_isolate_enabled() -> bool:
+    """Default ON. SLS_FREENECT_ISOLATE=0 → in-process FreenectNative."""
+    import os
+
+    raw = (os.environ.get("SLS_FREENECT_ISOLATE") or "1").strip().lower()
+    return raw not in ("0", "false", "no", "off", "inproc", "native")
+
+
+def FreenectSync(*args, **kwargs):
+    """Factory: isolated worker by default (#16); native if SLS_FREENECT_ISOLATE=0.
+
+    Returns an object with prepare / get_depth_and_ir / set_led / stop / is_dead.
+    """
+    if freenect_isolate_enabled():
+        from .freenect_proxy import FreenectProxy
+
+        return FreenectProxy(*args, **kwargs)
+    return FreenectNative(*args, **kwargs)

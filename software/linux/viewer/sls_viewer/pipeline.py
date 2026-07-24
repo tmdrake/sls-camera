@@ -448,7 +448,16 @@ class FramePipeline:
                 use_kinect = self._open_kinect()
 
         fps_smooth = 0.0
-        print(f"pipeline load: {self.s.perf_summary()}", flush=True)
+        try:
+            from .freenect_io import freenect_isolate_enabled
+
+            iso = freenect_isolate_enabled()
+        except Exception:
+            iso = True
+        print(
+            f"pipeline load: {self.s.perf_summary()} freenect_isolate={int(iso)}",
+            flush=True,
+        )
 
         while self._running:
             t0 = time.time()
