@@ -192,6 +192,11 @@ class FreenectNative:
         with self._lock:
             self._dead = True
             self._dead_reason = reason or "device dead"
+            # Drop cached frames so get_* never returns last-good as live
+            self._depth = None
+            self._video = None
+            self._last_depth_ts = 0.0
+            self._last_video_ts = 0.0
 
     def is_dead(self) -> bool:
         with self._lock:

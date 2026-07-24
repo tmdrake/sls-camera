@@ -103,6 +103,11 @@ class FreenectProxy:
         with self._lock:
             self._dead = True
             self._dead_reason = reason or "device dead"
+            # Drop cached frames so callers never treat last-good as live
+            self._depth = None
+            self._video = None
+            self._last_depth_ts = 0.0
+            self._last_video_ts = 0.0
 
     def _cmd(self, obj: dict) -> None:
         if self._proc is None or self._proc.stdin is None:
@@ -117,10 +122,15 @@ class FreenectProxy:
 
     def _spawn(self) -> None:
         self.stop()
-        # Ensure package root is on path for -m sls_viewer.freenect_worker
         env = os.environ.copy()
         # Worker must not inherit isolate recursion
         env["SLS_FREENECT_ISOLATE"] = "0"
+        # Ensure sls_viewer is importable even if launcher cwd is not viewer/
+        viewer_root = str(Path(__file__).resolve().parent.parent)
+        prev_pp = env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = (
+            viewer_root + (os.pathsep + prev_pp if prev_pp else "")
+        )
         cmd = [sys.executable, "-m", "sls_viewer.freenect_worker"]
         self._proc = subprocess.Popen(
             cmd,
@@ -133,6 +143,7 @@ class FreenectProxy:
         self._running = True
         self._dead = False
         self._dead_reason = ""
+        self._last_err = ""
         self._reader = threading.Thread(
             target=self._read_loop, name="freenect-proxy-rd", daemon=True
         )
@@ -235,34 +246,6 @@ class FreenectProxy:
                     self._mark_dead(f"worker exited code={code}{tag}")
                 elif "worker exited" not in reason and code is not None:
                     pass
-
-    def _wait_msg_err_or_ok(self, timeout: float = 8.0) -> None:
-        """After open/close command, wait until frames appear or dead/err."""
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            if self.is_dead():
-                raise FreenectError(self.dead_reason() or "worker dead")
-            with self._lock:
-                err = self._last_err
-                ready = (
-                    self._depth is not None
-                    and self._video is not None
-                    and self._last_depth_ts > 0
-                )
-            if ready:
-                return
-            # open failed with ERR (no frames)
-            if err and "Could not open" in err or (err and "open" in err.lower()):
-                # only treat as failure if still no frames after short wait
-                pass
-            if err and not ready and time.time() + 0.3 > deadline:
-                raise FreenectError(err)
-            time.sleep(0.05)
-        with self._lock:
-            err = self._last_err
-        if err:
-            raise FreenectError(err)
-        raise FreenectError("timeout waiting for worker frames")
 
     def prepare(self) -> None:
         if self._prepared and not self.is_dead():

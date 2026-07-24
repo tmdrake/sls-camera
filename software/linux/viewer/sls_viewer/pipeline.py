@@ -266,6 +266,26 @@ class FramePipeline:
                 pass
             self._kinect = None
 
+    def _reconnect_forever(self, detail: str = "") -> bool:
+        """Close device and retry open until success or pipeline stop.
+
+        Used for FreenectError *and* USB-ish unexpected exceptions. Must not
+        fall through to synthetic demo frames while use_kinect is False —
+        that looked like a frozen reconnect splash then fake depth forever.
+        """
+        self._close_kinect()
+        use = False
+        while self._running and not use:
+            self._reconnect_attempt += 1
+            self._status = f"reconnecting… attempt {self._reconnect_attempt}"
+            self._paint_reconnect(detail or self._status)
+            time.sleep(self.RECONNECT_SLEEP_S)
+            use = self._open_kinect()
+            if use:
+                tilt_note = "tilt 0°" if self.s.auto_level else "tilt as-is"
+                self._status = f"live · reconnected · LED green · {tilt_note}"
+        return use
+
     def _open_kinect(self) -> bool:
         """Open live freenect stream: green LED + auto-level + IR gain 50."""
         # Always tear down previous handle first (USB death leaves bad state)
@@ -462,10 +482,13 @@ class FramePipeline:
         while self._running:
             t0 = time.time()
             try:
-                if demo or not use_kinect or self._kinect is None:
+                if demo:
                     depth_u16, ir_u8 = self._demo_frames()
-                    if demo:
-                        self._status = "demo mode (no camera)"
+                    self._status = "demo mode (no camera)"
+                elif not use_kinect or self._kinect is None:
+                    # Live path must never show synthetic frames as if camera is up
+                    use_kinect = self._reconnect_forever("camera offline")
+                    continue
                 else:
                     if self._kinect.is_dead():
                         raise freenect_io.FreenectError(
@@ -492,27 +515,7 @@ class FramePipeline:
                     self._close_kinect()
                     self._status = "demo mode (no camera)"
                     continue
-                self._status = f"reconnecting… {e}"
-                self._close_kinect()
-                use_kinect = False
-                self._reconnect_attempt += 1
-                self._paint_reconnect(str(e))
-                time.sleep(self.RECONNECT_SLEEP_S)
-                while self._running and not use_kinect:
-                    self._reconnect_attempt += 1
-                    self._status = (
-                        f"reconnecting… attempt {self._reconnect_attempt}"
-                    )
-                    self._paint_reconnect(str(e))
-                    time.sleep(self.RECONNECT_SLEEP_S)
-                    use_kinect = self._open_kinect()
-                    if use_kinect:
-                        tilt_note = (
-                            "tilt 0°" if self.s.auto_level else "tilt as-is"
-                        )
-                        self._status = (
-                            f"live · reconnected · LED green · {tilt_note}"
-                        )
+                use_kinect = self._reconnect_forever(str(e))
             except Exception as e:
                 # Treat unexpected freenect/USB failures like a disconnect
                 msg = str(e).lower()
@@ -525,12 +528,8 @@ class FramePipeline:
                         self._close_kinect()
                         self._status = "demo mode (no camera)"
                         continue
-                    self._status = f"reconnecting… {e}"
-                    self._close_kinect()
-                    use_kinect = False
-                    self._reconnect_attempt += 1
-                    self._paint_reconnect(str(e))
-                    time.sleep(self.RECONNECT_SLEEP_S)
+                    # Must reopen — do NOT fall through to synthetic frames
+                    use_kinect = self._reconnect_forever(str(e))
                     continue
                 self._status = f"pipeline: {e}"
                 time.sleep(0.25)
