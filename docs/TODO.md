@@ -38,6 +38,7 @@ policy come later.
 | [#12](https://github.com/tmdrake/sls-camera/issues/12) | Visual battery gauge — **closed** (icon + fill; `SLS_FAKE_BATTERY` preview) |
 | [#13](https://github.com/tmdrake/sls-camera/issues/13) | DrakeVox TTS — **code shipped**; verify tablet-class VM 2 GiB/2 vCPU or RCA |
 | [#14](https://github.com/tmdrake/sls-camera/issues/14) | Field Atom FPS caps — **`--field-lite` / env** shipped; FW should export on RCA |
+| [#15](https://github.com/tmdrake/sls-camera/issues/15) | Spectrum **Win98 wave** — **closed** (time-domain PCM, not FFT) |
 
 Firmware may implement offline mirrors; **product install-path and app-behavior decisions stay tracked here**.
 
@@ -67,7 +68,9 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] **`--demo` force synthetic** (no freenect) · 2026-07-22  
 - [x] **`--hide-cursor` / `SLS_HIDE_CURSOR`** · 2026-07-22  
 - [ ] **DrakeVox TTS performance (priority on 2 GB tablets)** — code shipped; **verify** under load on real RCA or **tablet-class VM (2 GiB / 2 vCPU)** — not a fat host VM. FW: [VM-REBUILD.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/VM-REBUILD.md) tablet-class · [#13](https://github.com/tmdrake/sls-camera/issues/13)  
-  - Day log: [SESSION-2026-07-22.md](../software/linux/docs/SESSION-2026-07-22.md)
+  - Day log: [SESSION-2026-07-22.md](../software/linux/docs/SESSION-2026-07-22.md)  
+- [x] **Field Atom load caps (#14)** — `--field-lite` / `SLS_FIELD_LITE=1` (7.5 FPS, pose every 2, fast scale, FPS log); pose paused in Settings; TTS tries nice(-5)  
+  - CLI: `--target-fps` `--record-fps` `--pose-every-n` `--show-fps` `--display-fast`
 - [x] **Quit confirmation** — dialog before exit (stops REC cleanly)
 - [x] **Quit → power off (firmware contract)** — env `SLS_QUIT_ACTION=shutdown` (appliance launcher); app dialog + exit **10**; **no** Settings toggle (firmware owns host poweroff). Dev stays exit-only.
   - Closed: [GitHub #4](https://github.com/tmdrake/sls-camera/issues/4)

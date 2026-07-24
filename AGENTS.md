@@ -60,7 +60,7 @@ Ubuntu / freenect work lives under `software/linux/`. **Same UI goal** as this W
   - `--no-auto-level` — field: no tilt motor command (FW launcher injects)  
   - `--hide-cursor` / `SLS_HIDE_CURSOR=1` — touch kiosk  
   - `--led-off`, `--mirror`, `--device N`  
-  Details: `software/linux/viewer/README.md` § CLI · day log: [SESSION-2026-07-22.md](software/linux/docs/SESSION-2026-07-22.md)  
+  Details: `software/linux/viewer/README.md` § CLI · day logs: [SESSION-2026-07-22.md](software/linux/docs/SESSION-2026-07-22.md) · [SESSION-2026-07-24.md](software/linux/docs/SESSION-2026-07-24.md) (field-lite, TTS, Win98 wave)  
 - Parity plan: `software/linux/docs/LINUX-SLS-PLAN.md`  
 - Product vision: `docs/PRODUCT-VISION.md`  
 - Setup: `software/linux/docs/UBUNTU-SETUP.md` (freenect + `kinect-audio-setup`)  

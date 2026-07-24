@@ -44,7 +44,7 @@ AGENTS.md           Windows app notes + Linux path pointer
 - Status bar: compact mode · people · conf% · captures; battery **gauge** when present  
 - Settings: large two-pane, date/time, format media, conf as %  
 
-Docs: [linux README](software/linux/README.md) · [viewer README](software/linux/viewer/README.md) · [Ubuntu setup](software/linux/docs/UBUNTU-SETUP.md) · [M0 bring-up](software/linux/notes/BRINGUP-FREENECT.md) · **[2026-07-22 session](software/linux/docs/SESSION-2026-07-22.md)**.
+Docs: [linux README](software/linux/README.md) · [viewer README](software/linux/viewer/README.md) · [Ubuntu setup](software/linux/docs/UBUNTU-SETUP.md) · [M0 bring-up](software/linux/notes/BRINGUP-FREENECT.md) · sessions [2026-07-22](software/linux/docs/SESSION-2026-07-22.md) · [2026-07-24](software/linux/docs/SESSION-2026-07-24.md) (field-lite / TTS / Win98 wave).
 
 **Firmware team (offline debs / appliance):** start at  
 [**FOR-FIRMWARE-TEAM.md**](software/linux/docs/FOR-FIRMWARE-TEAM.md) — golden rules, `install-apt-deps.sh`, exit codes, smoke checklist.  

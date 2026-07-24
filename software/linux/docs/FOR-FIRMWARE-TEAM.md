@@ -254,5 +254,6 @@ Do **not** put Microsoft Kinect UAC audio firmware in public trees (`kinect-audi
 | [#12](https://github.com/tmdrake/sls-camera/issues/12) Battery gauge | **Closed** — icon + fill on status bar |
 | [#13](https://github.com/tmdrake/sls-camera/issues/13) DrakeVox TTS | **Code shipped** — smoke on tablet-class VM (2 GiB/2 vCPU) or RCA |
 | [#14](https://github.com/tmdrake/sls-camera/issues/14) Field Atom FPS | **`--field-lite` / env caps + FPS log** — export from launcher |
+| [#15](https://github.com/tmdrake/sls-camera/issues/15) Win98 spectrum | **Closed** — time-domain PCM wave style |
 
-Day log (2026-07-22): [SESSION-2026-07-22.md](SESSION-2026-07-22.md) · App backlog: [docs/TODO.md](../../../docs/TODO.md).
+Day logs: [SESSION-2026-07-22.md](SESSION-2026-07-22.md) · [SESSION-2026-07-24.md](SESSION-2026-07-24.md) · App backlog: [docs/TODO.md](../../../docs/TODO.md).
