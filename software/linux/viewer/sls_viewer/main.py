@@ -26,7 +26,7 @@ def parse_args(argv=None):
             "  ./run.sh --demo\n"
             "  ./run.sh --ui web --host 0.0.0.0 --port 8765\n"
             "  ./run.sh --led-off --no-auto-level --device 0\n"
-            "  ./run.sh --field-lite          # Atom / 2GB: 7.5 FPS + pose every 2\n"
+            "  ./run.sh --field-lite          # Atom: 7.5 FPS, pose every 2, TTS pose-pause\n"
             "  SLS_FIELD_LITE=1 ./run.sh      # same via env (firmware launcher)\n"
             "\n"
             "Keyboard (Qt): S settings · C snap · R record · O DrakeVox · "
@@ -98,7 +98,8 @@ def parse_args(argv=None):
         action="store_true",
         help=(
             "Atom / 2GB preset (#14): target+record 7.5 FPS, pose every 2 frames, "
-            "fast display scale, FPS log. Also SLS_FIELD_LITE=1."
+            "fast display scale, and TTS pose-pause during speak. "
+            "Also SLS_FIELD_LITE=1. (Default mode keeps sticks live while talking.)"
         ),
     )
     p.add_argument(

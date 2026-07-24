@@ -494,8 +494,8 @@ class DrakeVoxTTS:
     Latency notes (#13): mixer setup once; libespeak preferred; speak() runs
     synth+play on a worker so the Qt UI thread is not blocked.
 
-    CPU (#13/#14): busy-callback pauses MediaPipe during synth+play; worker
-    tries nice/setpriority; playback waits so pose stays off until audio ends.
+    CPU (#13/#14, **field-lite only**): when ``field_cpu_prefer`` is set, busy-callback
+    pauses MediaPipe during synth+play, nice/setpriority is tried, and play waits.
 
     Recording safety: AVI inject uses wall-time captured at queue time and an
     optional ``record_gen`` so a late worker cannot paste into the next REC.
@@ -509,6 +509,8 @@ class DrakeVoxTTS:
         self._on_pcm: Optional[Callable[..., None]] = None
         # cb(busy: bool) — True while synth+play holds CPU preference
         self._on_busy: Optional[Callable[[bool], None]] = None
+        # When True: pose-busy callback + blocking play + priority try (#13 field)
+        self.field_cpu_prefer: bool = False
         self._last_error = ""
         self._worker: Optional[threading.Thread] = None
         self._warmed = False
@@ -598,9 +600,13 @@ class DrakeVoxTTS:
             # Serialize on the worker (not UI): wait for prior inject+play
             if prev is not None and prev.is_alive():
                 prev.join(timeout=5.0)
-            self._emit_busy(True)
+            # field_cpu_prefer (field-lite): pause pose + block play + nice try
+            prefer = bool(self.field_cpu_prefer)
+            if prefer:
+                self._emit_busy(True)
             try:
-                prio = _boost_current_thread_priority()
+                if prefer:
+                    _boost_current_thread_priority()
                 # First word (or cold start): ensure volume once; cheap no-op after
                 ensure_max_output_volume(force=False)
                 pcm = synthesize(word, sample_rate=self.sample_rate)
@@ -621,30 +627,36 @@ class DrakeVoxTTS:
                                 pass
                         except Exception:
                             pass
-                    # Live speakers — wait so pose stays paused through playback
+                    # Default: non-blocking play (sticks keep moving).
+                    # field-lite: wait so pose stays paused through playback.
                     if not play_pcm(
-                        pcm, self.sample_rate, ensure_volume=False, wait=True
+                        pcm,
+                        self.sample_rate,
+                        ensure_volume=False,
+                        wait=prefer,
                     ):
                         ensure_max_output_volume(force=True)
                         if not play_pcm(
-                            pcm, self.sample_rate, ensure_volume=False, wait=True
+                            pcm,
+                            self.sample_rate,
+                            ensure_volume=False,
+                            wait=prefer,
                         ):
                             play_live_fallback(word, ensure_volume=False)
-                            # CLI fallback is async; brief hold still helps
-                            _time.sleep(min(2.0, 0.4 + 0.08 * len(word)))
+                            if prefer:
+                                _time.sleep(min(2.0, 0.4 + 0.08 * len(word)))
                     self._last_error = ""
-                    if prio != "none":
-                        # One-shot debug (quiet unless useful on Atom)
-                        pass
                     return
                 self._last_error = "TTS synth unavailable (install espeak-ng)"
                 # Live-only fallback: no PCM → nothing to inject (recording keeps mic)
                 play_live_fallback(word, ensure_volume=True)
-                _time.sleep(min(2.0, 0.4 + 0.08 * len(word)))
+                if prefer:
+                    _time.sleep(min(2.0, 0.4 + 0.08 * len(word)))
             except Exception as exc:
                 self._last_error = str(exc)[:120]
             finally:
-                self._emit_busy(False)
+                if prefer:
+                    self._emit_busy(False)
 
         t = threading.Thread(target=_job, name="tts-speak", daemon=True)
         with self._lock:

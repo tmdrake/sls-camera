@@ -1211,8 +1211,9 @@ class SlsMainWindow(QMainWindow):
         self.tts = DrakeVoxTTS(sample_rate=AUDIO_SAMPLE_RATE)
         # Mix spoken words into AVI whenever recording
         self.tts.set_record_callback(self.session.inject_tts)
-        # Pause MediaPipe while TTS synth/plays — biggest Atom win for lag (#13/#14)
+        # Pose-pause during speak only in field-lite (Atom); normal mode keeps sticks live
         self._tts_pose_hold = False
+        self.tts.field_cpu_prefer = bool(pipeline.s.field_lite)
         self.tts.set_busy_callback(self._on_tts_busy)
         # Warm mixer + espeak off UI thread so first DrakeVox is faster (#13)
         self.tts.warm()
