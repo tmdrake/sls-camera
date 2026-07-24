@@ -201,8 +201,23 @@ Viewer CLI table: [viewer/README.md](../viewer/README.md) · issue [#10](https:/
 | **Hide cursor** | Optional **`--hide-cursor`** or **`SLS_HIDE_CURSOR=1`** (touch kiosk) |
 | **Field lite (Atom)** | **`SLS_FIELD_LITE=1`** or **`--field-lite`** — 7.5 FPS live+record, pose every 2, fast scale ([#14](https://github.com/tmdrake/sls-camera/issues/14)) |
 | **Perf knobs** | `SLS_TARGET_FPS` · `SLS_RECORD_FPS` · `SLS_POSE_EVERY_N` · `SLS_SHOW_FPS` · `SLS_DISPLAY_FAST` |
-| **App pin (2026-07-24)** | Prefer latest `main` (WAV→PipeWire TTS, freenect isolate) — [SESSION-2026-07-24.md](SESSION-2026-07-24.md) |
+| **App pin (min for TTS QA)** | **`061e841`+** — DrakeVox WAV unlink race fixed (see **Must-test** below). FW `packages/app-ref.txt` should match. [SESSION-2026-07-24.md](SESSION-2026-07-24.md) |
 | **Freenect isolate (#16)** | Default **ON**: libfreenect in **subprocess**; USB unplug GPF kills worker only → app reconnects. `SLS_FREENECT_ISOLATE=0` / `--freenect-inproc` = legacy in-process |
+
+### Must-test — DrakeVox voice (`061e841`, 2026-07-24 late)
+
+**Bug (fixed in app):** normal mode wrote a temp WAV, started `pw-play`/`aplay`, then **deleted the file before the player opened it** → word on UI, **no panel audio**. Field-lite often still worked (`wait=True`). Fix: keep the file under system temp until play finishes, then delete.
+
+| Check | How |
+|-------|-----|
+| Pin | App **≥ `061e841`** (`fix(tts): do not delete DrakeVox WAV…`). Confirm `/opt/sls-camera` or stick pin. |
+| **Normal mode** | Launch **without** field-lite if possible, or force: drop `SLS_FIELD_LITE` for one run. **O** / Settings → **DrakeVox now** → **must hear** voice. |
+| **Field-lite (Atom default)** | `SLS_FIELD_LITE=1` (launcher default on RCA) → DrakeVox now **audible** (regression guard). |
+| HUD | Live frame shows **`LITE …`** or **`NORM`** badge (top-left under DEPTH+SLS). |
+| SSH sanity (optional) | `espeak-ng -w /tmp/t.wav hello && aplay -D pipewire /tmp/t.wav` (or libespeak path) — still useful if app silent. |
+| Mixer | RCA still needs `sls-audio-speakers` / OUTVOL stack — this fix is **file lifetime**, not UCM. |
+
+**Do not ship a field pack on app pins before `061e841` if DrakeVox panel speech is required.**
 
 **Host power-off is firmware-owned** (launcher + `sudoers.d/sls-poweroff`).  
 App does **not** call `poweroff` itself — only exit code 10.
@@ -228,8 +243,11 @@ Do **not** put Microsoft Kinect UAC audio firmware in public trees (`kinect-audi
 - [ ] Wheels + pose model offline  
 - [ ] App smoke `--demo`; Kinect + spectrum when audio firmware present  
 - [ ] DrakeVox TTS: **tablet-class VM** for latency smoke; **real RCA** for panel audio (mixer + WAV path) — [#13](https://github.com/tmdrake/sls-camera/issues/13)  
+- [ ] **App ≥ `061e841`**: DrakeVox **audible in both NORM and LITE** (temp WAV delete-after-play) — see Must-test above  
 - [ ] RCA: `sls-audio-speakers` (OUTVOL); DrakeVox now **audible** (not word-only)  
 - [ ] Field tablets: launcher **`SLS_FIELD_LITE=1`** or `--field-lite` (FPS log **off** by default; optional `SLS_SHOW_FPS=1`) — [#14](https://github.com/tmdrake/sls-camera/issues/14)  
+- [ ] HUD **LITE/NORM** badge visible; freenect isolate reconnect after unplug (UI stays up)  
+
 - [ ] Crash relaunch: `SLS_QUIT_ON_ERROR=restart` (freenect unplug 139)  
 - [ ] Captures: `/data/sls-captures` and/or Auto SD/USB  
 - [ ] Quit → exit 10 → poweroff (appliance)  
