@@ -1211,6 +1211,9 @@ class SlsMainWindow(QMainWindow):
         self.tts = DrakeVoxTTS(sample_rate=AUDIO_SAMPLE_RATE)
         # Mix spoken words into AVI whenever recording
         self.tts.set_record_callback(self.session.inject_tts)
+        # Pause MediaPipe while TTS synth/plays — biggest Atom win for lag (#13/#14)
+        self._tts_pose_hold = False
+        self.tts.set_busy_callback(self._on_tts_busy)
         # Warm mixer + espeak off UI thread so first DrakeVox is faster (#13)
         self.tts.warm()
         self.battery = BatteryMonitor(poll_s=5.0)
@@ -1617,7 +1620,17 @@ class SlsMainWindow(QMainWindow):
         self._settings_dlg.raise_()
 
     def _on_settings_closed(self, *_args) -> None:
-        self.pipeline.pose_paused = False
+        # Keep pose paused if DrakeVox is still speaking
+        if not self._tts_pose_hold:
+            self.pipeline.pose_paused = False
+
+    def _on_tts_busy(self, busy: bool) -> None:
+        """TTS worker holds CPU preference: pause pose for synth + full playback."""
+        self._tts_pose_hold = bool(busy)
+        if busy:
+            self.pipeline.pose_paused = True
+        elif not self._settings_open():
+            self.pipeline.pose_paused = False
 
     def _maybe_log_session_fps(self) -> None:
         """Write effective FPS into session jsonl for field QA (#14)."""
@@ -1761,8 +1774,8 @@ class SlsMainWindow(QMainWindow):
 
     def _toggle_record(self) -> None:
         if self.session.recording:
-            # Finish in-flight DrakeVox inject before mixing AVI (async TTS #13)
-            self.tts.flush(timeout=2.5)
+            # Finish in-flight DrakeVox inject + play before mixing AVI (#13)
+            self.tts.flush(timeout=5.0)
             self.session.stop_record()
             self.pipeline.set_recording_led(False)
         else:

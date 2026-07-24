@@ -10,11 +10,15 @@ PCM is mono float32 at DEFAULT_SAMPLE_RATE for mixing into AVI recordings.
 Performance (field tablets): full ensure_max_output_volume() + espeak CLI on the
 UI thread every speak is expensive on 2 GB Atom devices. Prefer once-per-session
 mixer setup and async synth/play — track sls-camera#13.
+
+CPU priority (#13/#14): speak worker tries nice/setpriority; pauses MediaPipe via
+busy callback so synth/play are not starved under freenect+pose load.
 """
 
 from __future__ import annotations
 
 import ctypes
+import os
 import shutil
 import subprocess
 import tempfile
@@ -398,11 +402,40 @@ def _ensure_max_output_volume_impl() -> None:
             break
 
 
+def _boost_current_thread_priority() -> str:
+    """Best-effort raise scheduling priority for the TTS worker.
+
+    Negative nice usually needs CAP_SYS_NICE / root; still try. Returns a short
+    tag for debugging (nice / setpriority / none).
+    """
+    tags: List[str] = []
+    for delta in (-10, -5):
+        try:
+            os.nice(int(delta))
+            tags.append(f"nice{delta}")
+            break
+        except (OSError, AttributeError, PermissionError):
+            continue
+    try:
+        # PRIO_PROCESS=0, who=0 (this thread/process on Linux)
+        libc = ctypes.CDLL("libc.so.6", use_errno=True)
+        if hasattr(libc, "setpriority"):
+            for prio in (-10, -5):
+                rc = int(libc.setpriority(0, 0, int(prio)))
+                if rc == 0:
+                    tags.append(f"setpriority{prio}")
+                    break
+    except Exception:
+        pass
+    return "+".join(tags) if tags else "none"
+
+
 def play_pcm(
     pcm: np.ndarray,
     sample_rate: int = DEFAULT_SAMPLE_RATE,
     *,
     ensure_volume: bool = False,
+    wait: bool = False,
 ) -> bool:
     try:
         import sounddevice as sd
@@ -416,7 +449,8 @@ def play_pcm(
         peak = float(np.max(np.abs(x))) if x.size else 0.0
         if peak > 1e-6 and peak < 0.85:
             x = np.clip(x * (0.95 / peak), -1.0, 1.0)
-        sd.play(x, samplerate=int(sample_rate), blocking=False)
+        # wait=True: hold CPU preference through playback (pose stays paused)
+        sd.play(x, samplerate=int(sample_rate), blocking=bool(wait))
         return True
     except Exception:
         return False
@@ -460,6 +494,9 @@ class DrakeVoxTTS:
     Latency notes (#13): mixer setup once; libespeak preferred; speak() runs
     synth+play on a worker so the Qt UI thread is not blocked.
 
+    CPU (#13/#14): busy-callback pauses MediaPipe during synth+play; worker
+    tries nice/setpriority; playback waits so pose stays off until audio ends.
+
     Recording safety: AVI inject uses wall-time captured at queue time and an
     optional ``record_gen`` so a late worker cannot paste into the next REC.
     Call :meth:`flush` before ``stop_record`` so in-flight words still mux.
@@ -470,6 +507,8 @@ class DrakeVoxTTS:
         self._lock = threading.Lock()
         # cb(pcm, wall_time) or cb(pcm, wall_time, record_gen=…)
         self._on_pcm: Optional[Callable[..., None]] = None
+        # cb(busy: bool) — True while synth+play holds CPU preference
+        self._on_busy: Optional[Callable[[bool], None]] = None
         self._last_error = ""
         self._worker: Optional[threading.Thread] = None
         self._warmed = False
@@ -488,6 +527,21 @@ class DrakeVoxTTS:
         with self._lock:
             self._on_pcm = cb
 
+    def set_busy_callback(self, cb: Optional[Callable[[bool], None]]) -> None:
+        """Notify host when TTS is using the CPU (pause pose, etc.)."""
+        with self._lock:
+            self._on_busy = cb
+
+    def _emit_busy(self, busy: bool) -> None:
+        with self._lock:
+            cb = self._on_busy
+        if cb is None:
+            return
+        try:
+            cb(bool(busy))
+        except Exception:
+            pass
+
     def warm(self) -> None:
         """Once at app start: mixer + load espeak (background, non-blocking)."""
         if self._warmed:
@@ -496,6 +550,7 @@ class DrakeVoxTTS:
 
         def _job() -> None:
             try:
+                _boost_current_thread_priority()
                 ensure_max_output_volume(force=True)
                 # Preload lib / first-synth cost off the first DrakeVox trigger
                 synthesize("ok", sample_rate=self.sample_rate)
@@ -505,10 +560,11 @@ class DrakeVoxTTS:
         threading.Thread(target=_job, name="tts-warm", daemon=True).start()
 
     def flush(self, timeout: float = 2.5) -> None:
-        """Wait for in-flight speak worker (inject + play start) before stop REC."""
+        """Wait for in-flight speak worker (inject + play) before stop REC."""
         with self._lock:
             prev = self._worker
         if prev is not None and prev.is_alive():
+            # Play can block ~1–2s per word; allow enough time
             prev.join(timeout=max(0.0, float(timeout)))
 
     def speak(
@@ -539,17 +595,12 @@ class DrakeVoxTTS:
             prev = self._worker
 
         def _job() -> None:
-            # Serialize on the worker (not UI): wait for prior inject+play start
+            # Serialize on the worker (not UI): wait for prior inject+play
             if prev is not None and prev.is_alive():
-                prev.join(timeout=3.0)
+                prev.join(timeout=5.0)
+            self._emit_busy(True)
             try:
-                # Mild priority bump so synth competes better with MediaPipe (#13/#14)
-                try:
-                    import os as _os
-
-                    _os.nice(-5)
-                except (OSError, AttributeError, PermissionError):
-                    pass
+                prio = _boost_current_thread_priority()
                 # First word (or cold start): ensure volume once; cheap no-op after
                 ensure_max_output_volume(force=False)
                 pcm = synthesize(word, sample_rate=self.sample_rate)
@@ -570,20 +621,30 @@ class DrakeVoxTTS:
                                 pass
                         except Exception:
                             pass
-                    # Live speakers only — never open/close mic; PortAudio output
-                    # is separate from the spectrum/session InputStream.
-                    if not play_pcm(pcm, self.sample_rate, ensure_volume=False):
-                        # One forced volume pass if first play failed (sink switched)
+                    # Live speakers — wait so pose stays paused through playback
+                    if not play_pcm(
+                        pcm, self.sample_rate, ensure_volume=False, wait=True
+                    ):
                         ensure_max_output_volume(force=True)
-                        if not play_pcm(pcm, self.sample_rate, ensure_volume=False):
+                        if not play_pcm(
+                            pcm, self.sample_rate, ensure_volume=False, wait=True
+                        ):
                             play_live_fallback(word, ensure_volume=False)
+                            # CLI fallback is async; brief hold still helps
+                            _time.sleep(min(2.0, 0.4 + 0.08 * len(word)))
                     self._last_error = ""
+                    if prio != "none":
+                        # One-shot debug (quiet unless useful on Atom)
+                        pass
                     return
                 self._last_error = "TTS synth unavailable (install espeak-ng)"
                 # Live-only fallback: no PCM → nothing to inject (recording keeps mic)
                 play_live_fallback(word, ensure_volume=True)
+                _time.sleep(min(2.0, 0.4 + 0.08 * len(word)))
             except Exception as exc:
                 self._last_error = str(exc)[:120]
+            finally:
+                self._emit_busy(False)
 
         t = threading.Thread(target=_job, name="tts-speak", daemon=True)
         with self._lock:
