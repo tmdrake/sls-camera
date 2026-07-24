@@ -474,8 +474,24 @@ def play_pcm(
         return False
 
 
-def _play_wav_file(path: str, *, wait: bool = False) -> bool:
-    """Play a WAV through PipeWire/ALSA. Prefer pipewire device name."""
+def _unlink_quiet(path: Optional[str]) -> None:
+    if not path:
+        return
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
+
+
+def _play_wav_file(
+    path: str, *, wait: bool = True, delete_after: bool = False
+) -> bool:
+    """Play a WAV through PipeWire/ALSA. Prefer pipewire device name.
+
+    When ``wait`` is False, a background reaper still waits for the player so
+    ``delete_after`` does not unlink the file before pw-play/aplay opens it
+    (that race silenced DrakeVox in normal mode).
+    """
     players: list[list[str]] = []
     if shutil.which("pw-play"):
         players.append([shutil.which("pw-play") or "pw-play", path])
@@ -484,6 +500,18 @@ def _play_wav_file(path: str, *, wait: bool = False) -> bool:
             [shutil.which("aplay") or "aplay", "-q", "-D", "pipewire", path]
         )
         players.append([shutil.which("aplay") or "aplay", "-q", path])
+
+    def _reap_and_maybe_delete(proc: subprocess.Popen) -> None:
+        try:
+            proc.wait(timeout=15)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        if delete_after:
+            _unlink_quiet(path)
+
     for cmd in players:
         try:
             if wait:
@@ -495,16 +523,27 @@ def _play_wav_file(path: str, *, wait: bool = False) -> bool:
                     check=False,
                 )
                 if r.returncode == 0:
+                    if delete_after:
+                        _unlink_quiet(path)
                     return True
             else:
-                subprocess.Popen(
+                proc = subprocess.Popen(
                     cmd,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
+                # Own lifetime of temp file until player exits
+                threading.Thread(
+                    target=_reap_and_maybe_delete,
+                    args=(proc,),
+                    name="tts-play-reap",
+                    daemon=True,
+                ).start()
                 return True
         except Exception:
             continue
+    if delete_after:
+        _unlink_quiet(path)
     return False
 
 
@@ -513,9 +552,13 @@ def play_pcm_file(
     sample_rate: int = DEFAULT_SAMPLE_RATE,
     *,
     ensure_volume: bool = False,
-    wait: bool = False,
+    wait: bool = True,
 ) -> bool:
-    """Write PCM to a temp WAV and play via pw-play/aplay (RCA-safe path)."""
+    """Write PCM to a temp WAV and play via pw-play/aplay (RCA-safe path).
+
+    Temp WAV is deleted only after the player has finished (or failed).
+    Never unlink-before-open — that race made normal-mode DrakeVox silent.
+    """
     if ensure_volume:
         ensure_max_output_volume()
     x = np.asarray(pcm, dtype=np.float32).reshape(-1)
@@ -534,19 +577,15 @@ def play_pcm_file(
             wf.setsampwidth(2)
             wf.setframerate(int(sample_rate))
             wf.writeframes(pcm16.tobytes())
-        return _play_wav_file(path, wait=wait)
+        # Player (or reaper) owns unlink via delete_after
+        return _play_wav_file(path, wait=wait, delete_after=True)
     except Exception:
+        _unlink_quiet(path)
         return False
-    finally:
-        if path:
-            try:
-                os.unlink(path)
-            except OSError:
-                pass
 
 
 def play_live_fallback(
-    text: str, *, ensure_volume: bool = False, wait: bool = False
+    text: str, *, ensure_volume: bool = False, wait: bool = True
 ) -> bool:
     """Speak via espeak-ng → WAV → pw-play/aplay (not live espeak pulse).
 
@@ -584,16 +623,18 @@ def play_live_fallback(
                 timeout=8,
                 check=False,
             )
-            if r.returncode == 0 and os.path.isfile(path) and os.path.getsize(path) > 44:
-                return _play_wav_file(path, wait=wait)
+            if (
+                r.returncode == 0
+                and path
+                and os.path.isfile(path)
+                and os.path.getsize(path) > 44
+            ):
+                return _play_wav_file(path, wait=wait, delete_after=True)
+            _unlink_quiet(path)
+            path = None
         except Exception:
-            pass
-        finally:
-            if path:
-                try:
-                    os.unlink(path)
-                except OSError:
-                    pass
+            _unlink_quiet(path)
+            path = None
     spd = shutil.which("spd-say")
     if spd:
         try:
@@ -761,16 +802,18 @@ class DrakeVoxTTS:
                     # hangs; PortAudio often leaves Headphones paused/busy → silence
                     # in Settings while the same SSH WAV path still works.
                     # Prefer WAV→pw-play/aplay always; PortAudio last.
+                    # Always wait for file play on this worker — never fire-and-
+                    # forget then unlink the temp WAV (silenced normal mode).
                     ensure_max_output_volume(force=prefer)
                     played = play_pcm_file(
                         pcm,
                         self.sample_rate,
                         ensure_volume=False,
-                        wait=prefer,
+                        wait=True,
                     )
                     if not played:
                         played = play_live_fallback(
-                            word, ensure_volume=False, wait=prefer
+                            word, ensure_volume=False, wait=True
                         )
                     if not played:
                         ensure_max_output_volume(force=True)
@@ -778,7 +821,7 @@ class DrakeVoxTTS:
                             pcm,
                             self.sample_rate,
                             ensure_volume=False,
-                            wait=prefer,
+                            wait=True,
                         )
                     if not played:
                         self._last_error = (
