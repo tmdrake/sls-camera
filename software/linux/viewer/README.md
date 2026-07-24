@@ -446,13 +446,13 @@ SLS_TARGET_FPS=7.5 SLS_RECORD_FPS=7.5 SLS_POSE_EVERY_N=3 ./run.sh
 | Lower target/record FPS | Caps pipeline sleep + AVI stamp rate; frees CPU for DrakeVox |
 | Pose every 2–3 | MediaPipe less often (sticks held between estimates) |
 | Fast display | `FastTransformation` instead of smooth scale |
-| Settings open | Pose **paused** while Settings is visible |
-| DrakeVox speak | Pose **paused** for synth **and** playback; TTS worker tries higher nice/priority |
-| FPS log | **Off** by default (was every 5s; too heavy on Atom). Lab only: `SLS_FPS_LOG_INTERVAL=5` or `--show-fps` for status bar |
+| DrakeVox speak (**field-lite only**) | Pose **paused** for synth + playback; nice/setpriority try |
+| Settings open | Pose **paused** while Settings is visible (**always**, any mode) |
+| FPS log | **Off** by default. Lab only: `SLS_FPS_LOG_INTERVAL=5` or `--show-fps` for status bar |
 
-**GPU note:** MediaPipe still uses **XNNPACK CPU** on CHV even when EGL is Intel. Qt display path is CPU pixmap blit; field-lite reduces that cost. Full OpenGL texture path is a follow-up.
+**Default mode** (no field-lite): sticks keep moving while DrakeVox talks — better for hardware debug.
 
-**TTS lag on Atom:** combine `--field-lite` with the speak-time pose pause (always on). Negative nice needs privileges; pause is the no-root win.
+**GPU note:** MediaPipe still uses **XNNPACK CPU** on CHV even when EGL is Intel. Field-lite reduces CPU blit cost; full OpenGL path is optional later.
 
 Full text (examples + keyboard shortcuts) is always from argparse:
 
