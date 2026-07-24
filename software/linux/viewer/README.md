@@ -260,7 +260,12 @@ Spirit-box style word generator (not “Ovilus”). Default bank is the Digital 
 | Live `espeak-ng` (Pulse) | Often **hangs** | OK |
 | WAV + `aplay -D pipewire` / `pw-play` | **OK** | OK |
 
-**Mitigation in app (`tts.py`, field-lite / `SLS_FIELD_LITE=1`):** after PCM synth (for AVI inject), write a temp WAV and play with **`pw-play` or `aplay -D pipewire`**. PortAudio is last resort on field-lite. Non–field-lite keeps PortAudio first (VM/lab path).
+**Mitigation in app:**
+
+1. **`tts.py` (field-lite):** after PCM synth (AVI inject), write a temp WAV and play with **`pw-play` / `aplay -D pipewire`**. PortAudio is last resort for speak.  
+2. **`audio_device.py`:** spectrum/mic open prefers **capture-only** PortAudio devices (e.g. `alsa_input…Headset__source`). Opening duplex **`default`/`pipewire`** creates a stuck **playback** node (`[init]`) → speakers only **pop** then silence even for `aplay -D pipewire`.  
+
+Non–field-lite still prefers PortAudio for TTS play (VM/lab path).
 
 Firmware still owns boot mixer (SST + `sls-audio-speakers` OUTVOL path):  
 [rca-w101as23t2.md speaker stack](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/devices/rca-w101as23t2.md#rca-speaker-fix-full-stack-lab-validated-2026-07).
