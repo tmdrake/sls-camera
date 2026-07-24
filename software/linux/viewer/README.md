@@ -106,7 +106,7 @@ Firmware should leave the session in **16:10 landscape** before launch. Issue: [
 | **Clear captures** | Confirm, then delete files under `captures/` (blocked while REC) |
 | **Mirror** | Off by default |
 | **Spectrum** | On/off; strip height always reserved (no layout jump) |
-| **Spectrum style** | Cycle look (saved): **Phosphor** (default), Classic, Mirror, Heat tips, Freq bands, Scope grid, Wave, Glow, Dots, Waterfall. **Defaults** restores Phosphor |
+| **Spectrum style** | Cycle look (saved): **Phosphor** (default), Classic, Mirror, Heat tips, Freq bands, Scope grid, Wave, **Win98 wave** (time-domain PCM), Glow, Dots, Waterfall. **Defaults** restores Phosphor |
 | **Auto-snap on detect** | Off by default (pose appear → Snap) |
 | **DrakeVox** | **ON** = panel + timer/TTS/O; **OFF** = hide panel + stop generation |
 | **DrakeVox on auto-snap** | Default **ON**; only when auto-snap fires (not manual Snap) |
@@ -232,7 +232,7 @@ The app **does not set** ALSA or Pulse capture gain. Levels come from the OS/dev
 - Falls back to system default mic  
 - **Retries** every ~2s if the mic drops (unplug / power cycle) — strip shows `mic retry…`  
 - Requires `libportaudio2` for Python `sounddevice`  
-- **Style** (Settings **Spectrum style**, saved): **Phosphor** (default), Classic, Mirror, Heat tips, Freq bands, Scope grid, Wave, Glow, Dots, Waterfall. **Defaults** restores Phosphor.  
+- **Style** (Settings **Spectrum style**, saved): **Phosphor** (default), Classic, Mirror, Heat tips, Freq bands, Scope grid, Wave (FFT envelope), **Win98 wave** (raw PCM oscilloscope, not FFT), Glow, Dots, Waterfall. **Defaults** restores Phosphor.  
   Glow / Waterfall do a bit more work (blur / history); the strip is only ~56px tall so cost stays modest on field tablets.
 
 ## DrakeVox

@@ -20,6 +20,7 @@ PcmSink = Callable[[np.ndarray], None]
 # Visual styles for the strip (Settings cycle; default phosphor).
 # glow / waterfall cost a bit more CPU than bar styles, but the strip is
 # only ~56px tall so they stay light on Atom tablets.
+# win98 = time-domain oscilloscope (raw PCM), not FFT bars.
 SPECTRUM_STYLES = (
     "phosphor",
     "classic",
@@ -28,6 +29,7 @@ SPECTRUM_STYLES = (
     "bands",
     "grid",
     "wave",
+    "win98",
     "glow",
     "dots",
     "waterfall",
@@ -40,6 +42,7 @@ SPECTRUM_STYLE_LABELS = {
     "bands": "Freq bands",
     "grid": "Scope grid",
     "wave": "Wave",
+    "win98": "Win98 wave",
     "glow": "Glow",
     "dots": "Dots",
     "waterfall": "Waterfall",
@@ -87,6 +90,10 @@ class SpectrumAnalyzer:
         self._waterfall_rows: int = 64
         self._waterfall = np.zeros((self._waterfall_rows, n_bars), dtype=np.float32)
         self._waterfall_i = 0
+        # Time-domain ring for Win98 / oscilloscope styles (no FFT)
+        self._wave_len: int = 2048
+        self._wave = np.zeros(self._wave_len, dtype=np.float32)
+        self._wave_i = 0
         self._stream = None
         self._running = False
         self._want_enabled = False
@@ -241,6 +248,8 @@ class SpectrumAnalyzer:
                 mono = indata[:, 0].astype(np.float32)
                 with self._lock:
                     sinks = list(self._pcm_sinks)
+                    # Ring-buffer PCM for time-domain styles (win98 oscilloscope)
+                    self._push_wave_unlocked(mono)
                 for sink in sinks:
                     try:
                         sink(mono)
@@ -307,6 +316,9 @@ class SpectrumAnalyzer:
                 wf = self._waterfall_snapshot_unlocked()
             else:
                 wf = None
+            wave_pcm = (
+                self._wave_snapshot_unlocked() if style == "win98" else None
+            )
         n = len(levels)
         if n < 1 or width < 8 or height < 4:
             self._draw_overlay(img, width, height)
@@ -324,6 +336,8 @@ class SpectrumAnalyzer:
             self._paint_grid(img, levels, peaks, width, height)
         elif style == "wave":
             self._paint_wave(img, levels, width, height)
+        elif style == "win98":
+            self._paint_win98(img, wave_pcm, width, height)
         elif style == "glow":
             self._paint_glow(img, levels, peaks, width, height)
         elif style == "dots":
@@ -335,6 +349,34 @@ class SpectrumAnalyzer:
 
         self._draw_overlay(img, width, height)
         return img
+
+    def _push_wave_unlocked(self, mono: np.ndarray) -> None:
+        """Append mono float samples into the time-domain ring (caller holds lock)."""
+        x = np.asarray(mono, dtype=np.float32).reshape(-1)
+        if x.size < 1:
+            return
+        n = self._wave_len
+        i = int(self._wave_i)
+        # Fast path: copy in one or two slices
+        for start in range(0, x.size, n):
+            chunk = x[start : start + n]
+            m = int(chunk.size)
+            end = i + m
+            if end <= n:
+                self._wave[i:end] = chunk
+            else:
+                k = n - i
+                self._wave[i:] = chunk[:k]
+                self._wave[: m - k] = chunk[k:]
+            i = (i + m) % n
+        self._wave_i = i
+
+    def _wave_snapshot_unlocked(self) -> np.ndarray:
+        """Oldest→newest mono samples for oscilloscope paint."""
+        i = int(self._wave_i) % self._wave_len
+        if i == 0:
+            return self._wave.copy()
+        return np.concatenate((self._wave[i:], self._wave[:i]))
 
     def _push_waterfall_unlocked(self, levels: np.ndarray) -> None:
         n = min(len(levels), self._waterfall.shape[1])
@@ -511,7 +553,7 @@ class SpectrumAnalyzer:
         self._paint_phosphor(img, levels, peaks, width, height)
 
     def _paint_wave(self, img, levels, width: int, height: int) -> None:
-        """Oscilloscope-style polyline through bar tops."""
+        """Oscilloscope-style polyline through FFT bar tops (not time-domain)."""
         import cv2
 
         n = len(levels)
@@ -539,6 +581,49 @@ class SpectrumAnalyzer:
             for x, y in pts[:: max(1, n // 16)]:
                 cv2.circle(img, (x, y), 2, (40, 255, 200), -1, cv2.LINE_AA)
         cv2.line(img, (0, baseline), (width - 1, baseline), (35, 55, 45), 1)
+
+    def _paint_win98(self, img, samples, width: int, height: int) -> None:
+        """Windows 98 / classic Media Player style time-domain waveform.
+
+        Uses raw PCM amplitude (not FFT). Dark navy panel, lime green trace,
+        mid-line — cheap at strip size.
+        """
+        import cv2
+
+        # Classic player look: near-black navy (BGR)
+        img[:] = (32, 16, 0)
+        mid = max(1, height // 2)
+        # Faint grid (optional period feel)
+        for frac in (0.25, 0.5, 0.75):
+            y = int(height * frac)
+            cv2.line(img, (0, y), (width - 1, y), (48, 28, 8), 1)
+        for x in range(0, width, max(24, width // 8)):
+            cv2.line(img, (x, 0), (x, height - 1), (40, 22, 6), 1)
+        # Center zero line
+        cv2.line(img, (0, mid), (width - 1, mid), (90, 90, 40), 1)
+
+        if samples is None or getattr(samples, "size", 0) < 4:
+            return
+        x = np.asarray(samples, dtype=np.float32).reshape(-1)
+        # Soft peak normalize so quiet mics still move; clip hard spikes
+        peak = float(np.max(np.abs(x))) if x.size else 0.0
+        if peak > 1e-5:
+            x = np.clip(x / peak, -1.0, 1.0)
+        else:
+            x = x * 0.0
+        # One y-sample per pixel column (decimate)
+        n = int(x.size)
+        xs = np.linspace(0, n - 1, num=max(2, width), dtype=np.float32)
+        idx = np.clip(xs.astype(np.int32), 0, n - 1)
+        ys = x[idx]
+        amp = max(2, mid - 2)
+        pts = np.zeros((width, 1, 2), dtype=np.int32)
+        for i in range(width):
+            pts[i, 0, 0] = i
+            pts[i, 0, 1] = int(np.clip(mid - ys[i] * amp, 0, height - 1))
+        # Soft under-glow then bright core (WMP-ish)
+        cv2.polylines(img, [pts], False, (0, 120, 40), 3, cv2.LINE_AA)
+        cv2.polylines(img, [pts], False, (40, 255, 80), 1, cv2.LINE_AA)
 
     def _paint_glow(self, img, levels, peaks, width: int, height: int) -> None:
         """Soft neon bloom under sharp bars (blur on a tiny buffer — cheap)."""
