@@ -357,17 +357,29 @@ def _ensure_max_output_volume_impl() -> None:
                 continue
             for name, val in (
                 ("Speaker Switch", "on"),
+                # Digital → DAC
+                ("Stereo DAC MIXL DAC L1 Switch", "on"),
+                ("Stereo DAC MIXR DAC R1 Switch", "on"),
+                ("DAC1 Playback Volume", "175,175"),
+                # Analog OUT path (UCM Headphones leaves these off → silent panel)
+                ("OUT MIXL DAC L1 Switch", "on"),
+                ("OUT MIXR DAC R1 Switch", "on"),
+                ("OUTVOL L Switch", "on"),
+                ("OUTVOL R Switch", "on"),
                 ("LOUT L Playback Switch", "on"),
                 ("LOUT R Playback Switch", "on"),
                 ("LOUT MIX DAC L1 Switch", "on"),
                 ("LOUT MIX DAC R1 Switch", "on"),
+                ("LOUT MIX OUTVOL L Switch", "on"),
+                ("LOUT MIX OUTVOL R Switch", "on"),
                 # Keep HP path on: PipeWire default sink is often "Headphones";
                 # forcing HPO off silences DrakeVox even with Speaker on.
                 ("Headphone Switch", "on"),
                 ("HPO L Playback Switch", "on"),
                 ("HPO R Playback Switch", "on"),
+                ("HPO MIX DAC1 Switch", "on"),
                 # RCA: UCM often leaves OUT at 0 → silent
-                ("OUT Playback Volume", "39"),
+                ("OUT Playback Volume", "39,39"),
             ):
                 try:
                     subprocess.run(

@@ -69,14 +69,19 @@ App depth canvas remains **1280×720** (16:9 composite) scaled with keep-aspect 
 | Quit → power off (exit 10) | #4 | Done |
 | Captures Auto SD-first | #5 | Done |
 | Format / prepare media | #8 | App Settings (see viewer README) |
+| Date & time Settings | #11 | Done — polkit [DATE-TIME-PRIVS.md](DATE-TIME-PRIVS.md) |
+| Field lite (Atom) | #14 | `SLS_FIELD_LITE=1` — 7.5 FPS, pose every 2; **no** default FPS log |
+| Battery gauge | #12 | Status bar icon + fill |
+| Win98 spectrum | #15 | Time-domain PCM style |
 
 ## Acceptance checklist (#7)
 
 - [x] Template + matrix live in app docs  
 - [x] Geometry log exists so units are comparable  
-- [x] Settings operable on 1280×800 class (two-pane + scroll)  
+- [x] Settings operable on 1280×800 class (two-pane + scroll; dialog ~94–96% avail)  
 - [x] Two device classes documented (tablet-01, tablet-02) with native vs locked res  
-- [ ] At least one **real tablet** row filled with **post-wipe** Qt geometry + Settings pass  
+- [x] KVM tablet-class (2 GiB / 2 vCPU) documented for perf smoke  
+- [ ] At least one **real tablet** row with **post-wipe** Qt geometry log pasted (ops)  
 - [ ] Photos in `hardware/` when available  
 
 When a wipe completes, replace `*pending*` cells and set **Status** to e.g. `appliance OK 2026-…`.

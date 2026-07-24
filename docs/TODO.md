@@ -67,9 +67,8 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] **Confidence 25–95% in 5% steps, default 25%, UI as %** · 2026-07-22  
 - [x] **`--demo` force synthetic** (no freenect) · 2026-07-22  
 - [x] **`--hide-cursor` / `SLS_HIDE_CURSOR`** · 2026-07-22  
-- [ ] **DrakeVox TTS performance (priority on 2 GB tablets)** — code shipped; **verify** under load on real RCA or **tablet-class VM (2 GiB / 2 vCPU)** — not a fat host VM. FW: [VM-REBUILD.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/VM-REBUILD.md) tablet-class · [#13](https://github.com/tmdrake/sls-camera/issues/13)  
-  - Day log: [SESSION-2026-07-22.md](../software/linux/docs/SESSION-2026-07-22.md)  
-- [x] **Field Atom load caps (#14)** — `--field-lite` / `SLS_FIELD_LITE=1` (7.5 FPS, pose every 2, fast scale, FPS log); pose paused in Settings; TTS pose-pause + nice try  
+- [x] **DrakeVox TTS performance (#13)** — async speak, once mixer, pose paused during speak+play, nice try; **use `SLS_FIELD_LITE=1` on Atom**  
+- [x] **Field Atom load caps (#14)** — `--field-lite` / `SLS_FIELD_LITE=1` (7.5 FPS, pose every 2, fast scale); **FPS log off by default** (RCA); residual: optional QOpenGL blit  
   - CLI: `--target-fps` `--record-fps` `--pose-every-n` `--show-fps` `--display-fast`  
 - [x] **Spectrum Win98 wave (#15)** — time-domain PCM oscilloscope (not FFT); Settings cycle **Win98 wave** · 2026-07-24
 - [x] **Quit confirmation** — dialog before exit (stops REC cleanly)
