@@ -158,6 +158,21 @@ class FreenectProxy:
         except Exception:
             pass
 
+    @staticmethod
+    def _read_exact(stream, n: int) -> bytes:
+        """Read exactly n bytes (raw pipes may return partial chunks)."""
+        if n <= 0:
+            return b""
+        chunks: list[bytes] = []
+        got = 0
+        while got < n:
+            chunk = stream.read(n - got)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            got += len(chunk)
+        return b"".join(chunks)
+
     def _read_loop(self) -> None:
         p = self._proc
         if p is None or p.stdout is None:
@@ -165,16 +180,18 @@ class FreenectProxy:
         buf = p.stdout
         try:
             while self._running and p.poll() is None:
-                hdr = buf.read(_HDR.size)
+                hdr = self._read_exact(buf, _HDR.size)
                 if not hdr or len(hdr) < _HDR.size:
                     break
                 magic, mtype, plen = _HDR.unpack(hdr)
                 if magic != MAGIC:
                     self._mark_dead("bad worker magic (protocol error)")
                     break
-                payload = buf.read(int(plen)) if plen else b""
+                payload = self._read_exact(buf, int(plen)) if plen else b""
                 if plen and len(payload) < plen:
-                    self._mark_dead("worker short read")
+                    self._mark_dead(
+                        f"worker short read ({len(payload)}/{plen})"
+                    )
                     break
                 if mtype == TYPE_FRAME:
                     if len(payload) < DEPTH_BYTES + IR_BYTES:
