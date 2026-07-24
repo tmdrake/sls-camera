@@ -756,49 +756,42 @@ class DrakeVoxTTS:
                                 pass
                         except Exception:
                             pass
-                    # Live audio:
-                    # - field-lite: WAV via pw-play/aplay (RCA: live espeak +
-                    #   PortAudio often silent or hang; mixer can still look OK)
-                    # - default: sounddevice PCM; file/CLI if that fails
-                    if prefer:
+                    # Live audio (RCA vs SSH):
+                    # SSH "works" = espeak -w + aplay -D pipewire. Live espeak→Pulse
+                    # hangs; PortAudio often leaves Headphones paused/busy → silence
+                    # in Settings while the same SSH WAV path still works.
+                    # Prefer WAV→pw-play/aplay always; PortAudio last.
+                    ensure_max_output_volume(force=prefer)
+                    played = play_pcm_file(
+                        pcm,
+                        self.sample_rate,
+                        ensure_volume=False,
+                        wait=prefer,
+                    )
+                    if not played:
+                        played = play_live_fallback(
+                            word, ensure_volume=False, wait=prefer
+                        )
+                    if not played:
                         ensure_max_output_volume(force=True)
-                        if not play_pcm_file(
+                        played = play_pcm(
                             pcm,
                             self.sample_rate,
                             ensure_volume=False,
-                            wait=True,
-                        ):
-                            if not play_live_fallback(
-                                word, ensure_volume=False, wait=True
-                            ):
-                                play_pcm(
-                                    pcm,
-                                    self.sample_rate,
-                                    ensure_volume=False,
-                                    wait=True,
-                                )
+                            wait=prefer,
+                        )
+                    if not played:
+                        self._last_error = (
+                            "TTS play failed (try: espeak-ng -w /tmp/t.wav WORD "
+                            "&& aplay -D pipewire /tmp/t.wav)"
+                        )
                     else:
-                        if not play_pcm(
-                            pcm,
-                            self.sample_rate,
-                            ensure_volume=False,
-                            wait=False,
-                        ):
-                            ensure_max_output_volume(force=True)
-                            if not play_pcm_file(
-                                pcm,
-                                self.sample_rate,
-                                ensure_volume=False,
-                                wait=False,
-                            ):
-                                play_live_fallback(
-                                    word, ensure_volume=False, wait=False
-                                )
-                    self._last_error = ""
+                        self._last_error = ""
                     return
                 self._last_error = "TTS synth unavailable (install espeak-ng)"
                 # Live-only fallback: no PCM → nothing to inject (recording keeps mic)
-                play_live_fallback(word, ensure_volume=True, wait=prefer)
+                if not play_live_fallback(word, ensure_volume=True, wait=prefer):
+                    self._last_error = "TTS synth/play failed (espeak-ng / PipeWire)"
                 if prefer and not find_espeak_cli():
                     _time.sleep(min(2.0, 0.4 + 0.08 * len(word)))
             except Exception as exc:

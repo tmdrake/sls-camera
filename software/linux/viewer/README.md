@@ -250,7 +250,7 @@ Spirit-box style word generator (not “Ovilus”). Default bank is the Digital 
 | **Manual Snap** | Does **not** force a new word (may still show current panel on JPEG) |
 | **Recording** | Overlay burned into AVI; TTS PCM mixed into audio with mic |
 
-### DrakeVox TTS playback (field / RCA vs VM)
+### DrakeVox TTS playback (field / RCA vs SSH / VM)
 
 **Issue (lab 2026-07-24, RCA W101AS23T2 only — not reproduced on KVM):** UI shows the word and synth succeeds, but panel stays silent when playing via **PortAudio** (`sounddevice`) or **live** `espeak-ng` → Pulse. Mixer can look perfect (Speaker on, OUT=39).
 
@@ -260,12 +260,12 @@ Spirit-box style word generator (not “Ovilus”). Default bank is the Digital 
 | Live `espeak-ng` (Pulse) | Often **hangs** | OK |
 | WAV + `aplay -D pipewire` / `pw-play` | **OK** | OK |
 
-**Mitigation in app:**
+**Why SSH works but Settings “DrakeVox now” is silent:** same device, **different delivery**. SSH smoke uses **espeak-ng -w + aplay -D pipewire**. The app used to call **PortAudio** / live Pulse espeak first — those fail on this RCA graph even when the WAV path works.
 
-1. **`tts.py` (field-lite):** after PCM synth (AVI inject), write a temp WAV and play with **`pw-play` / `aplay -D pipewire`**. PortAudio is last resort for speak.  
-2. **`audio_device.py`:** spectrum/mic open prefers **capture-only** PortAudio devices (e.g. `alsa_input…Headset__source`). Opening duplex **`default`/`pipewire`** creates a stuck **playback** node (`[init]`) → speakers only **pop** then silence even for `aplay -D pipewire`.  
+**Mitigation in app (always):**
 
-Non–field-lite still prefers PortAudio for TTS play (VM/lab path).
+1. **`tts.py`:** after PCM synth (AVI inject still uses PCM), play via **temp WAV → `pw-play` / `aplay -D pipewire`** first; PortAudio only as last resort.  
+2. **`audio_device.py`:** spectrum/mic prefers **capture-only** PortAudio devices. Opening duplex **`default`/`pipewire`** creates a stuck **playback** node (`[init]`) → speakers only **pop** then silence.  
 
 Firmware still owns boot mixer (SST + `sls-audio-speakers` OUTVOL path):  
 [rca-w101as23t2.md speaker stack](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/devices/rca-w101as23t2.md#rca-speaker-fix-full-stack-lab-validated-2026-07).
@@ -274,7 +274,7 @@ Firmware still owns boot mixer (SST + `sls-audio-speakers` OUTVOL path):
 
 ```bash
 espeak-ng -a 200 -w /tmp/t.wav "test" && aplay -D pipewire /tmp/t.wav
-# then: SLS Camera → DrakeVox now (with field-lite)
+# then: SLS Camera → DrakeVox now (same routing as the WAV line above)
 ```
 
 ## Kinect LED cues
