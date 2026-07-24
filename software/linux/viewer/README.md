@@ -448,7 +448,7 @@ SLS_TARGET_FPS=7.5 SLS_RECORD_FPS=7.5 SLS_POSE_EVERY_N=3 ./run.sh
 | Fast display | `FastTransformation` instead of smooth scale |
 | Settings open | Pose **paused** while Settings is visible |
 | DrakeVox speak | Pose **paused** for synth **and** playback; TTS worker tries higher nice/priority |
-| FPS log | `effective_fps=…` every 5s to stdout; session jsonl `fps` events |
+| FPS log | **Off** by default (was every 5s; too heavy on Atom). Lab only: `SLS_FPS_LOG_INTERVAL=5` or `--show-fps` for status bar |
 
 **GPU note:** MediaPipe still uses **XNNPACK CPU** on CHV even when EGL is Intel. Qt display path is CPU pixmap blit; field-lite reduces that cost. Full OpenGL texture path is a follow-up.
 

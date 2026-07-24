@@ -146,8 +146,10 @@ class Settings:
         self.max_poses = 1
         self.clamp_max_poses()
         self.display_fast = True
-        if self.fps_log_interval_s <= 0:
-            self.fps_log_interval_s = 5.0
+        # FPS logging off by default — periodic print + session jsonl was for
+        # temporary #14 QA and adds I/O on Atom. Opt-in: SLS_SHOW_FPS=1 (bar only)
+        # or SLS_FPS_LOG_INTERVAL=N for rare lab debugging.
+        self.fps_log_interval_s = 0.0
 
     def apply_perf_from_env(self) -> None:
         """SLS_* env overrides (firmware launcher). Call after CLI flags."""
