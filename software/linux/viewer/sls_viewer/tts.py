@@ -461,6 +461,12 @@ def play_pcm(
         peak = float(np.max(np.abs(x))) if x.size else 0.0
         if peak > 1e-6 and peak < 0.85:
             x = np.clip(x * (0.95 / peak), -1.0, 1.0)
+        # Drop any half-open/paused PortAudio stream (RCA: stuck [init]/[paused]
+        # holds ALSA busy and silences DrakeVox).
+        try:
+            sd.stop()
+        except Exception:
+            pass
         # wait=True: hold CPU preference through playback (pose stays paused)
         sd.play(x, samplerate=int(sample_rate), blocking=bool(wait))
         return True
@@ -468,7 +474,14 @@ def play_pcm(
         return False
 
 
-def play_live_fallback(text: str, *, ensure_volume: bool = False) -> bool:
+def play_live_fallback(
+    text: str, *, ensure_volume: bool = False, wait: bool = False
+) -> bool:
+    """Speak via espeak-ng CLI (PipeWire). More reliable than PortAudio on RCA.
+
+    Field tablets: prefer this for live panel audio — sounddevice can leave the
+    Headphones sink paused/busy so DrakeVox is silent even with mixer correct.
+    """
     word = (text or "").strip()
     if not word:
         return False
@@ -476,24 +489,43 @@ def play_live_fallback(text: str, *, ensure_volume: bool = False) -> bool:
         ensure_max_output_volume()
     eng = find_espeak_cli()
     if eng:
+        cmd = [eng, "-s", "140", "-a", "200", "-v", "en", word]
         try:
             # -a amplitude 0–200; max for field audibility
-            subprocess.Popen(
-                [eng, "-s", "140", "-a", "200", "-v", "en", word],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+            if wait:
+                subprocess.run(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=min(12.0, 1.5 + 0.12 * len(word)),
+                    check=False,
+                )
+            else:
+                subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
             return True
         except Exception:
             pass
     spd = shutil.which("spd-say")
     if spd:
         try:
-            subprocess.Popen(
-                [spd, word],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+            if wait:
+                subprocess.run(
+                    [spd, word],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=8,
+                    check=False,
+                )
+            else:
+                subprocess.Popen(
+                    [spd, word],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
             return True
         except Exception:
             pass
@@ -639,30 +671,44 @@ class DrakeVoxTTS:
                                 pass
                         except Exception:
                             pass
-                    # Default: non-blocking play (sticks keep moving).
-                    # field-lite: wait so pose stays paused through playback.
-                    if not play_pcm(
-                        pcm,
-                        self.sample_rate,
-                        ensure_volume=False,
-                        wait=prefer,
-                    ):
+                    # Live audio:
+                    # - field-lite: espeak-ng CLI first (RCA PortAudio often holds
+                    #   Headphones sink paused/busy → silent DrakeVox despite OK mixer)
+                    # - default: sounddevice PCM; espeak CLI if that fails
+                    if prefer:
                         ensure_max_output_volume(force=True)
+                        if not play_live_fallback(
+                            word, ensure_volume=False, wait=True
+                        ):
+                            play_pcm(
+                                pcm,
+                                self.sample_rate,
+                                ensure_volume=False,
+                                wait=True,
+                            )
+                    else:
                         if not play_pcm(
                             pcm,
                             self.sample_rate,
                             ensure_volume=False,
-                            wait=prefer,
+                            wait=False,
                         ):
-                            play_live_fallback(word, ensure_volume=False)
-                            if prefer:
-                                _time.sleep(min(2.0, 0.4 + 0.08 * len(word)))
+                            ensure_max_output_volume(force=True)
+                            if not play_pcm(
+                                pcm,
+                                self.sample_rate,
+                                ensure_volume=False,
+                                wait=False,
+                            ):
+                                play_live_fallback(
+                                    word, ensure_volume=False, wait=False
+                                )
                     self._last_error = ""
                     return
                 self._last_error = "TTS synth unavailable (install espeak-ng)"
                 # Live-only fallback: no PCM → nothing to inject (recording keeps mic)
-                play_live_fallback(word, ensure_volume=True)
-                if prefer:
+                play_live_fallback(word, ensure_volume=True, wait=prefer)
+                if prefer and not find_espeak_cli():
                     _time.sleep(min(2.0, 0.4 + 0.08 * len(word)))
             except Exception as exc:
                 self._last_error = str(exc)[:120]
