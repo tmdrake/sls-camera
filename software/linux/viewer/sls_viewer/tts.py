@@ -474,13 +474,84 @@ def play_pcm(
         return False
 
 
+def _play_wav_file(path: str, *, wait: bool = False) -> bool:
+    """Play a WAV through PipeWire/ALSA. Prefer pipewire device name."""
+    players: list[list[str]] = []
+    if shutil.which("pw-play"):
+        players.append([shutil.which("pw-play") or "pw-play", path])
+    if shutil.which("aplay"):
+        players.append(
+            [shutil.which("aplay") or "aplay", "-q", "-D", "pipewire", path]
+        )
+        players.append([shutil.which("aplay") or "aplay", "-q", path])
+    for cmd in players:
+        try:
+            if wait:
+                r = subprocess.run(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=12,
+                    check=False,
+                )
+                if r.returncode == 0:
+                    return True
+            else:
+                subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def play_pcm_file(
+    pcm: np.ndarray,
+    sample_rate: int = DEFAULT_SAMPLE_RATE,
+    *,
+    ensure_volume: bool = False,
+    wait: bool = False,
+) -> bool:
+    """Write PCM to a temp WAV and play via pw-play/aplay (RCA-safe path)."""
+    if ensure_volume:
+        ensure_max_output_volume()
+    x = np.asarray(pcm, dtype=np.float32).reshape(-1)
+    if x.size == 0:
+        return False
+    peak = float(np.max(np.abs(x)))
+    if peak > 1e-6 and peak < 0.85:
+        x = np.clip(x * (0.95 / peak), -1.0, 1.0)
+    pcm16 = (np.clip(x, -1.0, 1.0) * 32767.0).astype(np.int16)
+    path = None
+    try:
+        fd, path = tempfile.mkstemp(prefix="sls-tts-", suffix=".wav")
+        os.close(fd)
+        with wave.open(path, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(int(sample_rate))
+            wf.writeframes(pcm16.tobytes())
+        return _play_wav_file(path, wait=wait)
+    except Exception:
+        return False
+    finally:
+        if path:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+
+
 def play_live_fallback(
     text: str, *, ensure_volume: bool = False, wait: bool = False
 ) -> bool:
-    """Speak via espeak-ng CLI (PipeWire). More reliable than PortAudio on RCA.
+    """Speak via espeak-ng → WAV → pw-play/aplay (not live espeak pulse).
 
-    Field tablets: prefer this for live panel audio — sounddevice can leave the
-    Headphones sink paused/busy so DrakeVox is silent even with mixer correct.
+    Live ``espeak-ng`` (pulse) often hangs/times out on RCA; writing a WAV and
+    playing through PipeWire is reliable. PortAudio can leave Headphones paused.
     """
     word = (text or "").strip()
     if not word:
@@ -489,26 +560,40 @@ def play_live_fallback(
         ensure_max_output_volume()
     eng = find_espeak_cli()
     if eng:
-        cmd = [eng, "-s", "140", "-a", "200", "-v", "en", word]
+        path = None
         try:
-            # -a amplitude 0–200; max for field audibility
-            if wait:
-                subprocess.run(
-                    cmd,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    timeout=min(12.0, 1.5 + 0.12 * len(word)),
-                    check=False,
-                )
-            else:
-                subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            return True
+            fd, path = tempfile.mkstemp(prefix="sls-espeak-", suffix=".wav")
+            os.close(fd)
+            # -w WAV avoids live Pulse hang on some PipeWire/RCA stacks
+            cmd = [
+                eng,
+                "-s",
+                "140",
+                "-a",
+                "200",
+                "-v",
+                "en",
+                "-w",
+                path,
+                word,
+            ]
+            r = subprocess.run(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=8,
+                check=False,
+            )
+            if r.returncode == 0 and os.path.isfile(path) and os.path.getsize(path) > 44:
+                return _play_wav_file(path, wait=wait)
         except Exception:
             pass
+        finally:
+            if path:
+                try:
+                    os.unlink(path)
+                except OSError:
+                    pass
     spd = shutil.which("spd-say")
     if spd:
         try:
@@ -672,20 +757,26 @@ class DrakeVoxTTS:
                         except Exception:
                             pass
                     # Live audio:
-                    # - field-lite: espeak-ng CLI first (RCA PortAudio often holds
-                    #   Headphones sink paused/busy → silent DrakeVox despite OK mixer)
-                    # - default: sounddevice PCM; espeak CLI if that fails
+                    # - field-lite: WAV via pw-play/aplay (RCA: live espeak +
+                    #   PortAudio often silent or hang; mixer can still look OK)
+                    # - default: sounddevice PCM; file/CLI if that fails
                     if prefer:
                         ensure_max_output_volume(force=True)
-                        if not play_live_fallback(
-                            word, ensure_volume=False, wait=True
+                        if not play_pcm_file(
+                            pcm,
+                            self.sample_rate,
+                            ensure_volume=False,
+                            wait=True,
                         ):
-                            play_pcm(
-                                pcm,
-                                self.sample_rate,
-                                ensure_volume=False,
-                                wait=True,
-                            )
+                            if not play_live_fallback(
+                                word, ensure_volume=False, wait=True
+                            ):
+                                play_pcm(
+                                    pcm,
+                                    self.sample_rate,
+                                    ensure_volume=False,
+                                    wait=True,
+                                )
                     else:
                         if not play_pcm(
                             pcm,
@@ -694,7 +785,7 @@ class DrakeVoxTTS:
                             wait=False,
                         ):
                             ensure_max_output_volume(force=True)
-                            if not play_pcm(
+                            if not play_pcm_file(
                                 pcm,
                                 self.sample_rate,
                                 ensure_volume=False,
