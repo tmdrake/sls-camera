@@ -244,11 +244,33 @@ Spirit-box style word generator (not “Ovilus”). Default bank is the Digital 
 | **Words** | `data/drakevox_words_digitaldowsing.txt` (~2035); fallback 20 classic words if missing |
 | **Timer** | Random **300–900 s** (5–15 min) between words |
 | **UI** | Panel **under the IR PiP** (green text); last **5** as `HH:MM:SS WORD` |
-| **TTS** | `libespeak-ng` / espeak / spd-say fallback |
+| **TTS** | Synth: `libespeak-ng` / espeak **`-w` WAV** / spd-say. Live play: see below |
 | **Manual** | **DrakeVox now** or key **`O`** |
 | **Auto-snap** | If **DrakeVox on auto-snap** + **Auto-snap on detect**: generate word + TTS and burn into JPEG |
 | **Manual Snap** | Does **not** force a new word (may still show current panel on JPEG) |
-| **Recording** | Overlay burned into AVI; TTS mixed into audio with mic |
+| **Recording** | Overlay burned into AVI; TTS PCM mixed into audio with mic |
+
+### DrakeVox TTS playback (field / RCA vs VM)
+
+**Issue (lab 2026-07-24, RCA W101AS23T2 only — not reproduced on KVM):** UI shows the word and synth succeeds, but panel stays silent when playing via **PortAudio** (`sounddevice`) or **live** `espeak-ng` → Pulse. Mixer can look perfect (Speaker on, OUT=39).
+
+| Play path | RCA tablet | Tablet-class VM |
+|-----------|------------|-----------------|
+| PortAudio (`sd.play`) | Often **paused/busy** sink; silent | OK |
+| Live `espeak-ng` (Pulse) | Often **hangs** | OK |
+| WAV + `aplay -D pipewire` / `pw-play` | **OK** | OK |
+
+**Mitigation in app (`tts.py`, field-lite / `SLS_FIELD_LITE=1`):** after PCM synth (for AVI inject), write a temp WAV and play with **`pw-play` or `aplay -D pipewire`**. PortAudio is last resort on field-lite. Non–field-lite keeps PortAudio first (VM/lab path).
+
+Firmware still owns boot mixer (SST + `sls-audio-speakers` OUTVOL path):  
+[rca-w101as23t2.md speaker stack](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/devices/rca-w101as23t2.md#rca-speaker-fix-full-stack-lab-validated-2026-07).
+
+**Smoke (on device):**
+
+```bash
+espeak-ng -a 200 -w /tmp/t.wav "test" && aplay -D pipewire /tmp/t.wav
+# then: SLS Camera → DrakeVox now (with field-lite)
+```
 
 ## Kinect LED cues
 
