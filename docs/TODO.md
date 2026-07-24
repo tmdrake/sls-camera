@@ -37,6 +37,7 @@ policy come later.
 | [#11](https://github.com/tmdrake/sls-camera/issues/11) | Settings date/time — **app + FW polkit shipped**; field smoke to close |
 | [#12](https://github.com/tmdrake/sls-camera/issues/12) | Visual battery gauge — **closed** (icon + fill; `SLS_FAKE_BATTERY` preview) |
 | [#13](https://github.com/tmdrake/sls-camera/issues/13) | DrakeVox TTS — **code shipped**; verify tablet-class VM 2 GiB/2 vCPU or RCA |
+| [#14](https://github.com/tmdrake/sls-camera/issues/14) | Field Atom FPS caps — **`--field-lite` / env** shipped; FW should export on RCA |
 
 Firmware may implement offline mirrors; **product install-path and app-behavior decisions stay tracked here**.
 

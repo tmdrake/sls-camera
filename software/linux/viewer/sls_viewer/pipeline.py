@@ -31,6 +31,9 @@ class FramePipeline:
         self._frame_i = 0
         self._last_poses = []
         self._reconnect_attempt = 0
+        # When True, skip MediaPipe (Settings open) — frees CPU for TTS/UI (#14)
+        self.pose_paused = False
+        self._last_fps_log_t = 0.0
 
     @property
     def status(self) -> str:
@@ -39,6 +42,26 @@ class FramePipeline:
     @property
     def fps(self) -> float:
         return self._fps
+
+    def perf_line(self) -> str:
+        """One-line effective FPS + load caps for logs / status tooltip."""
+        return (
+            f"effective_fps={self._fps:.1f} target={self.s.target_fps:g} "
+            f"pose_every={self.s.pose_every_n_frames} "
+            f"record_fps={self.s.record_fps:g} "
+            f"pose_paused={int(self.pose_paused)} "
+            f"field_lite={int(self.s.field_lite)}"
+        )
+
+    def _maybe_log_fps(self) -> None:
+        interval = float(getattr(self.s, "fps_log_interval_s", 0) or 0)
+        if interval <= 0:
+            return
+        now = time.time()
+        if self._last_fps_log_t > 0 and (now - self._last_fps_log_t) < interval:
+            return
+        self._last_fps_log_t = now
+        print(self.perf_line(), flush=True)
 
     @property
     def poses_count(self) -> int:
@@ -348,7 +371,12 @@ class FramePipeline:
         ir_bgr = colorize.ir_to_bgr(ir_u8)
 
         self._frame_i += 1
-        if self._pose and (self._frame_i % max(1, self.s.pose_every_n_frames) == 0):
+        run_pose = (
+            self._pose is not None
+            and not self.pose_paused
+            and (self._frame_i % max(1, int(self.s.pose_every_n_frames)) == 0)
+        )
+        if run_pose:
             try:
                 self._last_poses = self._pose.estimate(depth_bgr)[
                     : int(self.s.max_poses)
@@ -420,6 +448,7 @@ class FramePipeline:
                 use_kinect = self._open_kinect()
 
         fps_smooth = 0.0
+        print(f"pipeline load: {self.s.perf_summary()}", flush=True)
 
         while self._running:
             t0 = time.time()
@@ -440,8 +469,9 @@ class FramePipeline:
                 inst = 1.0 / dt if dt > 0 else 0.0
                 fps_smooth = 0.9 * fps_smooth + 0.1 * inst if fps_smooth else inst
                 self._fps = fps_smooth
+                self._maybe_log_fps()
 
-                min_dt = 1.0 / max(1.0, self.s.target_fps)
+                min_dt = 1.0 / max(1.0, float(self.s.target_fps))
                 sleep_t = min_dt - (time.time() - t0)
                 if sleep_t > 0:
                     time.sleep(sleep_t)

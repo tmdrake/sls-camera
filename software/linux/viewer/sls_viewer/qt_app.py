@@ -1605,13 +1605,43 @@ class SlsMainWindow(QMainWindow):
                 self.drakevox,
                 self,
             )
+            # Free MediaPipe CPU while Settings is open (#14)
+            self._settings_dlg.finished.connect(self._on_settings_closed)
         if self._settings_dlg.isVisible():
             self._settings_dlg.raise_()
             self._settings_dlg.activateWindow()
             return
+        self.pipeline.pose_paused = True
         self._settings_dlg._refresh()
         self._settings_dlg.show()
         self._settings_dlg.raise_()
+
+    def _on_settings_closed(self, *_args) -> None:
+        self.pipeline.pose_paused = False
+
+    def _maybe_log_session_fps(self) -> None:
+        """Write effective FPS into session jsonl for field QA (#14)."""
+        interval = float(self.pipeline.s.fps_log_interval_s or 0)
+        if interval <= 0:
+            return
+        period = max(1, int(round(interval / 0.033)))
+        self._fps_log_i = getattr(self, "_fps_log_i", 0) + 1
+        if self._fps_log_i % period != 0:
+            return
+        try:
+            self.session._log_event(
+                "fps",
+                {
+                    "effective_fps": round(float(self.pipeline.fps), 2),
+                    "target_fps": float(self.pipeline.s.target_fps),
+                    "record_fps": float(self.pipeline.s.record_fps),
+                    "pose_every_n": int(self.pipeline.s.pose_every_n_frames),
+                    "field_lite": bool(self.pipeline.s.field_lite),
+                    "pose_paused": bool(self.pipeline.pose_paused),
+                },
+            )
+        except Exception:
+            pass
 
     def _on_escape(self) -> None:
         if self._settings_open():
@@ -1837,14 +1867,19 @@ class SlsMainWindow(QMainWindow):
         ]
         if self.session.recording:
             parts.insert(1, f"REC {self.session.recording_elapsed_str()}")
+        if self.pipeline.s.show_fps:
+            parts.append(f"{self.pipeline.fps:.0f}fps")
         base = "  ·  ".join(parts)
         # Temporary flash replaces the line (snap saved, format, errors)
         self.status.setText(flash if flash else base)
         self.status.setToolTip(
             f"{self.pipeline.status}\n"
             f"People {self.pipeline.poses_count}/{mx}  ·  "
-            f"Confidence {conf_s}  ·  Captures {cap}"
+            f"Confidence {conf_s}  ·  Captures {cap}\n"
+            f"{self.pipeline.perf_line()}"
         )
+        # Session jsonl FPS sample for field QA (#14)
+        self._maybe_log_session_fps()
 
         frame = self.pipeline.get_bgr()
         if frame is not None:
@@ -1860,10 +1895,16 @@ class SlsMainWindow(QMainWindow):
             pix = bgr_to_qpixmap(display)
             target = self.video.size()
             if target.width() >= 2 and target.height() >= 2:
+                # Smooth is expensive on Atom; field-lite / --display-fast uses Fast
+                xform = (
+                    Qt.TransformationMode.FastTransformation
+                    if self.pipeline.s.display_fast
+                    else Qt.TransformationMode.SmoothTransformation
+                )
                 scaled = pix.scaled(
                     target,
                     Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
+                    xform,
                 )
                 self.video.setPixmap(scaled)
 

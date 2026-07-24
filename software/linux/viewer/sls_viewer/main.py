@@ -26,6 +26,8 @@ def parse_args(argv=None):
             "  ./run.sh --demo\n"
             "  ./run.sh --ui web --host 0.0.0.0 --port 8765\n"
             "  ./run.sh --led-off --no-auto-level --device 0\n"
+            "  ./run.sh --field-lite          # Atom / 2GB: 7.5 FPS + pose every 2\n"
+            "  SLS_FIELD_LITE=1 ./run.sh      # same via env (firmware launcher)\n"
             "\n"
             "Keyboard (Qt): S settings · C snap · R record · O DrakeVox · "
             "[ and ] confidence · , and . max people · "
@@ -89,6 +91,48 @@ def parse_args(argv=None):
         help=(
             "Hide the mouse pointer (field / touch kiosk). "
             "Also enabled by SLS_HIDE_CURSOR=1. Default: show cursor."
+        ),
+    )
+    p.add_argument(
+        "--field-lite",
+        action="store_true",
+        help=(
+            "Atom / 2GB preset (#14): target+record 7.5 FPS, pose every 2 frames, "
+            "fast display scale, FPS log. Also SLS_FIELD_LITE=1."
+        ),
+    )
+    p.add_argument(
+        "--target-fps",
+        type=float,
+        default=None,
+        metavar="N",
+        help="Cap live pipeline FPS (default 20; field-lite 7.5). Env: SLS_TARGET_FPS",
+    )
+    p.add_argument(
+        "--record-fps",
+        type=float,
+        default=None,
+        metavar="N",
+        help="AVI writer FPS (default 20; field-lite 7.5). Env: SLS_RECORD_FPS",
+    )
+    p.add_argument(
+        "--pose-every-n",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Run MediaPipe every N frames (default 1; field-lite 2). Env: SLS_POSE_EVERY_N",
+    )
+    p.add_argument(
+        "--show-fps",
+        action="store_true",
+        help="Show effective FPS in status bar. Env: SLS_SHOW_FPS=1",
+    )
+    p.add_argument(
+        "--display-fast",
+        action="store_true",
+        help=(
+            "Use FastTransformation for main view scale (less CPU than smooth). "
+            "Implied by --field-lite. Env: SLS_DISPLAY_FAST=1"
         ),
     )
     return p.parse_args(argv)
@@ -193,12 +237,28 @@ def main(argv=None):
     settings.led_green = not bool(args.led_off)
     settings.hide_cursor = bool(args.hide_cursor) or _env_hide_cursor()
 
+    # Performance load caps (#14) — CLI then env (env can refine individual knobs)
+    if bool(args.field_lite):
+        settings.apply_field_lite()
+    if args.target_fps is not None and args.target_fps > 0:
+        settings.target_fps = max(1.0, min(60.0, float(args.target_fps)))
+    if args.record_fps is not None and args.record_fps > 0:
+        settings.record_fps = max(1.0, min(60.0, float(args.record_fps)))
+    if args.pose_every_n is not None and args.pose_every_n >= 1:
+        settings.pose_every_n_frames = min(30, int(args.pose_every_n))
+    if bool(args.show_fps):
+        settings.show_fps = True
+    if bool(args.display_fast):
+        settings.display_fast = True
+    settings.apply_perf_from_env()
+
     pipeline = FramePipeline(settings)
     pipeline.start()
     print(
         f"UI={args.ui} mirror={settings.mirror} demo={settings.allow_demo_without_kinect} "
         f"led_green={settings.led_green} auto_level={settings.auto_level} "
-        f"hide_cursor={settings.hide_cursor}"
+        f"hide_cursor={settings.hide_cursor} {settings.perf_summary()}",
+        flush=True,
     )
 
     try:

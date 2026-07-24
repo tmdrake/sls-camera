@@ -543,6 +543,13 @@ class DrakeVoxTTS:
             if prev is not None and prev.is_alive():
                 prev.join(timeout=3.0)
             try:
+                # Mild priority bump so synth competes better with MediaPipe (#13/#14)
+                try:
+                    import os as _os
+
+                    _os.nice(-5)
+                except (OSError, AttributeError, PermissionError):
+                    pass
                 # First word (or cold start): ensure volume once; cheap no-op after
                 ensure_max_output_volume(force=False)
                 pcm = synthesize(word, sample_rate=self.sample_rate)

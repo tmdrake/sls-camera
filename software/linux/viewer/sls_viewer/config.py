@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from .host_power import env_wants_poweroff_on_quit
 from .spectrum import DEFAULT_SPECTRUM_STYLE, normalize_spectrum_style
+
+# Atom / 2 GB field tablets (#14) — firmware may export SLS_FIELD_LITE=1
+FIELD_LITE_TARGET_FPS = 7.5
+FIELD_LITE_RECORD_FPS = 7.5
+FIELD_LITE_POSE_EVERY_N = 2
 
 VIEWER_ROOT = Path(__file__).resolve().parent.parent
 MODEL_PATH = VIEWER_ROOT / "models" / "pose_landmarker_lite.task"
@@ -88,6 +94,7 @@ class Settings:
     ir_pip_corner: str = "top-right"
 
     jpeg_quality: int = 80
+    # Live pipeline sleep cap (see also record_fps). Field Atom: use --field-lite / env.
     target_fps: float = 20.0
 
     # Spectrum strip (ALSA/Pulse; prefers Kinect UAC after kinect-audio-setup)
@@ -103,6 +110,15 @@ class Settings:
     record_fps: float = 20.0
     # Captures destination: auto = SD/USB if mounted (default); local = viewer/captures only
     captures_target: str = "auto"
+
+    # Performance (#14) — load-time only (not user_settings.json)
+    field_lite: bool = False
+    # Fast Qt pixmap scale (no SmoothTransformation) — big CPU save on Atom
+    display_fast: bool = False
+    # Show effective FPS in status bar + denser logs
+    show_fps: bool = False
+    # Log effective_fps=… every N seconds (0 = off). field_lite defaults to 5.
+    fps_log_interval_s: float = 0.0
 
     # DrakeVox (random word every 5–15 min; timestamped + TTS)
     drakevox_enabled: bool = True
@@ -120,6 +136,75 @@ class Settings:
     model_path: Path = field(default_factory=lambda: MODEL_PATH)
     # --demo: force synthetic depth/IR (no freenect open). Lab / VM UI test.
     allow_demo_without_kinect: bool = False
+
+    def apply_field_lite(self) -> None:
+        """Atom / 2 GB preset: lower live+record FPS, skip pose some frames (#14)."""
+        self.field_lite = True
+        self.target_fps = float(FIELD_LITE_TARGET_FPS)
+        self.record_fps = float(FIELD_LITE_RECORD_FPS)
+        self.pose_every_n_frames = int(FIELD_LITE_POSE_EVERY_N)
+        self.max_poses = 1
+        self.clamp_max_poses()
+        self.display_fast = True
+        if self.fps_log_interval_s <= 0:
+            self.fps_log_interval_s = 5.0
+
+    def apply_perf_from_env(self) -> None:
+        """SLS_* env overrides (firmware launcher). Call after CLI flags."""
+        raw = (os.environ.get("SLS_FIELD_LITE") or "").strip().lower()
+        if raw in ("1", "true", "yes", "on", "lite"):
+            self.apply_field_lite()
+
+        def _float(name: str) -> Optional[float]:
+            v = (os.environ.get(name) or "").strip()
+            if not v:
+                return None
+            try:
+                return float(v)
+            except ValueError:
+                return None
+
+        def _int(name: str) -> Optional[int]:
+            v = (os.environ.get(name) or "").strip()
+            if not v:
+                return None
+            try:
+                return int(float(v))
+            except ValueError:
+                return None
+
+        tf = _float("SLS_TARGET_FPS")
+        if tf is not None and tf > 0:
+            self.target_fps = max(1.0, min(60.0, tf))
+        rf = _float("SLS_RECORD_FPS")
+        if rf is not None and rf > 0:
+            self.record_fps = max(1.0, min(60.0, rf))
+        pe = _int("SLS_POSE_EVERY_N")
+        if pe is not None and pe >= 1:
+            self.pose_every_n_frames = min(30, pe)
+
+        df = (os.environ.get("SLS_DISPLAY_FAST") or "").strip().lower()
+        if df in ("1", "true", "yes", "on", "fast"):
+            self.display_fast = True
+        elif df in ("0", "false", "no", "off", "smooth"):
+            self.display_fast = False
+
+        sf = (os.environ.get("SLS_SHOW_FPS") or "").strip().lower()
+        if sf in ("1", "true", "yes", "on"):
+            self.show_fps = True
+        elif sf in ("0", "false", "no", "off"):
+            self.show_fps = False
+
+        li = _float("SLS_FPS_LOG_INTERVAL")
+        if li is not None:
+            self.fps_log_interval_s = max(0.0, li)
+
+    def perf_summary(self) -> str:
+        return (
+            f"target_fps={self.target_fps:g} record_fps={self.record_fps:g} "
+            f"pose_every={self.pose_every_n_frames} field_lite={self.field_lite} "
+            f"display_fast={self.display_fast} show_fps={self.show_fps}"
+        )
 
     def load_persisted(self, path: Path = SETTINGS_PATH) -> None:
         if not path.is_file():

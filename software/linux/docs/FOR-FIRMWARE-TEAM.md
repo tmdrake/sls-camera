@@ -199,6 +199,8 @@ Viewer CLI table: [viewer/README.md](../viewer/README.md) · issue [#10](https:/
 | **Date & time** | Settings → **Date & time…**; needs polkit/sudoers ([DATE-TIME-PRIVS.md](DATE-TIME-PRIVS.md)) |
 | **Field tilt** | Launcher passes **`--no-auto-level`** (see above) |
 | **Hide cursor** | Optional **`--hide-cursor`** or **`SLS_HIDE_CURSOR=1`** (touch kiosk) |
+| **Field lite (Atom)** | **`SLS_FIELD_LITE=1`** or **`--field-lite`** — 7.5 FPS live+record, pose every 2, fast scale ([#14](https://github.com/tmdrake/sls-camera/issues/14)) |
+| **Perf knobs** | `SLS_TARGET_FPS` · `SLS_RECORD_FPS` · `SLS_POSE_EVERY_N` · `SLS_SHOW_FPS` · `SLS_DISPLAY_FAST` |
 
 **Host power-off is firmware-owned** (launcher + `sudoers.d/sls-poweroff`).  
 App does **not** call `poweroff` itself — only exit code 10.
@@ -223,7 +225,8 @@ Do **not** put Microsoft Kinect UAC audio firmware in public trees (`kinect-audi
 - [ ] Offline seed install works (`SLS_OFFLINE=1` or appliance script)  
 - [ ] Wheels + pose model offline  
 - [ ] App smoke `--demo`; Kinect + spectrum when audio firmware present  
-- [ ] DrakeVox TTS under **tablet-class VM** (2 GiB / 2 vCPU) or real RCA — [#13](https://github.com/tmdrake/sls-camera/issues/13)
+- [ ] DrakeVox TTS under **tablet-class VM** (2 GiB / 2 vCPU) or real RCA — [#13](https://github.com/tmdrake/sls-camera/issues/13)  
+- [ ] Field tablets: launcher **`SLS_FIELD_LITE=1`** or `--field-lite`; check `effective_fps=` in logs — [#14](https://github.com/tmdrake/sls-camera/issues/14)  
 - [ ] Captures: `/data/sls-captures` and/or Auto SD/USB  
 - [ ] Quit → exit 10 → poweroff (appliance)  
 - [ ] **Polkit format rule** installed; Format media works without root password  
@@ -250,5 +253,6 @@ Do **not** put Microsoft Kinect UAC audio firmware in public trees (`kinect-audi
 | [#11](https://github.com/tmdrake/sls-camera/issues/11) Date & time | **App + FW polkit shipped** — field smoke to close · [DATE-TIME-PRIVS.md](DATE-TIME-PRIVS.md) |
 | [#12](https://github.com/tmdrake/sls-camera/issues/12) Battery gauge | **Closed** — icon + fill on status bar |
 | [#13](https://github.com/tmdrake/sls-camera/issues/13) DrakeVox TTS | **Code shipped** — smoke on tablet-class VM (2 GiB/2 vCPU) or RCA |
+| [#14](https://github.com/tmdrake/sls-camera/issues/14) Field Atom FPS | **`--field-lite` / env caps + FPS log** — export from launcher |
 
 Day log (2026-07-22): [SESSION-2026-07-22.md](SESSION-2026-07-22.md) · App backlog: [docs/TODO.md](../../../docs/TODO.md).

@@ -420,7 +420,36 @@ Equivalent without the wrapper (after venv exists):
 | `--no-auto-level` | auto-level on | Skip tilt to 0° on start (**field / appliance should pass this**) |
 | `--led-off` | green idle LED | Leave Kinect LED off |
 | `--hide-cursor` | show cursor | Hide mouse pointer (field / touch). Also: `SLS_HIDE_CURSOR=1` |
+| `--field-lite` | off | **Atom / 2 GB preset (#14):** live+record **7.5 FPS**, pose every **2** frames, fast display scale, FPS log. Env: `SLS_FIELD_LITE=1` |
+| `--target-fps N` | 20 | Cap live pipeline FPS. Env: `SLS_TARGET_FPS` |
+| `--record-fps N` | 20 | AVI writer FPS (match live on field). Env: `SLS_RECORD_FPS` |
+| `--pose-every-n N` | 1 | MediaPipe every N frames. Env: `SLS_POSE_EVERY_N` |
+| `--show-fps` | off | Show effective FPS on status bar. Env: `SLS_SHOW_FPS=1` |
+| `--display-fast` | off | Fast Qt scale (less CPU). Implied by field-lite. Env: `SLS_DISPLAY_FAST=1` |
 | `--device INDEX` | `0` | Freenect device index |
+
+### Field Atom performance (#14)
+
+Cherry Trail tablets cannot sustain 20 FPS + full pose + TTS. Use the lite preset from the **firmware launcher**:
+
+```bash
+./run.sh --field-lite
+# or
+SLS_FIELD_LITE=1 ./run.sh
+
+# Individual knobs (override preset):
+SLS_TARGET_FPS=7.5 SLS_RECORD_FPS=7.5 SLS_POSE_EVERY_N=3 ./run.sh
+```
+
+| What | Effect |
+|------|--------|
+| Lower target/record FPS | Caps pipeline sleep + AVI stamp rate; frees CPU for DrakeVox |
+| Pose every 2–3 | MediaPipe less often (sticks held between estimates) |
+| Fast display | `FastTransformation` instead of smooth scale |
+| Settings open | Pose **paused** while Settings is visible |
+| FPS log | `effective_fps=…` every 5s to stdout; session jsonl `fps` events |
+
+**GPU note:** MediaPipe still uses **XNNPACK CPU** on CHV even when EGL is Intel. Qt display path is CPU pixmap blit; field-lite reduces that cost. Full OpenGL texture path is a follow-up.
 
 Full text (examples + keyboard shortcuts) is always from argparse:
 
