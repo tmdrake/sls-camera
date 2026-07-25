@@ -480,7 +480,20 @@ SLS_TARGET_FPS=7.5 SLS_RECORD_FPS=7.5 SLS_POSE_EVERY_N=3 ./run.sh
 
 **Default mode** (no field-lite): sticks keep moving while DrakeVox talks — better for hardware debug.
 
-**GPU note:** MediaPipe still uses **XNNPACK CPU** on CHV even when EGL is Intel. Field-lite reduces CPU blit cost; full OpenGL path is optional later.
+### Mobile / tablet design: prefer hardware acceleration
+
+On **phones and field tablets**, anything continuous (encode, scale/blit, decode) should use **hardware** when available: less CPU → less heat → better battery → smoother UI under load. That is normal on Android/iOS; desktop “always software x264 / pure OpenCV” habits fight Atom-class SoCs.
+
+| Path | Role on field Linux |
+|------|---------------------|
+| **Field-lite caps (#14)** | Cut work first (FPS, pose every N, fast scale) — always available |
+| **zram (firmware appliance)** | RAM headroom on 2 GiB; helps stability, **not** watts |
+| **Hardware encode (planned)** | Opt-in **`--hardware-encode`** / `SLS_HARDWARE_ENCODE=1` — Linux **VAAPI** H.264 when the iGPU supports it; fallback to light AVI — tracked **[#20](https://github.com/tmdrake/sls-camera/issues/20)** |
+| **Software x264 live** | Avoid as default on 2 GiB; export-only or explicit opt-in if needed |
+
+**Linux vs Windows Kinect kit:** the older Windows/dev-kit build often feels smoother with **fewer features** and a more mature media stack. Linux field app is richer (DrakeVox, spectrum, captures, appliance); keep growing features only with **caps + HW offload**, or thin Windows-style kits will keep winning on “feel.”
+
+**GPU note (current code):** MediaPipe still uses **XNNPACK CPU** on Cherry Trail even when EGL is Intel. Field-lite reduces CPU blit cost; VAAPI encode and a fuller OpenGL path are optional/later. Cherry Trail **may** expose H.264 encode via VAAPI (`vainfo` / short `ffmpeg … h264_vaapi` smoke) — probe, never hard-depend.
 
 Full text (examples + keyboard shortcuts) is always from argparse:
 
