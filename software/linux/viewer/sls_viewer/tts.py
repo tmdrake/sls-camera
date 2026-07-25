@@ -781,6 +781,8 @@ class DrakeVoxTTS:
                 ensure_max_output_volume(force=False)
                 pcm = synthesize(word, sample_rate=self.sample_rate)
                 if pcm is not None and pcm.size > 0:
+                    # Inject **before** live play so REC stop always has the clip
+                    # even if the operator hits Stop during playback (#23).
                     with self._lock:
                         cb = self._on_pcm
                     if cb is not None:
@@ -798,9 +800,6 @@ class DrakeVoxTTS:
                         except Exception:
                             pass
                     # Live audio (RCA vs SSH):
-                    # SSH "works" = espeak -w + aplay -D pipewire. Live espeak→Pulse
-                    # hangs; PortAudio often leaves Headphones paused/busy → silence
-                    # in Settings while the same SSH WAV path still works.
                     # Prefer WAV→pw-play/aplay always; PortAudio last.
                     # Always wait for file play on this worker — never fire-and-
                     # forget then unlink the temp WAV (silenced normal mode).
@@ -832,7 +831,16 @@ class DrakeVoxTTS:
                         self._last_error = ""
                     return
                 self._last_error = "TTS synth unavailable (install espeak-ng)"
-                # Live-only fallback: no PCM → nothing to inject (recording keeps mic)
+                # Live-only fallback: speakers may work with no PCM — **nothing
+                # to mux into AVI**. Prefer silence over false "saved +audio"
+                # when recording (gen set); still try for non-REC.
+                if gen is not None:
+                    # Recording: do not pretend live espeak is enough for AVI
+                    self._last_error = (
+                        "TTS synth failed — word not mixed into recording "
+                        "(install espeak-ng / libespeak-ng)"
+                    )
+                    return
                 if not play_live_fallback(word, ensure_volume=True, wait=prefer):
                     self._last_error = "TTS synth/play failed (espeak-ng / PipeWire)"
                 if prefer and not find_espeak_cli():

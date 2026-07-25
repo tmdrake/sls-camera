@@ -310,6 +310,20 @@ class SessionRecorder:
             offset = max(0.0, offset)
             self._tts_clips.append((offset, arr.copy()))
             self._has_audio = True
+            n_clips = len(self._tts_clips)
+        # Outside lock: best-effort session log for field QA (#23)
+        try:
+            self._log_event(
+                "tts_inject",
+                {
+                    "offset_s": round(offset, 3),
+                    "samples": int(arr.size),
+                    "clips": n_clips,
+                    "gen": int(record_gen) if record_gen is not None else None,
+                },
+            )
+        except Exception:
+            pass
 
     def _start_audio(
         self, spectrum: Optional["SpectrumAnalyzer"] = None
@@ -421,39 +435,74 @@ class SessionRecorder:
             return False
 
     def _mux_av(self, video_path: Path, audio_path: Path, out_path: Path) -> bool:
-        """Mux MJPG video + PCM WAV into a single AVI (audio inside the AVI)."""
+        """Mux MJPG video + PCM WAV into a single AVI (audio inside the AVI).
+
+        Do **not** use ffmpeg ``-shortest``: OpenCV MJPG duration is
+        nframes/fps, which often lags wall-clock on field-lite Atom. Audio is
+        wall-clock (mic + DrakeVox offsets). ``-shortest`` was truncating the
+        WAV and dropping TTS that the operator heard live (#23).
+        """
         ffmpeg = _find_ffmpeg()
         if not ffmpeg:
             return False
-        # AVI + PCM is widely playable; copy MJPG video stream as-is.
-        cmd = [
-            ffmpeg,
-            "-y",
-            "-i",
-            str(video_path),
-            "-i",
-            str(audio_path),
-            "-c:v",
-            "copy",
-            "-c:a",
-            "pcm_s16le",
-            "-shortest",
-            str(out_path),
-        ]
-        try:
-            r = subprocess.run(
-                cmd,
-                capture_output=True,
-                timeout=120,
-                check=False,
-            )
-            return (
-                r.returncode == 0
-                and out_path.is_file()
-                and out_path.stat().st_size > 0
-            )
-        except Exception:
-            return False
+        # Prefer keeping full audio; if video is shorter, clone last frame to
+        # cover the WAV so players keep a picture while DrakeVox finishes.
+        # Fallback: plain mux without -shortest (audio may outlast video).
+        attempts = (
+            [
+                ffmpeg,
+                "-y",
+                "-i",
+                str(video_path),
+                "-i",
+                str(audio_path),
+                "-filter_complex",
+                "[0:v]tpad=stop_mode=clone:stop=-1[v]",
+                "-map",
+                "[v]",
+                "-map",
+                "1:a:0",
+                "-c:v",
+                "mjpeg",
+                "-q:v",
+                "5",
+                "-c:a",
+                "pcm_s16le",
+                "-shortest",  # now safe: video padded to audio via tpad
+                str(out_path),
+            ],
+            [
+                ffmpeg,
+                "-y",
+                "-i",
+                str(video_path),
+                "-i",
+                str(audio_path),
+                "-c:v",
+                "copy",
+                "-c:a",
+                "pcm_s16le",
+                # No -shortest: keep full DrakeVox / mic timeline (#23)
+                str(out_path),
+            ],
+        )
+        for cmd in attempts:
+            try:
+                r = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    timeout=180,
+                    check=False,
+                )
+                if (
+                    r.returncode == 0
+                    and out_path.is_file()
+                    and out_path.stat().st_size > 0
+                ):
+                    return True
+            except Exception:
+                continue
+        return False
 
     def start_record(
         self,
@@ -597,6 +646,7 @@ class SessionRecorder:
                 "elapsed": elapsed,
                 "muxed": muxed,
                 "audio": audio_saved,
+                "had_tts": had_tts,
             },
         )
         self._video_tmp = None
