@@ -71,33 +71,28 @@ QLabel#spectrum { background-color: #0c0c0c; }
 QLabel#status {
     color: #aaaaaa; font-size: 13px; padding: 4px 8px;
 }
-QLabel#title {
-    color: #00ffb4; font-size: 16px; font-weight: 700;
-    letter-spacing: 2px; padding: 4px 8px;
-}
 QLabel#batteryGauge {
     background-color: transparent;
     min-width: 96px;
     min-height: 36px;
     padding: 2px 4px;
 }
+/* Load mode: quiet text, not button-like (left of status, not by actions) */
 QLabel#modeBadge {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    padding: 4px 10px;
-    border-radius: 6px;
-    min-height: 28px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    padding: 2px 6px 2px 4px;
+    min-height: 0;
+    background-color: transparent;
+    border: none;
+    color: #5a7068;
 }
 QLabel#modeBadge[mode="lite"] {
-    color: #00ffb4;
-    background-color: rgba(0, 50, 35, 220);
-    border: 1px solid #00ffb4;
+    color: #5a9a80;
 }
 QLabel#modeBadge[mode="norm"] {
-    color: #b0b0b8;
-    background-color: rgba(40, 40, 48, 220);
-    border: 1px solid #707078;
+    color: #6a6a72;
 }
 QLabel#hdr {
     color: #00ffb4; font-size: 15px; font-weight: 700;
@@ -1314,18 +1309,18 @@ class SlsMainWindow(QMainWindow):
         bar_layout.setContentsMargins(10, 6, 10, 10)
         bar_layout.setSpacing(8)
 
-        self.title = QLabel("SLS CAMERA")
-        self.title.setObjectName("title")
-        self.status = QLabel("starting…")
-        self.status.setObjectName("status")
-
-        # Load mode pill next to battery (LITE/NORM) — bar only, not on video
+        # Quiet load label (left) — not a button; no "SLS CAMERA" title chrome
         self.mode_badge = QLabel()
         self.mode_badge.setObjectName("modeBadge")
-        self.mode_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.mode_badge.setToolTip(
-            "Field load mode (launch-time). Details in Settings → Load."
+        self.mode_badge.setAlignment(
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
         )
+        self.mode_badge.setToolTip(
+            "Field load mode (launch-time). Full detail in Settings → Load."
+        )
+
+        self.status = QLabel("starting…")
+        self.status.setObjectName("status")
 
         # Visual battery gauge (#12) — hidden when no system battery
         self.battery_gauge = QLabel()
@@ -1354,10 +1349,11 @@ class SlsMainWindow(QMainWindow):
         self.btn_quit.setObjectName("wide")
         self.btn_quit.clicked.connect(self._request_quit)
 
-        bar_layout.addWidget(self.title)
-        bar_layout.addWidget(self.status, stretch=1)
+        # Left: mode + status · mid flex · right: battery then actions
         bar_layout.addWidget(self.mode_badge)
+        bar_layout.addWidget(self.status, stretch=1)
         bar_layout.addWidget(self.battery_gauge)
+        bar_layout.addSpacing(6)
         bar_layout.addWidget(self.btn_settings)
         bar_layout.addWidget(self.btn_snap)
         bar_layout.addWidget(self.btn_record)
@@ -1990,6 +1986,37 @@ class SlsMainWindow(QMainWindow):
                 self.video.setPixmap(scaled)
 
         self._paint_spectrum_strip()
+
+    def _refresh_mode_badge(self) -> None:
+        """Small load hint on the left of the bar (not video, not button-like)."""
+        s = self.pipeline.s
+        if s.field_lite:
+            # Quiet lowercase — reads as status meta, not an action
+            text = f"lite {s.target_fps:g}"
+            mode = "lite"
+            tip = (
+                f"Field lite · {s.target_fps:g} FPS live/record · "
+                f"pose every {s.pose_every_n_frames} · fast display\n"
+                "Set at launch (--field-lite / SLS_FIELD_LITE)."
+            )
+        else:
+            text = "normal"
+            mode = "norm"
+            tip = (
+                f"Normal · {s.target_fps:g} FPS · "
+                f"pose every {s.pose_every_n_frames}\n"
+                "Launch without field-lite for full rate."
+            )
+        if (
+            self.mode_badge.text() == text
+            and self.mode_badge.property("mode") == mode
+        ):
+            return
+        self.mode_badge.setText(text)
+        self.mode_badge.setProperty("mode", mode)
+        self.mode_badge.setToolTip(tip)
+        self.mode_badge.style().unpolish(self.mode_badge)
+        self.mode_badge.style().polish(self.mode_badge)
 
     def _refresh_battery_gauge(self) -> None:
         """Update icon+fill battery widget; hide when no pack (desktop/VM)."""
