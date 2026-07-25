@@ -201,37 +201,35 @@ Viewer CLI table: [viewer/README.md](../viewer/README.md) · issue [#10](https:/
 | **Hide cursor** | Optional **`--hide-cursor`** or **`SLS_HIDE_CURSOR=1`** (touch kiosk) |
 | **Field lite (Atom)** | **`SLS_FIELD_LITE=1`** or **`--field-lite`** — 7.5 FPS live+record, pose every 2, fast scale ([#14](https://github.com/tmdrake/sls-camera/issues/14)) |
 | **Perf knobs** | `SLS_TARGET_FPS` · `SLS_RECORD_FPS` · `SLS_POSE_EVERY_N` · `SLS_SHOW_FPS` · `SLS_DISPLAY_FAST` |
-| **App pin (min for TTS QA)** | **`061e841`+** — DrakeVox WAV unlink race fixed (see **Must-test** below). FW `packages/app-ref.txt` should match. [SESSION-2026-07-24.md](SESSION-2026-07-24.md) |
-| **Freenect isolate (#16)** | Default **ON**: libfreenect in **subprocess**; USB unplug GPF kills worker only → app reconnects. `SLS_FREENECT_ISOLATE=0` / `--freenect-inproc` = legacy in-process |
+| **App pin (current)** | **`e1f3c24`+** in `sls-camera-firmware` `packages/app-ref.txt` (see **App pin policy** below). |
+| **Freenect isolate (#16)** | Default **ON**: libfreenect in **subprocess**; USB unplug GPF kills **worker only** → UI reconnects. `SLS_FREENECT_ISOLATE=0` / `--freenect-inproc` = legacy (UI can die on unplug). |
 
-### Must-test — DrakeVox voice (`061e841`, 2026-07-24 late)
+### App pin policy — **replace**, do not stack or leave stale
 
-**Bug (fixed in app):** normal mode wrote a temp WAV, started `pw-play`/`aplay`, then **deleted the file before the player opened it** → word on UI, **no panel audio**. Field-lite often still worked (`wait=True`). Fix: keep the file under system temp until play finishes, then delete.
+Firmware **keeps** a single pin file (`packages/app-ref.txt`). You do **not** remove the pin mechanism.
+
+| Do | Don’t |
+|----|--------|
+| **Replace** the SHA in `packages/app-ref.txt` with current app `main` (or ≥ **`e1f3c24`**) | Leave **`061e841`** or other old pins on sticks/ISOs |
+| Run `APP_SRC=~/sls-camera ./scripts/20-sync-app.sh` (or clone at pin) so `build/app` matches the file | Ship **vendor/** or `/opt/sls-camera` from an older checkout while pin text is new |
+| After install, confirm launcher log: `freenect: isolate=1`, `record: …` | Assume auto-update — **already-imaged tablets keep old app until reinstall/upgrade stick** |
+| One pin = one ship | Multiple pins / half-synced trees |
+
+**Why this matters:** pin was stuck at **`061e841`** while `main` moved (isolate open fix, A/V retime, MP4, spectrum-in-media, copy progress, isolate watchdog). Field unplug **139** and missing record audio often mean **stale app on device**, not a need to “remove pins.”
+
+**Minimum pin for current field pack:** **`e1f3c24`** (`fix(freenect): harden isolate for unplug GPF`). Prefer latest `main` when freezing.
+
+### Must-test after pin replace
 
 | Check | How |
 |-------|-----|
-| Pin | App **≥ `061e841`** (`fix(tts): do not delete DrakeVox WAV…`). Confirm `/opt/sls-camera` or stick pin. |
-| **Normal mode** | Launch **without** field-lite if possible, or force: drop `SLS_FIELD_LITE` for one run. **O** / Settings → **DrakeVox now** → **must hear** voice. |
-| **Field-lite (Atom default)** | `SLS_FIELD_LITE=1` (launcher default on RCA) → DrakeVox now **audible** (regression guard). |
-| HUD | Live frame shows **`LITE …`** or **`NORM`** badge (top-left under DEPTH+SLS). |
-| SSH sanity (optional) | `espeak-ng -w /tmp/t.wav hello && aplay -D pipewire /tmp/t.wav` (or libespeak path) — still useful if app silent. |
-| Mixer | RCA still needs `sls-audio-speakers` / OUTVOL stack — this fix is **file lifetime**, not UCM. |
-
-**Do not ship a field pack on app pins before `061e841` if DrakeVox panel speech is required.**
-
-### Field open — DrakeVox **in the AVI** ([#23](https://github.com/tmdrake/sls-camera/issues/23))
-
-**Not a firmware mixer bug** when live already works. Operator report: **hear word on panel speakers during REC**, panel/overlay OK, but **playback of `sls_*.avi` has no (or inaudible) DrakeVox speech**.
-
-| Layer | Status (RCA lab) |
-|-------|------------------|
-| Live play | OK after pin ≥ `061e841` + FW speakers |
-| Video overlay | Word still burned into frames |
-| **AVI audio TTS** | **Broken / open #23** — app inject → mix → mux |
-
-**App owns the fix** (`tts.speak` → `inject_tts` → `flush` → `_mix_audio` → mux). Firmware: keep pin current; optional lab note when filing takes.
-
-**Smoke when app claims fix:** REC → DrakeVox now → hear live → Stop → `ffprobe` / play file → **word on audio track**.
+| Pin on stick | `app-ref` / `/etc/sls/appliance-version` shows **≥ e1f3c24** (or current freeze SHA) |
+| Isolate | Startup log **`freenect: isolate=1`**. Unplug Kinect → UI **stays up**, reconnect splash (not full-app exit 139) |
+| DrakeVox live | **O** / DrakeVox now → hear panel (field-lite + one normal if possible) |
+| REC audio | REC → talk / DrakeVox → Stop → **+audio**; word/mic in file; field-lite A/V roughly in time |
+| Optional MP4 | `SLS_RECORD_MP4=1` or `--mp4` → `sls_*.mp4` or clear AVI fallback flash |
+| Spectrum in media | Spectrum ON + REC/Snap → strip on bottom of media |
+| Copy progress | Settings → Copy local→media → progress dialog (not frozen UI) |
 
 **Host power-off is firmware-owned** (launcher + `sudoers.d/sls-poweroff`).  
 App does **not** call `poweroff` itself — only exit code 10.
