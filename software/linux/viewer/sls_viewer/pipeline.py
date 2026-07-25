@@ -325,7 +325,11 @@ class FramePipeline:
             )
 
     def _draw_mode_badge(self, canvas: np.ndarray) -> None:
-        """Top-left pill: LITE (Atom caps) vs NORM — burned into live + AVI."""
+        """Top-left pill: LITE vs NORM on **live** composite only (#17).
+
+        Kept for bench/operator glance. Status bar no longer shows LITE/NORM
+        (Settings ``Load:`` line instead). AVI burn-in is tracked separately (#21).
+        """
         if self.s.field_lite:
             label = f"LITE {self.s.target_fps:g}"
             fill = (40, 90, 20)  # dark green BGR

@@ -820,6 +820,16 @@ class SettingsDialog(QDialog):
         self.mic_label.setWordWrap(True)
         right_layout.addWidget(self.mic_label)
 
+        # Field load mode (read-only) — not on status bar (#17)
+        self.load_label = QLabel("")
+        self.load_label.setStyleSheet("color: #88aacc; font-size: 11px;")
+        self.load_label.setWordWrap(True)
+        self.load_label.setToolTip(
+            "Set at launch: --field-lite / SLS_FIELD_LITE=1 (firmware). "
+            "Not a runtime toggle."
+        )
+        right_layout.addWidget(self.load_label)
+
         self.drakevox_label = QLabel("")
         self.drakevox_label.setStyleSheet("color: #00ffb4; font-size: 12px;")
         self.drakevox_label.setWordWrap(True)
@@ -988,6 +998,19 @@ class SettingsDialog(QDialog):
         else:
             self.mic_label.setText(
                 "Mic: off — install kinect-audio-setup for Kinect array, or use system mic"
+            )
+        # Field load mode (#17) — status bar stays clean; details here
+        s = self.pipeline.s
+        if s.field_lite:
+            self.load_label.setText(
+                f"Load: Field lite · {s.target_fps:g} FPS live/record · "
+                f"pose every {s.pose_every_n_frames} · fast display"
+            )
+        else:
+            self.load_label.setText(
+                f"Load: Normal · {s.target_fps:g} FPS · "
+                f"pose every {s.pose_every_n_frames}"
+                + (" · fast display" if s.display_fast else "")
             )
         if self.pipeline.s.drakevox_enabled:
             hist0 = self.drakevox.history()
@@ -1869,19 +1892,12 @@ class SlsMainWindow(QMainWindow):
         if self.display_inhibit.active and self._inhibit_refresh_i % 1800 == 0:
             self.display_inhibit.refresh_x11()
         # Compact status: mode · people · conf · captures (+ REC while recording).
-        # DrakeVox stays on the video overlay; long freenect detail stays in Settings.
+        # LITE/NORM load is Settings-only (#17); optional HUD pill still on video.
         mode = _status_mode_short(self.pipeline.status)
         conf_s = confidence_percent_label(self.pipeline.pose_confidence)
         cap = self.session.captures_label or "local"
-        # Mode load badge (matches video HUD LITE/NORM)
-        load = (
-            f"LITE {self.pipeline.s.target_fps:g}"
-            if self.pipeline.s.field_lite
-            else "NORM"
-        )
         parts = [
             mode,
-            load,
             f"{self.pipeline.poses_count}/{mx}",
             conf_s,
             cap,
@@ -1893,8 +1909,14 @@ class SlsMainWindow(QMainWindow):
         base = "  ·  ".join(parts)
         # Temporary flash replaces the line (snap saved, format, errors)
         self.status.setText(flash if flash else base)
+        load_tip = (
+            f"Load: Field lite ({self.pipeline.s.target_fps:g} FPS)"
+            if self.pipeline.s.field_lite
+            else f"Load: Normal ({self.pipeline.s.target_fps:g} FPS)"
+        )
         self.status.setToolTip(
             f"{self.pipeline.status}\n"
+            f"{load_tip}\n"
             f"People {self.pipeline.poses_count}/{mx}  ·  "
             f"Confidence {conf_s}  ·  Captures {cap}\n"
             f"{self.pipeline.perf_line()}"
