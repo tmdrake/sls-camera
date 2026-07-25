@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import struct
 import subprocess
 import sys
@@ -132,6 +133,8 @@ class FreenectProxy:
             viewer_root + (os.pathsep + prev_pp if prev_pp else "")
         )
         cmd = [sys.executable, "-m", "sls_viewer.freenect_worker"]
+        # New session/process group: worker GPF (#16) cannot take down Qt parent;
+        # stop() can kill the whole group if libfreenect hangs threads.
         self._proc = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
@@ -139,6 +142,7 @@ class FreenectProxy:
             stderr=subprocess.PIPE,
             env=env,
             bufsize=0,
+            start_new_session=True,
         )
         self._running = True
         self._dead = False
@@ -151,6 +155,10 @@ class FreenectProxy:
         # Drain stderr so worker never blocks on full pipe
         threading.Thread(
             target=self._drain_stderr, name="freenect-proxy-err", daemon=True
+        ).start()
+        # Watchdog: mark dead if worker exits while reader is blocked mid-read
+        threading.Thread(
+            target=self._watch_worker, name="freenect-proxy-watch", daemon=True
         ).start()
 
     def _drain_stderr(self) -> None:
@@ -168,6 +176,31 @@ class FreenectProxy:
                         self._last_err = text[-200:]
         except Exception:
             pass
+
+    def _watch_worker(self) -> None:
+        """If worker dies (e.g. SIGSEGV on unplug), mark dead even if read blocks."""
+        p = self._proc
+        if p is None:
+            return
+        while self._running:
+            code = p.poll()
+            if code is not None:
+                tag = ""
+                if code in (-11, 139) or (
+                    isinstance(code, int) and abs(int(code)) == 11
+                ):
+                    tag = " (SIGSEGV/libfreenect — isolate contained)"
+                with self._lock:
+                    already = self._dead
+                self._mark_dead(f"worker exited code={code}{tag}")
+                if not already:
+                    print(
+                        f"freenect isolate: worker dead code={code}{tag} "
+                        f"— UI stays up, pipeline will reconnect",
+                        flush=True,
+                    )
+                break
+            time.sleep(0.15)
 
     @staticmethod
     def _read_exact(stream, n: int) -> bytes:
@@ -366,17 +399,27 @@ class FreenectProxy:
                     proc.stdin.flush()
             except Exception:
                 pass
-            try:
-                proc.terminate()
-            except Exception:
-                pass
-            try:
-                proc.wait(timeout=2.0)
-            except Exception:
+            # Prefer process-group kill (start_new_session) so hung freenect
+            # threads in the worker cannot outlive reconnect.
+            def _kill_tree(sig: int) -> None:
                 try:
-                    proc.kill()
+                    os.killpg(proc.pid, sig)
+                except (ProcessLookupError, PermissionError, OSError):
+                    try:
+                        proc.send_signal(sig)
+                    except Exception:
+                        pass
+
+            if proc.poll() is None:
+                _kill_tree(signal.SIGTERM)
+                try:
+                    proc.wait(timeout=2.0)
                 except Exception:
-                    pass
+                    _kill_tree(signal.SIGKILL)
+                    try:
+                        proc.wait(timeout=1.0)
+                    except Exception:
+                        pass
         if self._reader is not None and self._reader.is_alive():
             self._reader.join(timeout=1.0)
         self._reader = None

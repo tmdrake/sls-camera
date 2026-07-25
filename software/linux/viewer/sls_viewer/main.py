@@ -315,6 +315,17 @@ def main(argv=None):
         f"(mp4 opt-in: --mp4 / SLS_RECORD_MP4=1; default remains avi)",
         flush=True,
     )
+    try:
+        from .freenect_io import freenect_isolate_enabled
+
+        print(
+            f"freenect: isolate={int(freenect_isolate_enabled())} "
+            f"(1=worker subprocess for unplug GPF #16; "
+            f"SLS_FREENECT_ISOLATE=0 / --freenect-inproc = in-process)",
+            flush=True,
+        )
+    except Exception:
+        pass
 
     try:
         if args.ui == "web":
