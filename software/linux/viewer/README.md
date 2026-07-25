@@ -198,10 +198,13 @@ Local `viewer/captures/` is gitignored. Revisit priority/UX later if field use s
 
 ### Record audio
 
-1. While recording, mic PCM is captured in parallel (16 kHz mono float → int16 WAV).
+1. While recording, **mic** PCM is captured in parallel (16 kHz mono float → int16 WAV).
 2. Prefers **Kinect USB Audio** (same picker as spectrum); shares the spectrum PortAudio stream so the device is not opened twice.
-3. On stop, muxes video + WAV into **`sls_*.avi`** (video stream copy + `pcm_s16le`).
-4. If mux fails (no ffmpeg / imageio-ffmpeg), keeps `*_video.avi` + `*_audio.wav` sidecar.
+3. **DrakeVox TTS** (if a word fires during REC): synth PCM is **injected** into the take (`inject_tts` / `record_gen`) in parallel with **live** speaker play; on Stop, `tts.flush()` then mix TTS + mic → WAV.
+4. On stop, muxes video + WAV into **`sls_*.avi`** (video stream copy + `pcm_s16le`).
+5. If mux fails (no ffmpeg / imageio-ffmpeg), keeps `*_video.avi` + `*_audio.wav` sidecar.
+
+**Open field bug — DrakeVox in AVI ([#23](https://github.com/tmdrake/sls-camera/issues/23)):** live panel speech can be OK (WAV→PipeWire, pin ≥ `061e841`) while the **file has no audible word**. Overlay text may still be burned into video. Prioritize inject/mix/mux for TTS; mic piggyback is separate ([#19](https://github.com/tmdrake/sls-camera/issues/19) spectrum stale stream).
 
 ### Mic gain / sensitivity (defaults)
 
@@ -248,7 +251,7 @@ Spirit-box style word generator (not “Ovilus”). Default bank is the Digital 
 | **Manual** | **DrakeVox now** or key **`O`** |
 | **Auto-snap** | If **DrakeVox on auto-snap** + **Auto-snap on detect**: generate word + TTS and burn into JPEG |
 | **Manual Snap** | Does **not** force a new word (may still show current panel on JPEG) |
-| **Recording** | Overlay burned into AVI; TTS PCM mixed into audio with mic |
+| **Recording** | Overlay burned into AVI; TTS PCM **should** mix into audio with mic — **field bug if live OK but AVI silent:** [#23](https://github.com/tmdrake/sls-camera/issues/23) |
 
 ### DrakeVox TTS playback (field / RCA vs SSH / VM)
 
@@ -537,10 +540,11 @@ Use this on a **desktop / VM / tablet without a camera**, or when you want UI wo
 | Spectrum off / no mic | `sudo apt install libportaudio2`; Kinect mic: `kinect-audio-setup` + replug |
 | Spectrum `mic retry…` | Unplug/replug or wait; ensure device in `arecord -l` |
 | False “libportaudio not found” | Should be rare after `run.sh` ctypes check; confirm `ldconfig -p \| grep portaudio` or `ls /usr/lib/*/libportaudio.so*` |
-| Record AVI has no sound | Install `ffmpeg` or `imageio-ffmpeg` (in venv); check flash for sidecar WAV |
+| Record AVI has no sound | Install `ffmpeg` or `imageio-ffmpeg` (in venv); check flash for sidecar WAV; `ffprobe` the file |
 | Soft / loud mic | App does not set gain — use `pavucontrol` or `alsamixer` on the capture source |
-| DrakeVox silent on speakers | App unmutes + max volume each speak; if PipeWire shows **Dummy Output** only (RCA SOF), there is no panel speaker path — hardware/ACPI, not TTS |
-| DrakeVox lag / silent live but OK in AVI | Synth + heavy volume setup on UI thread; AVI uses inject path. Perf redesign: [#13](https://github.com/tmdrake/sls-camera/issues/13) |
+| DrakeVox silent on speakers | App unmutes + max volume each speak; pin ≥ `061e841` (WAV delete-after-play); RCA needs FW OUTVOL / `sls-audio-speakers` |
+| DrakeVox **live OK**, **AVI silent** (word on panel/video, no speech in file) | Inject/mix/mux path — **[#23](https://github.com/tmdrake/sls-camera/issues/23)**; confirm Stop after word finishes; check sidecar WAV |
+| DrakeVox lag (live) | Field-lite pose-pause; async speak — [#13](https://github.com/tmdrake/sls-camera/issues/13) |
 | Kinect RECONNECTING | Power brick + USB; **unplug charger** if the 12 V path uses a charge relay that disables the camera; freenect retries automatically |
 | No Kinect / test UI only | `./run.sh --demo` (always synthetic; no freenect) |
 | Black window | Wait for first frame; or `--demo` for synthetic without camera |

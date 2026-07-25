@@ -219,6 +219,20 @@ Viewer CLI table: [viewer/README.md](../viewer/README.md) · issue [#10](https:/
 
 **Do not ship a field pack on app pins before `061e841` if DrakeVox panel speech is required.**
 
+### Field open — DrakeVox **in the AVI** ([#23](https://github.com/tmdrake/sls-camera/issues/23))
+
+**Not a firmware mixer bug** when live already works. Operator report: **hear word on panel speakers during REC**, panel/overlay OK, but **playback of `sls_*.avi` has no (or inaudible) DrakeVox speech**.
+
+| Layer | Status (RCA lab) |
+|-------|------------------|
+| Live play | OK after pin ≥ `061e841` + FW speakers |
+| Video overlay | Word still burned into frames |
+| **AVI audio TTS** | **Broken / open #23** — app inject → mix → mux |
+
+**App owns the fix** (`tts.speak` → `inject_tts` → `flush` → `_mix_audio` → mux). Firmware: keep pin current; optional lab note when filing takes.
+
+**Smoke when app claims fix:** REC → DrakeVox now → hear live → Stop → `ffprobe` / play file → **word on audio track**.
+
 **Host power-off is firmware-owned** (launcher + `sudoers.d/sls-poweroff`).  
 App does **not** call `poweroff` itself — only exit code 10.
 
@@ -277,5 +291,9 @@ Do **not** put Microsoft Kinect UAC audio firmware in public trees (`kinect-audi
 | [#13](https://github.com/tmdrake/sls-camera/issues/13) DrakeVox TTS | **Closed** — async/once mixer/pose-pause; use with `SLS_FIELD_LITE=1` on Atom |
 | [#14](https://github.com/tmdrake/sls-camera/issues/14) Field Atom FPS | **Caps shipped**; FPS log **opt-in only**; residual = optional GPU blit |
 | [#15](https://github.com/tmdrake/sls-camera/issues/15) Win98 spectrum | **Closed** — time-domain PCM wave style |
+| [#16](https://github.com/tmdrake/sls-camera/issues/16) Kinect unplug 139 | **Open** — isolate shipped; field soak |
+| [#19](https://github.com/tmdrake/sls-camera/issues/19) Spectrum freeze after reconnect | **Open** |
+| [#23](https://github.com/tmdrake/sls-camera/issues/23) DrakeVox missing in AVI | **Open** — live OK, file silent (primary REC audio report) |
+| [#17](https://github.com/tmdrake/sls-camera/issues/17)–[#22](https://github.com/tmdrake/sls-camera/issues/22) | GUI/record polish — see [docs/TODO.md](../../../docs/TODO.md) |
 
 Day logs: [SESSION-2026-07-22.md](SESSION-2026-07-22.md) · [SESSION-2026-07-24.md](SESSION-2026-07-24.md) · App backlog: [docs/TODO.md](../../../docs/TODO.md).

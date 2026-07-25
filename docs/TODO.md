@@ -39,6 +39,14 @@ policy come later.
 | [#13](https://github.com/tmdrake/sls-camera/issues/13) | DrakeVox TTS — **closed** (async, pose-pause on speak; use field-lite on Atom) |
 | [#14](https://github.com/tmdrake/sls-camera/issues/14) | Field Atom — **caps shipped**, FPS log **opt-in**; residual optional GPU blit |
 | [#15](https://github.com/tmdrake/sls-camera/issues/15) | Spectrum **Win98 wave** — **closed** |
+| [#16](https://github.com/tmdrake/sls-camera/issues/16) | Kinect unplug freenect crash — **open** (isolate shipped; field soak) |
+| [#17](https://github.com/tmdrake/sls-camera/issues/17) | Drop LITE/NORM from status bar — **open** |
+| [#18](https://github.com/tmdrake/sls-camera/issues/18) | Copy local→media progress bar — **open** |
+| [#19](https://github.com/tmdrake/sls-camera/issues/19) | Spectrum frozen after Kinect reconnect — **open** |
+| [#20](https://github.com/tmdrake/sls-camera/issues/20) | Optional `--hardware-encode` (VAAPI) — **open** |
+| [#21](https://github.com/tmdrake/sls-camera/issues/21) | Do not burn LITE badge into Record AVI — **open** |
+| [#22](https://github.com/tmdrake/sls-camera/issues/22) | Spectrum strip in Record AVI when ON — **open** |
+| [#23](https://github.com/tmdrake/sls-camera/issues/23) | **DrakeVox TTS missing in AVI** (live OK, file silent) — **open** |
 
 Firmware may implement offline mirrors; **product install-path and app-behavior decisions stay tracked here**.
 
@@ -69,6 +77,8 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] **`--hide-cursor` / `SLS_HIDE_CURSOR`** · 2026-07-22  
 - [x] **DrakeVox TTS performance (#13)** — async speak, once mixer, pose paused during speak+play, nice try; **use `SLS_FIELD_LITE=1` on Atom**  
 - [x] **RCA DrakeVox panel silence (2026-07-24)** — not VM: PortAudio/live espeak flaky on RT5651; field-lite plays **WAV→PipeWire**; FW OUTVOL mixer — [viewer README](../software/linux/viewer/README.md#drakevox-tts-playback-field--rca-vs-vm)  
+- [ ] **DrakeVox in Record AVI (#23)** — live speech OK on RCA (pin ≥ `061e841`); **AVI missing TTS audio** (inject/mix/mux). Field 2026-07-24 evening. Mic piggyback secondary.  
+
 - [x] **Field Atom load caps (#14)** — `--field-lite` / `SLS_FIELD_LITE=1` (7.5 FPS, pose every 2, fast scale); **FPS log off by default** (RCA); residual: optional QOpenGL blit  
   - CLI: `--target-fps` `--record-fps` `--pose-every-n` `--show-fps` `--display-fast`  
 - [x] **Spectrum Win98 wave (#15)** — time-domain PCM oscilloscope (not FFT); Settings cycle **Win98 wave** · 2026-07-24
