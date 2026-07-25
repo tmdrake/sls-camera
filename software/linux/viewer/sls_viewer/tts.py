@@ -669,6 +669,7 @@ class DrakeVoxTTS:
 
     CPU (#13/#14, **field-lite only**): when ``field_cpu_prefer`` is set, busy-callback
     pauses MediaPipe during synth+play, nice/setpriority is tried, and play waits.
+    Normal mode never freezes pose and does not block the speak worker on play.
 
     Recording safety: AVI inject uses wall-time captured at queue time and an
     optional ``record_gen`` so a late worker cannot paste into the next REC.
@@ -773,8 +774,10 @@ class DrakeVoxTTS:
             # Serialize on the worker (not UI): wait for prior inject+play
             if prev is not None and prev.is_alive():
                 prev.join(timeout=5.0)
-            # field_cpu_prefer (field-lite): pause pose + block play + nice try
+            # field_cpu_prefer (field-lite only): pause pose + wait for play + nice.
+            # Normal mode: no pose freeze; play is non-blocking (reaper deletes WAV).
             prefer = bool(self.field_cpu_prefer)
+            wait_play = prefer  # True only in field-lite
             if prefer:
                 self._emit_busy(True)
             try:
@@ -802,20 +805,20 @@ class DrakeVoxTTS:
                                 pass
                         except Exception:
                             pass
-                    # Live audio (RCA vs SSH):
-                    # Prefer WAV→pw-play/aplay always; PortAudio last.
-                    # Always wait for file play on this worker — never fire-and-
-                    # forget then unlink the temp WAV (silenced normal mode).
+                    # Live audio: WAV→pw-play/aplay first; PortAudio last.
+                    # wait_play=True only for field-lite (holds pose pause through
+                    # playback). Normal mode: Popen + reaper so sticks keep moving;
+                    # temp WAV is deleted after the player exits (not before open).
                     ensure_max_output_volume(force=prefer)
                     played = play_pcm_file(
                         pcm,
                         self.sample_rate,
                         ensure_volume=False,
-                        wait=True,
+                        wait=wait_play,
                     )
                     if not played:
                         played = play_live_fallback(
-                            word, ensure_volume=False, wait=True
+                            word, ensure_volume=False, wait=wait_play
                         )
                     if not played:
                         ensure_max_output_volume(force=True)
@@ -823,7 +826,7 @@ class DrakeVoxTTS:
                             pcm,
                             self.sample_rate,
                             ensure_volume=False,
-                            wait=True,
+                            wait=wait_play,
                         )
                     if not played:
                         self._last_error = (
@@ -844,7 +847,9 @@ class DrakeVoxTTS:
                         "(install espeak-ng / libespeak-ng)"
                     )
                     return
-                if not play_live_fallback(word, ensure_volume=True, wait=prefer):
+                if not play_live_fallback(
+                    word, ensure_volume=True, wait=wait_play
+                ):
                     self._last_error = "TTS synth/play failed (espeak-ng / PipeWire)"
                 if prefer and not find_espeak_cli():
                     _time.sleep(min(2.0, 0.4 + 0.08 * len(word)))
