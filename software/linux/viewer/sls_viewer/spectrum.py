@@ -703,6 +703,8 @@ class SpectrumAnalyzer:
     def _draw_overlay(self, img, width: int, height: int) -> None:
         import cv2
 
+        # Source / device name is Settings-only (mic_label) — do not burn into
+        # the strip (live UI clutter; would also stamp Record if composite later).
         if not self.active:
             msg = "reconnecting mic…" if self._want_enabled else "spectrum off"
             if self._error and self._want_enabled:
@@ -714,17 +716,6 @@ class SpectrumAnalyzer:
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.4,
                 (80, 80, 80),
-                1,
-                cv2.LINE_AA,
-            )
-        elif self._device_name:
-            cv2.putText(
-                img,
-                self._device_name[:40],
-                (6, 12),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.35,
-                (55, 90, 70),
                 1,
                 cv2.LINE_AA,
             )
