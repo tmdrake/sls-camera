@@ -47,6 +47,7 @@ policy come later.
 | [#21](https://github.com/tmdrake/sls-camera/issues/21) | Do not burn LITE badge into Record AVI — **open** |
 | [#22](https://github.com/tmdrake/sls-camera/issues/22) | Spectrum strip in Record AVI when ON — **open** |
 | [#23](https://github.com/tmdrake/sls-camera/issues/23) | **DrakeVox TTS missing in AVI** (live OK, file silent) — **open** |
+| [#24](https://github.com/tmdrake/sls-camera/issues/24) | Brightness **5–95% @ 5%** steps (today ±10%, max 100%) — **open** |
 
 Firmware may implement offline mirrors; **product install-path and app-behavior decisions stay tracked here**.
 

@@ -15,7 +15,7 @@
 | **Record** | AVI + mic + TTS at **20 FPS** (matches live `target_fps`); LED solid **red** while REC |
 | **Reconnect** | Splash **Starting / Reconnecting to SLS Camera**; infinite retry |
 | **Battery** | Status-bar **icon + fill + %** when a pack exists (charging bolt, low = red); hidden on desktop — [#12](https://github.com/tmdrake/sls-camera/issues/12) |
-| **Brightness** | Settings ±10% (sysfs / brightnessctl / xrandr) |
+| **Brightness** | Settings ± (sysfs / brightnessctl / xrandr); **target 5–95% @ 5%** — [#24](https://github.com/tmdrake/sls-camera/issues/24) (today ±10%, max 100%) |
 | **Quit** | Confirms before exit; on appliance firmware powers off (exit 10) |
 | **DrakeVox** | 5–15 min timer + TTS; ~2k-word list; under IR PiP; key **O** |
 | **Settings** | Two-pane panel; pose, DrakeVox, captures, Format media, Date & time, … |
