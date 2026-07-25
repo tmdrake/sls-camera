@@ -281,6 +281,11 @@ class SessionRecorder:
             with self._lock:
                 if self._recording:
                     self._audio_chunks.append(mono.copy())
+                    # Real capture only — do not claim audio at stream-open alone
+                    self._has_audio = True
+                    self._pcm_samples = int(
+                        getattr(self, "_pcm_samples", 0)
+                    ) + int(np.asarray(mono).size)
         except Exception:
             pass
 
@@ -317,7 +322,7 @@ class SessionRecorder:
                 kwargs["device"] = device
             self._audio_stream = sd.InputStream(**kwargs)
             self._audio_stream.start()
-            self._has_audio = True
+            # Stream open; has_audio flips on first callback
             return True
         except Exception:
             self._audio_stream = None
@@ -375,10 +380,16 @@ class SessionRecorder:
     def _start_audio(
         self, spectrum: Optional["SpectrumAnalyzer"] = None
     ) -> bool:
-        """Capture mic for mux. Prefer sharing spectrum stream (one device open)."""
+        """Capture mic for mux. Prefer sharing spectrum stream (one device open).
+
+        Note: do **not** set ``_has_audio`` until the first PCM callback (or TTS
+        inject). Field-lite used to mark audio ready when the spectrum handle was
+        open even if no samples ever arrived → silent AVI with no +audio mix.
+        """
         self._audio_chunks = []
         self._tts_clips = []
         self._has_audio = False
+        self._pcm_samples = 0
         self._audio_device_name = ""
         self._via_spectrum = False
         self._spectrum = spectrum
@@ -390,7 +401,7 @@ class SessionRecorder:
                 spectrum.ensure_running()
             if spectrum.active:
                 self._via_spectrum = True
-                self._has_audio = True
+                # Capture arm only — has_audio set on first _on_pcm / inject_tts
                 self._audio_device_name = spectrum.device_name or "shared mic"
                 return True
             # Stream failed to open — drop sink and try a dedicated open
@@ -811,10 +822,14 @@ class SessionRecorder:
         video_tmp = self._video_tmp
         audio_tmp = self._audio_tmp
         elapsed = self.recording_elapsed_str() if self._recording else "0:00"
-        had_audio = self._has_audio
-        had_tts = False
+        # Snapshot capture stats before stop clears streams / spectrum sink
         with self._lock:
-            had_tts = bool(self._tts_clips)
+            n_chunks = len(self._audio_chunks)
+            n_pcm = int(getattr(self, "_pcm_samples", 0) or 0)
+            n_tts = len(self._tts_clips)
+            had_tts = n_tts > 0
+            had_audio = bool(self._has_audio) or n_pcm > 0 or n_chunks > 0 or had_tts
+            via_spectrum = bool(self._via_spectrum)
             if self._writer is not None:
                 try:
                     self._writer.release()
@@ -947,6 +962,10 @@ class SessionRecorder:
                 "encoder": encoder_used,
                 "audio": audio_saved,
                 "had_tts": had_tts,
+                "pcm_samples": n_pcm,
+                "pcm_chunks": n_chunks,
+                "tts_clips": n_tts,
+                "via_spectrum": via_spectrum,
             },
         )
         self._video_tmp = None

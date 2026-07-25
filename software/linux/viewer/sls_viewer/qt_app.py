@@ -1827,14 +1827,17 @@ class SlsMainWindow(QMainWindow):
     def _toggle_record(self) -> None:
         if self.session.recording:
             # Finish in-flight DrakeVox inject (+ play in field-lite) before AVI mix.
-            # Inject runs before play; normal mode play is non-blocking so flush is short.
-            flush_s = 8.0 if self.pipeline.s.field_lite else 2.5
+            # Inject runs before play; always allow enough time for synth on Atom.
+            flush_s = 8.0 if self.pipeline.s.field_lite else 3.0
             self.tts.flush(timeout=flush_s)
             self.session.stop_record()
             self.pipeline.set_recording_led(False)
         else:
             frame = self.pipeline.get_bgr()
             # Share spectrum mic stream when present (one open of Kinect USB Audio).
+            # Force spectrum arm so field-lite/REC still gets PCM if strip was off.
+            if not self.spectrum.active:
+                self.spectrum.ensure_running()
             path = self.session.start_record(
                 frame,
                 fps=self.pipeline.s.record_fps,

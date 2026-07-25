@@ -778,13 +778,17 @@ class DrakeVoxTTS:
             # Normal mode: no pose freeze; play is non-blocking (reaper deletes WAV).
             prefer = bool(self.field_cpu_prefer)
             wait_play = prefer  # True only in field-lite
+            recording = gen is not None
             if prefer:
                 self._emit_busy(True)
             try:
                 if prefer:
                     _boost_current_thread_priority()
-                # First word (or cold start): ensure volume once; cheap no-op after
-                ensure_max_output_volume(force=False)
+                # Mixer setup: once per session is enough. Never force re-amixer
+                # during REC — on field-lite/RCA that reconfigures PipeWire/ALSA
+                # mid-capture and the shared Kinect mic stream goes silent in AVI.
+                if not recording:
+                    ensure_max_output_volume(force=False)
                 pcm = synthesize(word, sample_rate=self.sample_rate)
                 if pcm is not None and pcm.size > 0:
                     # Inject **before** live play so REC stop always has the clip
@@ -809,7 +813,8 @@ class DrakeVoxTTS:
                     # wait_play=True only for field-lite (holds pose pause through
                     # playback). Normal mode: Popen + reaper so sticks keep moving;
                     # temp WAV is deleted after the player exits (not before open).
-                    ensure_max_output_volume(force=prefer)
+                    if not recording:
+                        ensure_max_output_volume(force=prefer)
                     played = play_pcm_file(
                         pcm,
                         self.sample_rate,
@@ -821,7 +826,8 @@ class DrakeVoxTTS:
                             word, ensure_volume=False, wait=wait_play
                         )
                     if not played:
-                        ensure_max_output_volume(force=True)
+                        if not recording:
+                            ensure_max_output_volume(force=True)
                         played = play_pcm(
                             pcm,
                             self.sample_rate,
