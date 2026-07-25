@@ -94,8 +94,8 @@ class Settings:
     ir_pip_corner: str = "top-right"
 
     jpeg_quality: int = 80
-    # Live pipeline sleep cap (see also record_fps). Field Atom: use --field-lite / env.
-    target_fps: float = 20.0
+    # Live pipeline sleep cap (see also record_fps). Normal default 15; field-lite 7.5.
+    target_fps: float = 15.0
 
     # Spectrum strip (ALSA/Pulse; prefers Kinect UAC after kinect-audio-setup)
     spectrum_enabled: bool = True
@@ -107,7 +107,7 @@ class Settings:
     # Session tools
     auto_snap_on_detect: bool = False
     # Match live pipeline target so AVI timing matches what you see on screen
-    record_fps: float = 20.0
+    record_fps: float = 15.0
     # Final container: "avi" (default, field-safe) or "mp4" (opt-in share path #20)
     record_format: str = "avi"
     # Prefer VAAPI H.264 when recording MP4 (still falls back to libx264 / AVI)

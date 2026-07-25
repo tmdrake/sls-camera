@@ -107,14 +107,14 @@ def parse_args(argv=None):
         type=float,
         default=None,
         metavar="N",
-        help="Cap live pipeline FPS (default 20; field-lite 7.5). Env: SLS_TARGET_FPS",
+        help="Cap live pipeline FPS (default 15; field-lite 7.5). Env: SLS_TARGET_FPS",
     )
     p.add_argument(
         "--record-fps",
         type=float,
         default=None,
         metavar="N",
-        help="AVI writer FPS (default 20; field-lite 7.5). Env: SLS_RECORD_FPS",
+        help="AVI writer FPS (default 15; field-lite 7.5). Env: SLS_RECORD_FPS",
     )
     p.add_argument(
         "--pose-every-n",
