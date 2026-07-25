@@ -87,7 +87,8 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] **Quit → power off (firmware contract)** — env `SLS_QUIT_ACTION=shutdown` (appliance launcher); app dialog + exit **10**; **no** Settings toggle (firmware owns host poweroff). Dev stays exit-only.
   - Closed: [GitHub #4](https://github.com/tmdrake/sls-camera/issues/4)
   - Code: `host_power.py`, `qt_app.py`, `config.py`
-- [x] **Display brightness** (Settings) — sysfs backlight / brightnessctl / xrandr software fallback
+- [x] **Display brightness** (Settings) — sysfs backlight / brightnessctl / xrandr software fallback  
+- [ ] **Brightness steps 5–95% @ 5%** — [#24](https://github.com/tmdrake/sls-camera/issues/24) (today step 10, max 100)
 - [x] **Settings fit small tablets (#6)** — log `display: WxH avail=… dpr=… dpi=…` at Qt start; Settings in `QScrollArea` capped ~90% available height; Close pinned; action buttons 2×2
   - Closed: [GitHub #6](https://github.com/tmdrake/sls-camera/issues/6)
 - [ ] **Settings left-pane density polish** — optional; dialog now ~94–96% of screen (2026-07-22). Scrollbar/wheel still OK if content overflows. Track: [#7](https://github.com/tmdrake/sls-camera/issues/7)

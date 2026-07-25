@@ -110,7 +110,7 @@ Firmware should leave the session in **16:10 landscape** before launch. Issue: [
 | **Auto-snap on detect** | Off by default (pose appear → Snap) |
 | **DrakeVox** | **ON** = panel + timer/TTS/O; **OFF** = hide panel + stop generation |
 | **DrakeVox on auto-snap** | Default **ON**; only when auto-snap fires (not manual Snap) |
-| **Brightness** | ±10%; n/a if no backlight/xrandr |
+| **Brightness** | ±5% target (5–95%) — [#24](https://github.com/tmdrake/sls-camera/issues/24); n/a if no control |
 | **Captures to** | **Auto** (default) or **Local** — see [Captures](#captures) |
 | **Copy local→media** | Always shown; **greyed out** until USB/SD is mounted (or while recording) |
 | **Format removable media…** | Always shown; **greyed out** until formattable USB/SD is mounted; then two Yes confirms → FAT32 `SLS-MEDIA` — [#8](https://github.com/tmdrake/sls-camera/issues/8) |
@@ -338,7 +338,9 @@ SLS_FAKE_BATTERY=1 ./run.sh --demo           # show mid pack (55%)
 | **brightnessctl** | If installed and permitted |
 | **xrandr --brightness** | Desktop/HDMI software dim (works on many monitors) |
 
-Settings → **Brightness − / +** (±10%). Tooltip shows which backend is active. If nothing works, shows **n/a**. Value is saved in `user_settings.json` when changed.
+Settings → **Brightness − / +**. Tooltip shows which backend is active. If nothing works, shows **n/a**. Value is saved in `user_settings.json` when changed.
+
+**Field request ([#24](https://github.com/tmdrake/sls-camera/issues/24)):** clamp **5–95%** in **5%** steps (align with confidence-style steps). **Current code:** `MIN_PERCENT=5`, `MAX_PERCENT=100`, `DEFAULT_STEP=10` in `backlight.py`.
 
 **Tablets:** sysfs `brightness` is often root-only. Appliance firmware adds udev `video` group write + `brightnessctl`. Older app builds greys out ± when sysfs is read-only even if xrandr could set — current `backlight.py` enables ± when any set path exists. Field notes: firmware `docs/devices/rca-w101as23t2.md` (brightness section).
 
