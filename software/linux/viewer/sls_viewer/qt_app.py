@@ -1798,8 +1798,9 @@ class SlsMainWindow(QMainWindow):
 
     def _toggle_record(self) -> None:
         if self.session.recording:
-            # Finish in-flight DrakeVox inject + play before mixing AVI (#13)
-            self.tts.flush(timeout=5.0)
+            # Finish in-flight DrakeVox inject + play before mixing AVI (#13/#23).
+            # Inject runs before play; allow long words + pw-play on Atom.
+            self.tts.flush(timeout=8.0)
             self.session.stop_record()
             self.pipeline.set_recording_led(False)
         else:

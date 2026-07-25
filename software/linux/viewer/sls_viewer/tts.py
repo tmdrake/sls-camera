@@ -515,6 +515,8 @@ def _play_wav_file(
     for cmd in players:
         try:
             if wait:
+                # Keep file until this player finishes (success or fail) so
+                # retries can reuse the same path.
                 r = subprocess.run(
                     cmd,
                     stdout=subprocess.DEVNULL,
@@ -526,6 +528,7 @@ def _play_wav_file(
                     if delete_after:
                         _unlink_quiet(path)
                     return True
+                # try next player; file still exists
             else:
                 proc = subprocess.Popen(
                     cmd,

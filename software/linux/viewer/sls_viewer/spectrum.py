@@ -122,7 +122,15 @@ class SpectrumAnalyzer:
 
     @property
     def active(self) -> bool:
-        return self._running and self._stream is not None
+        if not self._running or self._stream is None:
+            return False
+        # PortAudio may leave a dead handle that no longer fires callbacks (#19)
+        try:
+            if hasattr(self._stream, "active") and not bool(self._stream.active):
+                return False
+        except Exception:
+            pass
+        return True
 
     def levels(self) -> np.ndarray:
         with self._lock:

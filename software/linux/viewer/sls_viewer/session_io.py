@@ -422,6 +422,10 @@ class SessionRecorder:
         audio = self._mix_audio()
         if audio is None or audio.size == 0:
             return False
+        # Near-silent mix (all zeros) is not useful — treat as no audio
+        peak = float(np.max(np.abs(audio))) if audio.size else 0.0
+        if peak < 1e-5:
+            return False
         pcm = np.clip(audio, -1.0, 1.0)
         pcm = (pcm * 32767.0).astype(np.int16)
         try:
@@ -437,40 +441,42 @@ class SessionRecorder:
     def _mux_av(self, video_path: Path, audio_path: Path, out_path: Path) -> bool:
         """Mux MJPG video + PCM WAV into a single AVI (audio inside the AVI).
 
-        Do **not** use ffmpeg ``-shortest``: OpenCV MJPG duration is
-        nframes/fps, which often lags wall-clock on field-lite Atom. Audio is
-        wall-clock (mic + DrakeVox offsets). ``-shortest`` was truncating the
-        WAV and dropping TTS that the operator heard live (#23).
+        OpenCV MJPG duration is nframes/fps and often lags wall-clock on
+        field-lite Atom. Audio is wall-clock (mic + DrakeVox offsets). Using
+        ffmpeg ``-shortest`` alone **truncates** late TTS (#23).
+
+        Strategy:
+          1) Fast path: stream-copy video + full audio (**no** -shortest).
+          2) Polish: pad video (clone last frame) to cover audio, then mux.
         """
         ffmpeg = _find_ffmpeg()
         if not ffmpeg:
             return False
-        # Prefer keeping full audio; if video is shorter, clone last frame to
-        # cover the WAV so players keep a picture while DrakeVox finishes.
-        # Fallback: plain mux without -shortest (audio may outlast video).
-        attempts = (
-            [
-                ffmpeg,
-                "-y",
-                "-i",
-                str(video_path),
-                "-i",
-                str(audio_path),
-                "-filter_complex",
-                "[0:v]tpad=stop_mode=clone:stop=-1[v]",
-                "-map",
-                "[v]",
-                "-map",
-                "1:a:0",
-                "-c:v",
-                "mjpeg",
-                "-q:v",
-                "5",
-                "-c:a",
-                "pcm_s16le",
-                "-shortest",  # now safe: video padded to audio via tpad
-                str(out_path),
-            ],
+
+        def _run(cmd: list) -> bool:
+            try:
+                # Drop partial output from a previous attempt
+                try:
+                    if out_path.is_file():
+                        out_path.unlink()
+                except OSError:
+                    pass
+                r = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    timeout=180,
+                    check=False,
+                )
+                return (
+                    r.returncode == 0
+                    and out_path.is_file()
+                    and out_path.stat().st_size > 0
+                )
+            except Exception:
+                return False
+
+        # 1) Reliable + cheap on Atom (keeps full DrakeVox timeline)
+        if _run(
             [
                 ffmpeg,
                 "-y",
@@ -482,26 +488,46 @@ class SessionRecorder:
                 "copy",
                 "-c:a",
                 "pcm_s16le",
-                # No -shortest: keep full DrakeVox / mic timeline (#23)
                 str(out_path),
-            ],
-        )
-        for cmd in attempts:
-            try:
-                r = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    timeout=180,
-                    check=False,
-                )
-                if (
-                    r.returncode == 0
-                    and out_path.is_file()
-                    and out_path.stat().st_size > 0
-                ):
-                    return True
-            except Exception:
-                continue
+            ]
+        ):
+            return True
+
+        # 2) Pad video so picture lasts through audio (re-encode MJPEG — slower)
+        pad_s = 0.0
+        try:
+            with wave.open(str(audio_path), "rb") as wf:
+                fr = int(wf.getframerate()) or AUDIO_SAMPLE_RATE
+                pad_s = float(wf.getnframes()) / float(fr)
+        except Exception:
+            pad_s = 0.0
+        if pad_s > 0.05:
+            # stop_duration pads after EOF; -shortest then ends at audio EOF
+            if _run(
+                [
+                    ffmpeg,
+                    "-y",
+                    "-i",
+                    str(video_path),
+                    "-i",
+                    str(audio_path),
+                    "-filter_complex",
+                    f"[0:v]tpad=stop_mode=clone:stop_duration={pad_s:.3f}[v]",
+                    "-map",
+                    "[v]",
+                    "-map",
+                    "1:a:0",
+                    "-c:v",
+                    "mjpeg",
+                    "-q:v",
+                    "5",
+                    "-c:a",
+                    "pcm_s16le",
+                    "-shortest",
+                    str(out_path),
+                ]
+            ):
+                return True
         return False
 
     def start_record(
@@ -635,7 +661,13 @@ class SessionRecorder:
                 except OSError:
                     final_path = video_tmp
             self._path = final_path
-            self._set_flash(f"saved {final_path.name} ({elapsed})")
+            if had_tts and not audio_saved:
+                # DrakeVox ran but mix/write failed — be honest with operator (#23)
+                self._set_flash(
+                    f"saved {final_path.name} ({elapsed}) — TTS not in file"
+                )
+            else:
+                self._set_flash(f"saved {final_path.name} ({elapsed})")
         else:
             self._set_flash("record stop: no file")
 

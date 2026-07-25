@@ -332,7 +332,10 @@ class FramePipeline:
         """
         if bgr is None or getattr(bgr, "size", 0) == 0:
             return bgr
-        canvas = bgr  # caller may pass a copy already
+        # Paint in-place (caller should pass a copy so Record frames stay clean)
+        canvas = bgr
+        if canvas.ndim != 3 or canvas.shape[0] < 80 or canvas.shape[1] < 80:
+            return bgr
         if self.s.field_lite:
             label = f"LITE {self.s.target_fps:g}"
             fill = (40, 90, 20)  # dark green BGR
