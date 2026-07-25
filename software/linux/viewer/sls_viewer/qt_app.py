@@ -1931,11 +1931,12 @@ class SlsMainWindow(QMainWindow):
             if det == "appear" and self.pipeline.s.auto_snap_on_detect:
                 self._snapshot(fire_drakevox=True)
 
-            # Composite DrakeVox overlay (hidden when OFF), then record + display
+            # Composite DrakeVox (for REC+Snap+live). Mode badge is live-only (#21).
             display = self._compose_drakevox(frame)
             if self.session.recording:
                 self.session.write_frame(display)
-            pix = bgr_to_qpixmap(display)
+            live = self.pipeline.apply_mode_badge(display.copy())
+            pix = bgr_to_qpixmap(live)
             target = self.video.size()
             if target.width() >= 2 and target.height() >= 2:
                 # Smooth is expensive on Atom; field-lite / --display-fast uses Fast

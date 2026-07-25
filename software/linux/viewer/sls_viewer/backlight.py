@@ -27,9 +27,10 @@ from pathlib import Path
 from typing import List, Optional
 
 BACKLIGHT_ROOT = Path("/sys/class/backlight")
+# Field UI: 5% steps, never full blackout, leave a little headroom at the top (#24)
 MIN_PERCENT = 5
-MAX_PERCENT = 100
-DEFAULT_STEP = 10
+MAX_PERCENT = 95
+DEFAULT_STEP = 5
 
 
 @dataclass
@@ -340,7 +341,7 @@ def get_brightness() -> BrightnessInfo:
 
 
 def set_brightness_percent(percent: int) -> BrightnessInfo:
-    """Set brightness 5–100%. Tries sysfs → brightnessctl → xrandr."""
+    """Set brightness 5–95% in field steps. Tries sysfs → brightnessctl → xrandr."""
     percent = int(max(MIN_PERCENT, min(MAX_PERCENT, percent)))
     # Always try sysfs write (may work even if access() lied after udev)
     got = _sysfs_set(percent)

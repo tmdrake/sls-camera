@@ -324,12 +324,15 @@ class FramePipeline:
                 hold_frames=self.s.pose_hold_frames,
             )
 
-    def _draw_mode_badge(self, canvas: np.ndarray) -> None:
-        """Top-left pill: LITE vs NORM on **live** composite only (#17).
+    def apply_mode_badge(self, bgr: np.ndarray) -> np.ndarray:
+        """Paint LITE/NORM pill for **live UI only** (#17 / #21).
 
-        Kept for bench/operator glance. Status bar no longer shows LITE/NORM
-        (Settings ``Load:`` line instead). AVI burn-in is tracked separately (#21).
+        Call from the Qt path after DrakeVox compose. Do **not** use on frames
+        written to AVI or Snap JPEGs — investigation media stays clean.
         """
+        if bgr is None or getattr(bgr, "size", 0) == 0:
+            return bgr
+        canvas = bgr  # caller may pass a copy already
         if self.s.field_lite:
             label = f"LITE {self.s.target_fps:g}"
             fill = (40, 90, 20)  # dark green BGR
@@ -360,6 +363,7 @@ class FramePipeline:
             thick,
             cv2.LINE_AA,
         )
+        return canvas
 
     def _compose(self, depth_bgr: np.ndarray, ir_bgr: np.ndarray) -> np.ndarray:
         W, H = self.s.frame_width, self.s.frame_height
@@ -375,8 +379,7 @@ class FramePipeline:
             2,
             cv2.LINE_AA,
         )
-        # Mode badge: obvious on bench vs tablet (field-lite is subtle otherwise)
-        self._draw_mode_badge(canvas)
+        # Mode badge is live-only (qt_app.apply_mode_badge) — not on AVI/Snap (#21)
 
         pip_w = max(80, int(self.s.ir_pip_width))
         pip_h = max(60, int(self.s.ir_pip_height))

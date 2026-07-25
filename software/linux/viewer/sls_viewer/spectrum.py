@@ -101,7 +101,12 @@ class SpectrumAnalyzer:
         self._error = ""
         self._last_retry = 0.0
         self._cb_errors = 0
+        # Last PortAudio callback time — detect frozen stream after USB drop (#19)
+        self._last_pcm_ts = 0.0
         self._pcm_sinks: List[PcmSink] = []
+
+    # No mic callbacks for this long → force reopen (Kinect unplug/replug)
+    _STALE_PCM_S = 2.0
 
     # Peak hold then fall (seconds / fall rate) — CRT-ish scope feel
     _PEAK_HOLD_S = 0.14
@@ -165,12 +170,26 @@ class SpectrumAnalyzer:
         Also upgrades from non-Kinect (e.g. ALSA \"default\") to Kinect when
         the array appears later — common on KVM after ``vm-kinect-usb.sh``
         reattach, or tablet USB late plug. Not related to RCA SST/speakers.
+
+        After Kinect USB unplug the PortAudio stream can stay "open" with no
+        callbacks (#19) — levels freeze. Stale PCM forces close+reopen.
         """
         need = self._want_enabled or bool(self._pcm_sinks)
         if not need:
             return
         now = time.time()
         if self.active:
+            # Frozen stream: device gone but handle still open (#19)
+            if (
+                self._last_pcm_ts > 0
+                and (now - self._last_pcm_ts) >= self._STALE_PCM_S
+                and (now - self._last_retry) >= self.retry_interval_s
+            ):
+                self._last_retry = now
+                self._error = "mic stream stale (USB?); reopening"
+                self._close_stream()
+                self._open_stream()
+                return
             # Sticky wrong device: re-pick when Kinect becomes available
             if now - self._last_retry >= self.retry_interval_s:
                 low = (self._device_name or "").lower()
@@ -217,6 +236,7 @@ class SpectrumAnalyzer:
 
     def _close_stream(self) -> None:
         self._running = False
+        self._last_pcm_ts = 0.0
         if self._stream is not None:
             try:
                 self._stream.stop()
@@ -246,6 +266,7 @@ class SpectrumAnalyzer:
                     self._running = False
             try:
                 mono = indata[:, 0].astype(np.float32)
+                self._last_pcm_ts = time.time()
                 with self._lock:
                     sinks = list(self._pcm_sinks)
                     # Ring-buffer PCM for time-domain styles (win98 oscilloscope)
@@ -287,11 +308,14 @@ class SpectrumAnalyzer:
             self._stream.start()
             self._running = True
             self._cb_errors = 0
+            # Grace period so ensure_running does not immediately call us stale
+            self._last_pcm_ts = time.time()
             return True
         except Exception as e:
             self._error = str(e)
             self._stream = None
             self._running = False
+            self._last_pcm_ts = 0.0
             return False
 
     def paint_bgr(
