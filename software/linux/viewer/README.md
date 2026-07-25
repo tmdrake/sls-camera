@@ -201,8 +201,9 @@ Local `viewer/captures/` is gitignored. Revisit priority/UX later if field use s
 1. While recording, **mic** PCM is captured in parallel (16 kHz mono float → int16 WAV).
 2. Prefers **Kinect USB Audio** (same picker as spectrum); shares the spectrum PortAudio stream so the device is not opened twice.
 3. **DrakeVox TTS** (if a word fires during REC): synth PCM is **injected** into the take (`inject_tts` / `record_gen`) in parallel with **live** speaker play; on Stop, `tts.flush()` then mix TTS + mic → WAV.
-4. On stop, muxes video + WAV into **`sls_*.avi`** (default) or, with **`--mp4`**, H.264 **`sls_*.mp4`** (VAAPI or libx264; AAC/PCM audio). Full audio length kept so late DrakeVox is not truncated ([#23](https://github.com/tmdrake/sls-camera/issues/23)).
+4. On stop, muxes video + WAV into **`sls_*.avi`** (default) or, with **`--mp4`**, H.264 **`sls_*.mp4`** (VAAPI or libx264; AAC/PCM audio). Full audio length kept so late DrakeVox is not truncated ([#23](https://github.com/tmdrake/sls-camera/issues/23)). Video is retimed to wall-clock so field-lite 7.5 stamps stay aligned with mic/TTS when the tablet lags.
 5. If mux/encode fails (no ffmpeg / no H.264), keeps AVI or `*_video.avi` + `*_audio.wav` sidecar + flash.
+6. When **Spectrum is ON**, the analyser strip is **burned into Record and Snap** frames (same style as live); OFF = no strip in media ([#22](https://github.com/tmdrake/sls-camera/issues/22)).
 
 ### Mic gain / sensitivity (defaults)
 
@@ -451,8 +452,8 @@ Equivalent without the wrapper (after venv exists):
 | `--led-off` | green idle LED | Leave Kinect LED off |
 | `--hide-cursor` | show cursor | Hide mouse pointer (field / touch). Also: `SLS_HIDE_CURSOR=1` |
 | `--field-lite` | off | **Atom / 2 GB preset (#14):** live+record **7.5 FPS**, pose every **2** frames, fast display scale, FPS log. Env: `SLS_FIELD_LITE=1` |
-| `--target-fps N` | 20 | Cap live pipeline FPS. Env: `SLS_TARGET_FPS` |
-| `--record-fps N` | 20 | AVI writer FPS (match live on field). Env: `SLS_RECORD_FPS` |
+| `--target-fps N` | **15** | Cap live pipeline FPS (field-lite forces 7.5). Env: `SLS_TARGET_FPS` |
+| `--record-fps N` | **15** | AVI writer FPS (match live; field-lite 7.5). Env: `SLS_RECORD_FPS` |
 | `--pose-every-n N` | 1 | MediaPipe every N frames. Env: `SLS_POSE_EVERY_N` |
 | `--show-fps` | off | Show effective FPS on status bar. Env: `SLS_SHOW_FPS=1` |
 | `--display-fast` | off | Fast Qt scale (less CPU). Implied by field-lite. Env: `SLS_DISPLAY_FAST=1` |

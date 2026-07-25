@@ -287,12 +287,16 @@ def ensure_captures_on_volume(vol: MediaVolume) -> Optional[Path]:
 def copy_local_to_media(
     local_dir: Path,
     media_captures_dir: Path,
+    progress_cb=None,
 ) -> tuple[int, int]:
     """
     Copy files from local captures into media sls-captures/.
 
     Skips files that already exist with the same name and size.
     Returns (copied, skipped).
+
+    progress_cb(done_files, total_files, current_name, done_bytes, total_bytes)
+    is optional (for Settings progress bar — #18).
     """
     local_dir = Path(local_dir)
     media_captures_dir = Path(media_captures_dir)
@@ -301,20 +305,46 @@ def copy_local_to_media(
     skipped = 0
     if not local_dir.is_dir():
         return 0, 0
-    for src in sorted(local_dir.iterdir()):
-        if not src.is_file():
-            continue
-        # skip hidden / probe files
-        if src.name.startswith("."):
-            continue
+    files = [
+        p
+        for p in sorted(local_dir.iterdir())
+        if p.is_file() and not p.name.startswith(".")
+    ]
+    total_files = len(files)
+    total_bytes = 0
+    for p in files:
+        try:
+            total_bytes += int(p.stat().st_size)
+        except OSError:
+            pass
+    done_bytes = 0
+    for i, src in enumerate(files):
+        if progress_cb is not None:
+            try:
+                progress_cb(i, total_files, src.name, done_bytes, total_bytes)
+            except Exception:
+                pass
         dst = media_captures_dir / src.name
         try:
-            if dst.is_file() and dst.stat().st_size == src.stat().st_size:
+            sz = int(src.stat().st_size)
+        except OSError:
+            sz = 0
+        try:
+            if dst.is_file() and dst.stat().st_size == sz:
                 skipped += 1
+                done_bytes += sz
                 continue
             shutil.copy2(src, dst)
             copied += 1
+            done_bytes += sz
         except OSError:
+            pass
+    if progress_cb is not None:
+        try:
+            progress_cb(
+                total_files, total_files, "", done_bytes, total_bytes
+            )
+        except Exception:
             pass
     return copied, skipped
 

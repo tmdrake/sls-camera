@@ -169,11 +169,14 @@ class SessionRecorder:
     def has_removable_media(self) -> bool:
         return pick_auto_volume() is not None
 
-    def copy_local_captures_to_media(self) -> tuple[int, int, str]:
+    def copy_local_captures_to_media(
+        self, progress_cb=None
+    ) -> tuple[int, int, str]:
         """
         Copy viewer/captures files onto current removable media (sls-captures/).
 
         Returns (copied, skipped, label). Does not delete local copies.
+        progress_cb forwarded to remedia.copy_local_to_media (#18).
         """
         if self._recording:
             self._set_flash("stop recording before copy to media")
@@ -186,7 +189,9 @@ class SessionRecorder:
         if dest is None:
             self._set_flash("media not writable")
             return 0, 0, vol.short_label()
-        copied, skipped = copy_local_to_media(self._local_captures_dir, dest)
+        copied, skipped = copy_local_to_media(
+            self._local_captures_dir, dest, progress_cb=progress_cb
+        )
         label = vol.short_label()
         if copied or skipped:
             self._set_flash(

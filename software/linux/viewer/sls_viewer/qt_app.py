@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Optional
 
 import cv2
 import numpy as np
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QCursor, QImage, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QMessageBox,
+    QProgressBar,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -1260,6 +1261,8 @@ class SlsMainWindow(QMainWindow):
         self.battery = BatteryMonitor(poll_s=5.0)
         self.display_inhibit = DisplayInhibit()
         self._settings_dlg: Optional[SettingsDialog] = None
+        # While REC: fixed whether media frames include spectrum strip (#22)
+        self._rec_include_spectrum: bool = False
         self._quit_confirmed = False
         self._app_exit_code = EXIT_OK
         self._media_poll_i = 0
@@ -1571,12 +1574,15 @@ class SlsMainWindow(QMainWindow):
             self._settings_dlg._refresh()
 
     def copy_local_to_media(self) -> None:
-        """Copy viewer/captures → mounted media/sls-captures (confirm first)."""
+        """Copy viewer/captures → mounted media/sls-captures (confirm + progress #18)."""
         if self.session.recording:
             self.session._set_flash("stop recording before copy to media")
             return
         if not self.session.has_removable_media():
             self.session._set_flash("no USB/SD media mounted")
+            return
+        if getattr(self, "_copy_thread", None) is not None and self._copy_thread.isRunning():
+            self.session._set_flash("copy already in progress")
             return
         box = QMessageBox(self)
         box.setWindowTitle("Copy local → media")
@@ -1597,7 +1603,68 @@ class SlsMainWindow(QMainWindow):
         box.setWindowFlags(box.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         if box.exec() != QMessageBox.StandardButton.Yes:
             return
-        self.session.copy_local_captures_to_media()
+
+        prog = QDialog(self)
+        prog.setWindowTitle("Copying to media…")
+        prog.setStyleSheet(_STYLE)
+        prog.setWindowFlags(
+            prog.windowFlags() | Qt.WindowType.WindowStaysOnTopHint
+        )
+        lay = QVBoxLayout(prog)
+        lab = QLabel("Starting…")
+        lab.setWordWrap(True)
+        bar = QProgressBar()
+        bar.setRange(0, 100)
+        bar.setValue(0)
+        lay.addWidget(lab)
+        lay.addWidget(bar)
+        prog.resize(420, 120)
+        prog.show()
+
+        class _CopyWorker(QThread):
+            progress = Signal(int, int, str, int, int)  # files done/total, name, bytes
+            finished_ok = Signal(int, int, str)  # copied, skipped, label
+
+            def __init__(self, session, parent=None):
+                super().__init__(parent)
+                self._session = session
+
+            def run(self) -> None:
+                def cb(done_f, total_f, name, done_b, total_b):
+                    self.progress.emit(done_f, total_f, name or "", done_b, total_b)
+
+                copied, skipped, label = self._session.copy_local_captures_to_media(
+                    progress_cb=cb
+                )
+                self.finished_ok.emit(copied, skipped, label)
+
+        worker = _CopyWorker(self.session, self)
+        self._copy_thread = worker
+
+        def on_prog(done_f, total_f, name, done_b, total_b):
+            if total_b > 0:
+                bar.setValue(int(100 * done_b / max(1, total_b)))
+            elif total_f > 0:
+                bar.setValue(int(100 * done_f / max(1, total_f)))
+            else:
+                bar.setValue(0)
+            if name:
+                lab.setText(f"{done_f}/{total_f}  {name}")
+            else:
+                lab.setText(f"{done_f}/{total_f} files")
+
+        def on_done(copied, skipped, label):
+            prog.accept()
+            self._copy_thread = None
+            if self._settings_open():
+                self._settings_dlg._refresh()
+
+        worker.progress.connect(on_prog)
+        worker.finished_ok.connect(on_done)
+        worker.start()
+        prog.exec()
+        if worker.isRunning():
+            worker.wait(120000)
 
     def _on_drakevox_word(self, word: str) -> None:
         """Log, speak (TTS), and inject PCM into any active recording."""
@@ -1797,6 +1864,32 @@ class SlsMainWindow(QMainWindow):
             )
         return display
 
+    def _compose_media_frame(
+        self,
+        frame,
+        *,
+        include_spectrum: Optional[bool] = None,
+    ) -> "np.ndarray":
+        """DrakeVox + optional spectrum strip for Snap/Record (#22).
+
+        Live UI still uses a separate Qt spectrum label; media burns the strip
+        under the composite when spectrum is ON so AVI/JPEG match glass.
+        While REC, ``include_spectrum`` is fixed at start so frame size is stable.
+        """
+        display = self._compose_drakevox(frame)
+        if include_spectrum is None:
+            include_spectrum = bool(self.pipeline.s.spectrum_enabled)
+        if not include_spectrum:
+            return display
+        h = max(24, int(self.pipeline.s.spectrum_height))
+        w = int(display.shape[1])
+        strip = self.spectrum.paint_bgr(
+            w, h, style=self.pipeline.s.spectrum_style
+        )
+        if strip.shape[1] != w:
+            strip = cv2.resize(strip, (w, h), interpolation=cv2.INTER_AREA)
+        return np.vstack([display, strip])
+
     def _snapshot(self, *, fire_drakevox: bool = False) -> None:
         """Snap JPEG. Optionally fire DrakeVox (auto-snap path) so the word is in the photo."""
         frame = self.pipeline.get_bgr()
@@ -1814,8 +1907,8 @@ class SlsMainWindow(QMainWindow):
             if word:
                 self._on_drakevox_word(word)
 
-        # Composite may include current DrakeVox panel (no forced word on manual Snap)
-        display = self._compose_drakevox(frame)
+        # DrakeVox panel + spectrum strip when ON (#22)
+        display = self._compose_media_frame(frame)
         path = self.session.snapshot(display)
         if path is not None:
             # LED: red flash, then restore (green idle / red if still REC)
@@ -1832,14 +1925,24 @@ class SlsMainWindow(QMainWindow):
             self.tts.flush(timeout=flush_s)
             self.session.stop_record()
             self.pipeline.set_recording_led(False)
+            self._rec_include_spectrum = False
         else:
             frame = self.pipeline.get_bgr()
             # Share spectrum mic stream when present (one open of Kinect USB Audio).
             # Force spectrum arm so field-lite/REC still gets PCM if strip was off.
             if not self.spectrum.active:
                 self.spectrum.ensure_running()
+            # Lock strip into media geometry for the whole take (#22)
+            self._rec_include_spectrum = bool(self.pipeline.s.spectrum_enabled)
+            media0 = (
+                self._compose_media_frame(
+                    frame, include_spectrum=self._rec_include_spectrum
+                )
+                if frame is not None
+                else frame
+            )
             path = self.session.start_record(
-                frame,
+                media0,
                 fps=self.pipeline.s.record_fps,
                 spectrum=self.spectrum,
                 record_format=self.pipeline.s.record_format,
@@ -1848,6 +1951,8 @@ class SlsMainWindow(QMainWindow):
             )
             if path is not None:
                 self.pipeline.set_recording_led(True)
+            else:
+                self._rec_include_spectrum = False
         self._refresh_record_button()
         if self._settings_open():
             self._settings_dlg._refresh()
@@ -1968,10 +2073,15 @@ class SlsMainWindow(QMainWindow):
             if det == "appear" and self.pipeline.s.auto_snap_on_detect:
                 self._snapshot(fire_drakevox=True)
 
-            # Composite DrakeVox (for REC+Snap+live). No LITE/NORM on video (#21).
-            display = self._compose_drakevox(frame)
+            # Live: DrakeVox only (spectrum is separate Qt strip). REC: + spectrum (#22).
             if self.session.recording:
-                self.session.write_frame(display)
+                media = self._compose_media_frame(
+                    frame, include_spectrum=self._rec_include_spectrum
+                )
+                self.session.write_frame(media)
+                display = self._compose_drakevox(frame)
+            else:
+                display = self._compose_drakevox(frame)
             pix = bgr_to_qpixmap(display)
             target = self.video.size()
             if target.width() >= 2 and target.height() >= 2:
