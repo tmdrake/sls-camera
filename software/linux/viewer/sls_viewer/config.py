@@ -108,6 +108,10 @@ class Settings:
     auto_snap_on_detect: bool = False
     # Match live pipeline target so AVI timing matches what you see on screen
     record_fps: float = 20.0
+    # Final container: "avi" (default, field-safe) or "mp4" (opt-in share path #20)
+    record_format: str = "avi"
+    # Prefer VAAPI H.264 when recording MP4 (still falls back to libx264 / AVI)
+    hardware_encode: bool = False
     # Captures destination: auto = SD/USB if mounted (default); local = viewer/captures only
     captures_target: str = "auto"
 
@@ -201,9 +205,25 @@ class Settings:
         if li is not None:
             self.fps_log_interval_s = max(0.0, li)
 
+        rf = (os.environ.get("SLS_RECORD_MP4") or os.environ.get("SLS_RECORD_FORMAT") or "").strip().lower()
+        if rf in ("1", "true", "yes", "on", "mp4"):
+            self.record_format = "mp4"
+        elif rf in ("0", "false", "no", "off", "avi"):
+            self.record_format = "avi"
+
+        he = (os.environ.get("SLS_HARDWARE_ENCODE") or "").strip().lower()
+        if he in ("1", "true", "yes", "on", "vaapi", "hw"):
+            self.hardware_encode = True
+        elif he in ("0", "false", "no", "off"):
+            self.hardware_encode = False
+
+    def wants_mp4(self) -> bool:
+        return (self.record_format or "avi").strip().lower() == "mp4"
+
     def perf_summary(self) -> str:
         return (
             f"target_fps={self.target_fps:g} record_fps={self.record_fps:g} "
+            f"record_format={self.record_format} hw_encode={int(self.hardware_encode)} "
             f"pose_every={self.pose_every_n_frames} field_lite={self.field_lite} "
             f"display_fast={self.display_fast} show_fps={self.show_fps}"
         )

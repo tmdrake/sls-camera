@@ -1316,7 +1316,8 @@ class SlsMainWindow(QMainWindow):
         self.btn_record = QPushButton("Record")
         self.btn_record.setObjectName("wide")
         self.btn_record.setToolTip(
-            "Start/stop AVI recording with mic audio (Kinect preferred)"
+            "Start/stop recording with mic audio (Kinect preferred). "
+            "Default AVI; use --mp4 / SLS_RECORD_MP4=1 for H.264 MP4 (#20)."
         )
         self.btn_record.clicked.connect(self._toggle_record)
         self.btn_quit = QPushButton("Quit")
@@ -1810,6 +1811,8 @@ class SlsMainWindow(QMainWindow):
                 frame,
                 fps=self.pipeline.s.record_fps,
                 spectrum=self.spectrum,
+                record_format=self.pipeline.s.record_format,
+                hardware_encode=bool(self.pipeline.s.hardware_encode),
             )
             if path is not None:
                 self.pipeline.set_recording_led(True)

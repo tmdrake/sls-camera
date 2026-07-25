@@ -58,6 +58,49 @@ def _find_ffmpeg() -> Optional[str]:
         return None
 
 
+def _ffmpeg_has_encoder(ffmpeg: str, name: str) -> bool:
+    try:
+        r = subprocess.run(
+            [ffmpeg, "-hide_banner", "-encoders"],
+            capture_output=True,
+            timeout=8,
+            check=False,
+        )
+        blob = (r.stdout or b"") + (r.stderr or b"")
+        return name.encode("ascii", errors="ignore") in blob
+    except Exception:
+        return False
+
+
+def _vaapi_render_device() -> Optional[str]:
+    """First plausible VAAPI render node, or None."""
+    for p in (
+        "/dev/dri/renderD128",
+        "/dev/dri/renderD129",
+        "/dev/dri/renderD130",
+    ):
+        if os.path.exists(p):
+            return p
+    return None
+
+
+def probe_h264_encoder(*, prefer_hardware: bool = True) -> str:
+    """Return ``vaapi`` | ``libx264`` | ``none`` (session-level probe helper)."""
+    ffmpeg = _find_ffmpeg()
+    if not ffmpeg:
+        return "none"
+    if prefer_hardware and _vaapi_render_device() and _ffmpeg_has_encoder(
+        ffmpeg, "h264_vaapi"
+    ):
+        return "vaapi"
+    if _ffmpeg_has_encoder(ffmpeg, "libx264"):
+        return "libx264"
+    # VAAPI without prefer_hardware still useful if nothing else
+    if _vaapi_render_device() and _ffmpeg_has_encoder(ffmpeg, "h264_vaapi"):
+        return "vaapi"
+    return "none"
+
+
 class SessionRecorder:
     def __init__(self, captures_dir: Optional[Path] = None):
         if captures_dir is None:
@@ -88,6 +131,10 @@ class SessionRecorder:
         self._tts_clips: List[tuple] = []
         # Bumps each start_record so async TTS from a prior take is dropped
         self._record_gen: int = 0
+        # "avi" | "mp4" for current take; encoder cache for MP4 (#20)
+        self._record_format: str = "avi"
+        self._prefer_hw_encode: bool = False
+        self._h264_encoder: Optional[str] = None  # vaapi|libx264|none
 
     @property
     def captures_label(self) -> str:
@@ -530,11 +577,159 @@ class SessionRecorder:
                 return True
         return False
 
+    def _audio_duration_s(self, audio_path: Path) -> float:
+        try:
+            with wave.open(str(audio_path), "rb") as wf:
+                fr = int(wf.getframerate()) or AUDIO_SAMPLE_RATE
+                return float(wf.getnframes()) / float(fr)
+        except Exception:
+            return 0.0
+
+    def _finalize_mp4(
+        self,
+        video_path: Path,
+        audio_path: Optional[Path],
+        out_path: Path,
+    ) -> tuple[bool, str]:
+        """Transcode MJPG temp + WAV → H.264 MP4. Returns (ok, encoder_tag).
+
+        Encoder order: VAAPI (if preferred/available) → libx264 ultrafast → fail.
+        Preserves full audio length (pad video to cover late DrakeVox #23).
+        """
+        ffmpeg = _find_ffmpeg()
+        if not ffmpeg:
+            return False, "none"
+        if self._h264_encoder is None:
+            self._h264_encoder = probe_h264_encoder(
+                prefer_hardware=self._prefer_hw_encode
+            )
+        enc = self._h264_encoder or "none"
+        if enc == "none":
+            return False, "none"
+
+        has_audio = bool(
+            audio_path is not None
+            and audio_path.is_file()
+            and audio_path.stat().st_size > 44
+        )
+        pad_s = self._audio_duration_s(audio_path) if has_audio else 0.0
+        aac = _ffmpeg_has_encoder(ffmpeg, "aac")
+        acodec = "aac" if aac else "pcm_s16le"
+
+        def _run(cmd: list) -> bool:
+            try:
+                try:
+                    if out_path.is_file():
+                        out_path.unlink()
+                except OSError:
+                    pass
+                r = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    timeout=300,
+                    check=False,
+                )
+                return (
+                    r.returncode == 0
+                    and out_path.is_file()
+                    and out_path.stat().st_size > 0
+                )
+            except Exception:
+                return False
+
+        if enc == "vaapi":
+            order = ["vaapi", "libx264"]
+        elif enc == "libx264":
+            order = ["libx264"]
+        else:
+            return False, "none"
+
+        for which in order:
+            if which == "vaapi":
+                dev = _vaapi_render_device()
+                if not dev:
+                    continue
+                # Decode MJPG in SW → NV12 → VAAPI encode
+                vf = "format=nv12,hwupload"
+                if pad_s > 0.05:
+                    vf = f"tpad=stop_mode=clone:stop_duration={pad_s:.3f},{vf}"
+                cmd: list = [
+                    ffmpeg,
+                    "-y",
+                    "-vaapi_device",
+                    dev,
+                    "-i",
+                    str(video_path),
+                ]
+                if has_audio:
+                    assert audio_path is not None
+                    cmd += ["-i", str(audio_path)]
+                cmd += ["-vf", vf, "-c:v", "h264_vaapi", "-b:v", "2M"]
+                if has_audio:
+                    cmd += [
+                        "-map",
+                        "0:v:0",
+                        "-map",
+                        "1:a:0",
+                        "-c:a",
+                        acodec,
+                    ]
+                    if aac:
+                        cmd += ["-b:a", "128k"]
+                cmd += ["-movflags", "+faststart", str(out_path)]
+                if _run(cmd):
+                    self._h264_encoder = "vaapi"
+                    return True, "vaapi"
+                continue
+
+            if which == "libx264":
+                # Soft encode — fine on bench; may be heavy on Atom (opt-in only)
+                vf = (
+                    f"tpad=stop_mode=clone:stop_duration={pad_s:.3f}"
+                    if pad_s > 0.05
+                    else ""
+                )
+                cmd = [ffmpeg, "-y", "-i", str(video_path)]
+                if has_audio:
+                    assert audio_path is not None
+                    cmd += ["-i", str(audio_path)]
+                if vf:
+                    cmd += ["-vf", vf]
+                cmd += [
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    "ultrafast",
+                    "-crf",
+                    "28",
+                    "-pix_fmt",
+                    "yuv420p",
+                ]
+                if has_audio:
+                    cmd += [
+                        "-map",
+                        "0:v:0",
+                        "-map",
+                        "1:a:0",
+                        "-c:a",
+                        acodec,
+                    ]
+                    if aac:
+                        cmd += ["-b:a", "128k"]
+                cmd += ["-movflags", "+faststart", str(out_path)]
+                if _run(cmd):
+                    self._h264_encoder = "libx264"
+                    return True, "libx264"
+        return False, enc
+
     def start_record(
         self,
         bgr: np.ndarray,
         fps: float = 15.0,
         spectrum: Optional["SpectrumAnalyzer"] = None,
+        *,
+        record_format: str = "avi",
+        hardware_encode: bool = False,
     ) -> Optional[Path]:
         if self._recording:
             return self._path
@@ -544,10 +739,15 @@ class SessionRecorder:
         self.ensure_dir()
         h, w = bgr.shape[:2]
         ts = self._ts()
-        # video-only temp; final AVI gets audio muxed in when possible
+        fmt = "mp4" if (record_format or "avi").strip().lower() == "mp4" else "avi"
+        self._record_format = fmt
+        self._prefer_hw_encode = bool(hardware_encode) or fmt == "mp4"
+        # Capture always MJPG temp AVI (reliable); finalize to AVI or MP4 on stop
         video_tmp = self.captures_dir / f"sls_{ts}_video.avi"
         audio_tmp = self.captures_dir / f"sls_{ts}_audio.wav"
-        final = self.captures_dir / f"sls_{ts}.avi"
+        final = self.captures_dir / (
+            f"sls_{ts}.mp4" if fmt == "mp4" else f"sls_{ts}.avi"
+        )
 
         fourcc = cv2.VideoWriter_fourcc(*"MJPG")
         writer = cv2.VideoWriter(str(video_tmp), fourcc, float(fps), (w, h))
@@ -567,14 +767,23 @@ class SessionRecorder:
             self._record_gen = int(self._record_gen) + 1
             self._tts_clips = []
 
+        enc_note = ""
+        if fmt == "mp4":
+            if self._h264_encoder is None:
+                self._h264_encoder = probe_h264_encoder(
+                    prefer_hardware=self._prefer_hw_encode
+                )
+            enc_note = f" →{self._h264_encoder or 'none'}"
         if audio_ok:
-            self._set_flash(f"recording {final.name} +audio")
+            self._set_flash(f"recording {final.name} +audio{enc_note}")
         else:
-            self._set_flash(f"recording {video_tmp.name} (video only)")
+            self._set_flash(f"recording {video_tmp.name} (video only){enc_note}")
         self._log_event(
             "record_start",
             {
                 "file": final.name,
+                "format": fmt,
+                "encoder": self._h264_encoder if fmt == "mp4" else "mjpg",
                 "audio": audio_ok,
                 "mic": self._audio_device_name,
             },
@@ -617,6 +826,8 @@ class SessionRecorder:
         final_path = path
         audio_saved = False
         muxed = False
+        encoder_used = "mjpg"
+        want_mp4 = (self._record_format or "avi").lower() == "mp4"
         if (had_audio or had_tts) and audio_tmp is not None:
             # restore start for mix length if needed
             if self._record_started <= 0 and rec_started > 0:
@@ -626,48 +837,99 @@ class SessionRecorder:
         else:
             self._record_started = 0.0
 
-        if (
-            audio_saved
-            and video_tmp is not None
-            and path is not None
-            and video_tmp.is_file()
-        ):
-            muxed = self._mux_av(video_tmp, audio_tmp, path)
-            if muxed:
-                for tmp in (video_tmp, audio_tmp):
-                    try:
-                        tmp.unlink(missing_ok=True)
-                    except TypeError:
-                        if tmp.exists():
-                            tmp.unlink()
-                final_path = path
-                self._path = final_path
-                self._set_flash(f"saved {final_path.name} +audio ({elapsed})")
-            else:
-                # Sidecar: keep video AVI + WAV when ffmpeg missing/fails
-                final_path = video_tmp
-                self._path = video_tmp
-                self._set_flash(
-                    f"saved {video_tmp.name} + {audio_tmp.name} ({elapsed})"
-                    " — install ffmpeg or imageio-ffmpeg to mux"
-                )
-        elif video_tmp is not None and video_tmp.is_file():
-            # Rename video-only temp to final name when no audio
-            final_path = path if path is not None else video_tmp
-            if path is not None and path != video_tmp:
+        def _cleanup_temps() -> None:
+            for tmp in (video_tmp, audio_tmp):
+                if tmp is None:
+                    continue
                 try:
-                    video_tmp.rename(path)
+                    tmp.unlink(missing_ok=True)
+                except TypeError:
+                    if tmp.exists():
+                        tmp.unlink()
+                except OSError:
+                    pass
+
+        if video_tmp is not None and video_tmp.is_file() and path is not None:
+            if want_mp4:
+                # Prefer MP4 H.264; on failure fall back to AVI mux (#20)
+                mp4_ok, enc_tag = self._finalize_mp4(
+                    video_tmp,
+                    audio_tmp if audio_saved else None,
+                    path,
+                )
+                if mp4_ok:
+                    muxed = True
+                    encoder_used = enc_tag
                     final_path = path
+                    self._path = final_path
+                    _cleanup_temps()
+                    self._set_flash(
+                        f"saved {final_path.name} +audio ({elapsed}) [{enc_tag}]"
+                    )
+                else:
+                    # Fallback AVI (same take stem)
+                    avi_path = path.with_suffix(".avi")
+                    if audio_saved and audio_tmp is not None:
+                        muxed = self._mux_av(video_tmp, audio_tmp, avi_path)
+                    if muxed:
+                        _cleanup_temps()
+                        final_path = avi_path
+                        self._path = final_path
+                        self._set_flash(
+                            f"mp4 unavailable — saved {final_path.name} +audio "
+                            f"({elapsed})"
+                        )
+                    elif audio_saved and audio_tmp is not None:
+                        final_path = video_tmp
+                        self._path = video_tmp
+                        self._set_flash(
+                            f"saved {video_tmp.name} + {audio_tmp.name} ({elapsed})"
+                            " — install ffmpeg for mux/mp4"
+                        )
+                    else:
+                        try:
+                            video_tmp.rename(avi_path)
+                            final_path = avi_path
+                        except OSError:
+                            final_path = video_tmp
+                        self._path = final_path
+                        self._set_flash(
+                            f"mp4 unavailable — saved {final_path.name} ({elapsed})"
+                        )
+            elif audio_saved and audio_tmp is not None:
+                muxed = self._mux_av(video_tmp, audio_tmp, path)
+                if muxed:
+                    _cleanup_temps()
+                    final_path = path
+                    self._path = final_path
+                    self._set_flash(f"saved {final_path.name} +audio ({elapsed})")
+                else:
+                    final_path = video_tmp
+                    self._path = video_tmp
+                    self._set_flash(
+                        f"saved {video_tmp.name} + {audio_tmp.name} ({elapsed})"
+                        " — install ffmpeg or imageio-ffmpeg to mux"
+                    )
+            else:
+                # Video-only: rename temp to final container name
+                try:
+                    if path.suffix.lower() == ".mp4":
+                        # video-only mp4 without encode path — keep avi temp name
+                        avi_path = path.with_suffix(".avi")
+                        video_tmp.rename(avi_path)
+                        final_path = avi_path
+                    else:
+                        video_tmp.rename(path)
+                        final_path = path
                 except OSError:
                     final_path = video_tmp
-            self._path = final_path
-            if had_tts and not audio_saved:
-                # DrakeVox ran but mix/write failed — be honest with operator (#23)
-                self._set_flash(
-                    f"saved {final_path.name} ({elapsed}) — TTS not in file"
-                )
-            else:
-                self._set_flash(f"saved {final_path.name} ({elapsed})")
+                self._path = final_path
+                if had_tts and not audio_saved:
+                    self._set_flash(
+                        f"saved {final_path.name} ({elapsed}) — TTS not in file"
+                    )
+                else:
+                    self._set_flash(f"saved {final_path.name} ({elapsed})")
         else:
             self._set_flash("record stop: no file")
 
@@ -677,6 +939,8 @@ class SessionRecorder:
                 "file": final_path.name if final_path else None,
                 "elapsed": elapsed,
                 "muxed": muxed,
+                "format": self._record_format,
+                "encoder": encoder_used,
                 "audio": audio_saved,
                 "had_tts": had_tts,
             },

@@ -145,6 +145,23 @@ def parse_args(argv=None):
             "Env: SLS_FREENECT_ISOLATE=0"
         ),
     )
+    p.add_argument(
+        "--mp4",
+        action="store_true",
+        help=(
+            "Opt-in: finalize Record as H.264 MP4 (share-friendly) instead of "
+            "default MJPG AVI (#20). Capture still uses MJPG temp; encode on Stop. "
+            "Env: SLS_RECORD_MP4=1. Falls back to AVI if encode fails."
+        ),
+    )
+    p.add_argument(
+        "--hardware-encode",
+        action="store_true",
+        help=(
+            "Prefer VAAPI H.264 when using --mp4 / SLS_RECORD_MP4 (Intel/Atom). "
+            "Env: SLS_HARDWARE_ENCODE=1. Soft-fallback libx264 then AVI."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -260,6 +277,10 @@ def main(argv=None):
         settings.show_fps = True
     if bool(args.display_fast):
         settings.display_fast = True
+    if bool(getattr(args, "mp4", False)):
+        settings.record_format = "mp4"
+    if bool(getattr(args, "hardware_encode", False)):
+        settings.hardware_encode = True
     settings.apply_perf_from_env()
     # Freenect isolate default ON; --freenect-inproc or SLS_FREENECT_ISOLATE=0 disables
     if bool(getattr(args, "freenect_inproc", False)):

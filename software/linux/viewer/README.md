@@ -201,10 +201,8 @@ Local `viewer/captures/` is gitignored. Revisit priority/UX later if field use s
 1. While recording, **mic** PCM is captured in parallel (16 kHz mono float → int16 WAV).
 2. Prefers **Kinect USB Audio** (same picker as spectrum); shares the spectrum PortAudio stream so the device is not opened twice.
 3. **DrakeVox TTS** (if a word fires during REC): synth PCM is **injected** into the take (`inject_tts` / `record_gen`) in parallel with **live** speaker play; on Stop, `tts.flush()` then mix TTS + mic → WAV.
-4. On stop, muxes video + WAV into **`sls_*.avi`** (video stream copy + `pcm_s16le`).
-5. If mux fails (no ffmpeg / imageio-ffmpeg), keeps `*_video.avi` + `*_audio.wav` sidecar.
-
-**Open field bug — DrakeVox in AVI ([#23](https://github.com/tmdrake/sls-camera/issues/23)):** live panel speech can be OK (WAV→PipeWire, pin ≥ `061e841`) while the **file has no audible word**. Overlay text may still be burned into video. Prioritize inject/mix/mux for TTS; mic piggyback is separate ([#19](https://github.com/tmdrake/sls-camera/issues/19) spectrum stale stream).
+4. On stop, muxes video + WAV into **`sls_*.avi`** (default) or, with **`--mp4`**, H.264 **`sls_*.mp4`** (VAAPI or libx264; AAC/PCM audio). Full audio length kept so late DrakeVox is not truncated ([#23](https://github.com/tmdrake/sls-camera/issues/23)).
+5. If mux/encode fails (no ffmpeg / no H.264), keeps AVI or `*_video.avi` + `*_audio.wav` sidecar + flash.
 
 ### Mic gain / sensitivity (defaults)
 
@@ -459,6 +457,8 @@ Equivalent without the wrapper (after venv exists):
 | `--show-fps` | off | Show effective FPS on status bar. Env: `SLS_SHOW_FPS=1` |
 | `--display-fast` | off | Fast Qt scale (less CPU). Implied by field-lite. Env: `SLS_DISPLAY_FAST=1` |
 | `--freenect-inproc` | isolate ON | Load libfreenect in UI process (legacy). Default: **subprocess isolate** so unplug GPF ≠ app death (#16). Env: `SLS_FREENECT_ISOLATE=0` |
+| `--mp4` | **AVI** | Opt-in finalize Record as **H.264 MP4** (share path). Capture still MJPG temp; encode on Stop. Env: `SLS_RECORD_MP4=1`. Falls back to AVI if encode fails. [#20](https://github.com/tmdrake/sls-camera/issues/20) |
+| `--hardware-encode` | off | Prefer **VAAPI** H.264 when using `--mp4`. Env: `SLS_HARDWARE_ENCODE=1`. Soft fallback `libx264` ultrafast, then AVI. |
 | `--device INDEX` | `0` | Freenect device index |
 
 ### Field Atom performance (#14)
@@ -493,7 +493,7 @@ On **phones and field tablets**, anything continuous (encode, scale/blit, decode
 |------|---------------------|
 | **Field-lite caps (#14)** | Cut work first (FPS, pose every N, fast scale) — always available |
 | **zram (firmware appliance)** | RAM headroom on 2 GiB; helps stability, **not** watts |
-| **Hardware encode (planned)** | Opt-in **`--hardware-encode`** / `SLS_HARDWARE_ENCODE=1` — Linux **VAAPI** H.264 when the iGPU supports it; fallback to light AVI — tracked **[#20](https://github.com/tmdrake/sls-camera/issues/20)** |
+| **Hardware / MP4 encode (#20)** | Opt-in **`--mp4`** / `SLS_RECORD_MP4=1` → H.264 MP4 on Stop; **`--hardware-encode`** prefers VAAPI; else `libx264` ultrafast; else AVI + flash. Atom encode is **best-effort** (`vainfo` / short ffmpeg smoke). |
 | **Software x264 live** | Avoid as default on 2 GiB; export-only or explicit opt-in if needed |
 
 **Linux vs Windows Kinect kit:** the older Windows/dev-kit build often feels smoother with **fewer features** and a more mature media stack. Linux field app is richer (DrakeVox, spectrum, captures, appliance); keep growing features only with **caps + HW offload**, or thin Windows-style kits will keep winning on “feel.”
