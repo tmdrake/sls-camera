@@ -217,19 +217,31 @@ Firmware **keeps** a single pin file (`packages/app-ref.txt`). You do **not** re
 
 **Why this matters:** pin was stuck at **`061e841`** while `main` moved (isolate open fix, A/V retime, MP4, spectrum-in-media, copy progress, isolate watchdog). Field unplug **139** and missing record audio often mean **stale app on device**, not a need to “remove pins.”
 
-**Minimum pin for current field pack:** **`e1f3c24`** (`fix(freenect): harden isolate for unplug GPF`). Prefer latest `main` when freezing.
+**Minimum pin for current field pack:** **`c2cf5fb`** (RCA soak 2026-07-24). Includes isolate harden, REC TTS, MP4, spectrum-in-media, UI polish. Prefer latest `main` when freezing.
+
+### Field soak — RCA tablet-01 (2026-07-24) pin **`c2cf5fb`**
+
+| Area | Status |
+|------|--------|
+| DrakeVox live + **in REC** | OK (AVI and MP4) — #23 closed |
+| **MP4 default** | **Keep** — FW launcher **`SLS_RECORD_MP4=1`** + **`SLS_HARDWARE_ENCODE=1`** (`d90e2af`+). Dev app default remains AVI unless env/flag. |
+| Field-lite + NORM | Both OK; lite kinder under load |
+| USB Auto | `SLS-MEDIA/sls-captures` when OTG stick mounted |
+| Freenect unplug | Looked good after multi cycle — #16 soak |
+| **Mic re-pick to Kinect** | Still rough — **[#25](https://github.com/tmdrake/sls-camera/issues/25)** |
 
 ### Must-test after pin replace
 
 | Check | How |
 |-------|-----|
-| Pin on stick | `app-ref` / `/etc/sls/appliance-version` shows **≥ e1f3c24** (or current freeze SHA) |
+| Pin on stick | `app-ref` / device tree shows **≥ c2cf5fb** (or current freeze SHA) |
 | Isolate | Startup log **`freenect: isolate=1`**. Unplug Kinect → UI **stays up**, reconnect splash (not full-app exit 139) |
 | DrakeVox live | **O** / DrakeVox now → hear panel (field-lite + one normal if possible) |
-| REC audio | REC → talk / DrakeVox → Stop → **+audio**; word/mic in file; field-lite A/V roughly in time |
-| Optional MP4 | `SLS_RECORD_MP4=1` or `--mp4` → `sls_*.mp4` or clear AVI fallback flash |
+| REC audio | REC → DrakeVox → Stop → **+audio**; word/mic in file; field-lite A/V roughly in time |
+| **MP4 (field default)** | Appliance: `SLS_RECORD_MP4=1` → `sls_*.mp4` (or clear AVI fallback flash) |
 | Spectrum in media | Spectrum ON + REC/Snap → strip on bottom of media |
 | Copy progress | Settings → Copy local→media → progress dialog (not frozen UI) |
+| Mic after replug | Prefer Kinect when present; if stuck on headset → #25 (OFF→ON spectrum workaround) |
 
 **Host power-off is firmware-owned** (launcher + `sudoers.d/sls-poweroff`).  
 App does **not** call `poweroff` itself — only exit code 10.
