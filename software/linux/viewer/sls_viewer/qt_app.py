@@ -81,6 +81,24 @@ QLabel#batteryGauge {
     min-height: 36px;
     padding: 2px 4px;
 }
+QLabel#modeBadge {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    min-height: 28px;
+}
+QLabel#modeBadge[mode="lite"] {
+    color: #00ffb4;
+    background-color: rgba(0, 50, 35, 220);
+    border: 1px solid #00ffb4;
+}
+QLabel#modeBadge[mode="norm"] {
+    color: #b0b0b8;
+    background-color: rgba(40, 40, 48, 220);
+    border: 1px solid #707078;
+}
 QLabel#hdr {
     color: #00ffb4; font-size: 15px; font-weight: 700;
     padding: 4px 0 10px 0;
@@ -1301,6 +1319,14 @@ class SlsMainWindow(QMainWindow):
         self.status = QLabel("starting…")
         self.status.setObjectName("status")
 
+        # Load mode pill next to battery (LITE/NORM) — bar only, not on video
+        self.mode_badge = QLabel()
+        self.mode_badge.setObjectName("modeBadge")
+        self.mode_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.mode_badge.setToolTip(
+            "Field load mode (launch-time). Details in Settings → Load."
+        )
+
         # Visual battery gauge (#12) — hidden when no system battery
         self.battery_gauge = QLabel()
         self.battery_gauge.setObjectName("batteryGauge")
@@ -1330,6 +1356,7 @@ class SlsMainWindow(QMainWindow):
 
         bar_layout.addWidget(self.title)
         bar_layout.addWidget(self.status, stretch=1)
+        bar_layout.addWidget(self.mode_badge)
         bar_layout.addWidget(self.battery_gauge)
         bar_layout.addWidget(self.btn_settings)
         bar_layout.addWidget(self.btn_snap)
@@ -1893,6 +1920,7 @@ class SlsMainWindow(QMainWindow):
             self.btn_record.setText("Record")
         # Battery: visual gauge on the bar (#12); no duplicate BAT text in status
         self._refresh_battery_gauge()
+        self._refresh_mode_badge()
         # Refresh auto media path occasionally (plug pen drive / SD mid-session)
         self._media_poll_i = getattr(self, "_media_poll_i", 0) + 1
         if self._media_poll_i % 90 == 0:  # ~3s at 33ms tick
@@ -1902,7 +1930,7 @@ class SlsMainWindow(QMainWindow):
         if self.display_inhibit.active and self._inhibit_refresh_i % 1800 == 0:
             self.display_inhibit.refresh_x11()
         # Compact status: mode · people · conf · captures (+ REC while recording).
-        # LITE/NORM load is Settings-only (#17); optional HUD pill still on video.
+        # LITE/NORM lives on the bar pill next to battery (not status text / video).
         mode = _status_mode_short(self.pipeline.status)
         conf_s = confidence_percent_label(self.pipeline.pose_confidence)
         cap = self.session.captures_label or "local"
@@ -1941,12 +1969,11 @@ class SlsMainWindow(QMainWindow):
             if det == "appear" and self.pipeline.s.auto_snap_on_detect:
                 self._snapshot(fire_drakevox=True)
 
-            # Composite DrakeVox (for REC+Snap+live). Mode badge is live-only (#21).
+            # Composite DrakeVox (for REC+Snap+live). No LITE/NORM on video (#21).
             display = self._compose_drakevox(frame)
             if self.session.recording:
                 self.session.write_frame(display)
-            live = self.pipeline.apply_mode_badge(display.copy())
-            pix = bgr_to_qpixmap(live)
+            pix = bgr_to_qpixmap(display)
             target = self.video.size()
             if target.width() >= 2 and target.height() >= 2:
                 # Smooth is expensive on Atom; field-lite / --display-fast uses Fast
