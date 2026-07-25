@@ -266,8 +266,24 @@ Do **not** put Microsoft Kinect UAC audio firmware in public trees (`kinect-audi
 - [ ] **Polkit format rule** installed; Format media works without root password  
 - [ ] **Polkit timedate rule** (+ optional sudoers); Settings → Date & time works without password  
 - [ ] Launcher passes **`--no-auto-level`** (no tilt motor on open)  
-- [ ] Landscape **16:10**; geometry log → hardware matrix  
+- [ ] Landscape **16:10**; geometry log → hardware matrix (**#7** — paste into matrix after wipe)  
 - [ ] SDDM autologin (not LightDM) on Lubuntu 26.04  
+- [ ] Installer offline path clean (**#3** — comment on issue if new apt fights)  
+
+
+---
+
+## Firmware focus: hardware testing + installer (#7 / #3)
+
+App feature arc for TTS/record/isolate is largely done. **Firmware owns the next hardware pass** (backup units, wipe, installer, real glass).
+
+| Issue | Owner now | What to do on hardware |
+|-------|-----------|-------------------------|
+| [#7](https://github.com/tmdrake/sls-camera/issues/7) Settings fit + **hardware matrix** | **Firmware / field ops** | After wipe+install: copy `display: WxH avail=… dpr=… dpi=…` from app log into [HARDWARE-MATRIX.md](HARDWARE-MATRIX.md) (tablet-01 RCA, tablet-02 when wiped). Confirm Settings two-pane + scroll reaches all controls. Optional port photos. App layout (94–96% dialog) already shipped. |
+| [#3](https://github.com/tmdrake/sls-camera/issues/3) apt/Python conflicts | **Firmware installer** | While improving offline install: if a new OR/version fight appears, **comment on #3** + update seed/fetch filters. Do not blanket `dpkg -i vendor/debs/*.deb`. Tracker only unless a new failure shows up. |
+| [#16](https://github.com/tmdrake/sls-camera/issues/16) Unplug 139 | **Hardware retest** | Pin **≥ `e1f3c24`**, confirm `freenect: isolate=1`, unplug mid-stream → UI stays up. |
+
+**App team:** no open code work required for #7/#3 unless hardware testing finds a real clip or a new packaging break.
 
 ---
 
@@ -276,11 +292,11 @@ Do **not** put Microsoft Kinect UAC audio firmware in public trees (`kinect-audi
 | Issue | Status |
 |-------|--------|
 | [#2](https://github.com/tmdrake/sls-camera/issues/2) Offline apt | **Closed** |
-| [#3](https://github.com/tmdrake/sls-camera/issues/3) OR-conflicts | **Open tracker** |
+| [#3](https://github.com/tmdrake/sls-camera/issues/3) OR-conflicts | **Open tracker** — firmware installer / hardware builds |
 | [#4](https://github.com/tmdrake/sls-camera/issues/4) Quit power-off | **Closed** (exit 10) |
 | [#5](https://github.com/tmdrake/sls-camera/issues/5) Captures Auto | **Closed** |
 | [#6](https://github.com/tmdrake/sls-camera/issues/6) Settings geometry | **Closed** |
-| [#7](https://github.com/tmdrake/sls-camera/issues/7) Hardware matrix | **Open** — fill post-wipe row on real tablet |
+| [#7](https://github.com/tmdrake/sls-camera/issues/7) Hardware matrix | **Open** — **firmware hardware testing** fills post-wipe rows |
 | [#8](https://github.com/tmdrake/sls-camera/issues/8) Format media | **Closed** — ship polkit for kiosk UX |
 | [#9](https://github.com/tmdrake/sls-camera/issues/9) Wake lock | **Closed** |
 | [#10](https://github.com/tmdrake/sls-camera/issues/10) Kinect tilt | **Closed** — `--no-auto-level` + no motor command |
