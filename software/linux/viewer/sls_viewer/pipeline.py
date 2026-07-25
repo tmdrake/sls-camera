@@ -329,8 +329,25 @@ class FramePipeline:
 
         Call from the Qt path after DrakeVox compose. Do **not** use on frames
         written to AVI or Snap JPEGs — investigation media stays clean.
+
+        Skipped during splash/reconnect (status text) so the pill does not sit
+        on "SLS CAMERA" / Starting… copy. Live position: **bottom-left**, above
+        the date/Detected footer (keeps top-left free for DEPTH title + splash).
         """
         if bgr is None or getattr(bgr, "size", 0) == 0:
+            return bgr
+        # Splash / reconnect / open — leave chrome alone
+        st = (self._status or "").lower()
+        if any(
+            k in st
+            for k in (
+                "starting",
+                "opening",
+                "reconnect",
+                "camera error",
+                "pose model",
+            )
+        ):
             return bgr
         # Paint in-place (caller should pass a copy so Record frames stay clean)
         canvas = bgr
@@ -350,10 +367,15 @@ class FramePipeline:
         scale = 0.55
         thick = 2
         (tw, th), baseline = cv2.getTextSize(label, font, scale, thick)
-        x0, y0 = 14, 48  # under "DEPTH + SLS"
+        H, W = canvas.shape[:2]
         pad_x, pad_y = 8, 5
-        x1 = x0 + tw + pad_x * 2
-        y1 = y0 + th + pad_y * 2 + baseline
+        box_h = th + pad_y * 2 + baseline
+        # Bottom-left, clear of footer stamp (~16px) and splash title block
+        x0 = 14
+        y1 = H - 22
+        y0 = max(8, y1 - box_h)
+        x1 = min(W - 8, x0 + tw + pad_x * 2)
+        y1 = y0 + box_h
         cv2.rectangle(canvas, (x0, y0), (x1, y1), fill, -1)
         cv2.rectangle(canvas, (x0, y0), (x1, y1), edge, 1)
         cv2.putText(
