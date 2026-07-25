@@ -115,7 +115,8 @@ class SessionRecorder:
         self._video_tmp: Optional[Path] = None
         self._audio_tmp: Optional[Path] = None
         self._recording = False
-        self._fps = 15.0
+        self._fps = 15.0  # nominal OpenCV stamp (field-lite 7.5)
+        self._frame_count: int = 0  # frames written this take (wall-sync)
         self._record_started: float = 0.0
         self._last_detected = 0
         self._session_log: Optional[Path] = None
@@ -496,24 +497,47 @@ class SessionRecorder:
         except Exception:
             return False
 
-    def _mux_av(self, video_path: Path, audio_path: Path, out_path: Path) -> bool:
-        """Mux MJPG video + PCM WAV into a single AVI (audio inside the AVI).
+    def _wall_video_fps(self, wall_s: float, n_frames: int) -> float:
+        """FPS so n_frames span wall_s (video timeline = audio/DrakeVox).
 
-        OpenCV MJPG duration is nframes/fps and often lags wall-clock on
-        field-lite Atom. Audio is wall-clock (mic + DrakeVox offsets). Using
-        ffmpeg ``-shortest`` alone **truncates** late TTS (#23).
+        Field-lite labels OpenCV at 7.5 but Atom often writes slower; players
+        then run video too fast vs wall-clock mic/TTS.
+        """
+        if n_frames >= 1 and wall_s > 0.05:
+            return max(1.0, min(60.0, float(n_frames) / float(wall_s)))
+        return max(1.0, float(self._fps or 15.0))
 
-        Strategy:
-          1) Fast path: stream-copy video + full audio (**no** -shortest).
-          2) Polish: pad video (clone last frame) to cover audio, then mux.
+    def _pts_scale_for_wall(self, wall_s: float, n_frames: int) -> float:
+        """PTS multiplier so nominal-fps content spans wall_s."""
+        nom = max(0.1, float(self._fps or 7.5))
+        if n_frames >= 1 and wall_s > 0.05:
+            return max(0.25, min(4.0, (wall_s * nom) / float(n_frames)))
+        return 1.0
+
+    def _mux_av(
+        self,
+        video_path: Path,
+        audio_path: Path,
+        out_path: Path,
+        *,
+        wall_s: float = 0.0,
+        n_frames: int = 0,
+    ) -> bool:
+        """Mux MJPG video + PCM WAV into a single AVI.
+
+        Audio + DrakeVox are wall-clock. OpenCV stamps at nominal record_fps
+        (field-lite **7.5**). If fewer frames than wall×7.5 were written, naive
+        mux plays video too fast → mic/TTS feel early. Retime video to wall.
         """
         ffmpeg = _find_ffmpeg()
         if not ffmpeg:
             return False
 
+        true_fps = self._wall_video_fps(wall_s, n_frames)
+        pts_scale = self._pts_scale_for_wall(wall_s, n_frames)
+
         def _run(cmd: list) -> bool:
             try:
-                # Drop partial output from a previous attempt
                 try:
                     if out_path.is_file():
                         out_path.unlink()
@@ -533,7 +557,33 @@ class SessionRecorder:
             except Exception:
                 return False
 
-        # 1) Reliable + cheap on Atom (keeps full DrakeVox timeline)
+        # 1) Retime video to wall-clock + full audio
+        if _run(
+            [
+                ffmpeg,
+                "-y",
+                "-i",
+                str(video_path),
+                "-i",
+                str(audio_path),
+                "-filter_complex",
+                f"[0:v]setpts=PTS*{pts_scale:.6f},fps={true_fps:.4f}[v]",
+                "-map",
+                "[v]",
+                "-map",
+                "1:a:0",
+                "-c:v",
+                "mjpeg",
+                "-q:v",
+                "5",
+                "-c:a",
+                "pcm_s16le",
+                str(out_path),
+            ]
+        ):
+            return True
+
+        # 2) Fallback copy (may desync)
         if _run(
             [
                 ffmpeg,
@@ -550,42 +600,6 @@ class SessionRecorder:
             ]
         ):
             return True
-
-        # 2) Pad video so picture lasts through audio (re-encode MJPEG — slower)
-        pad_s = 0.0
-        try:
-            with wave.open(str(audio_path), "rb") as wf:
-                fr = int(wf.getframerate()) or AUDIO_SAMPLE_RATE
-                pad_s = float(wf.getnframes()) / float(fr)
-        except Exception:
-            pad_s = 0.0
-        if pad_s > 0.05:
-            # stop_duration pads after EOF; -shortest then ends at audio EOF
-            if _run(
-                [
-                    ffmpeg,
-                    "-y",
-                    "-i",
-                    str(video_path),
-                    "-i",
-                    str(audio_path),
-                    "-filter_complex",
-                    f"[0:v]tpad=stop_mode=clone:stop_duration={pad_s:.3f}[v]",
-                    "-map",
-                    "[v]",
-                    "-map",
-                    "1:a:0",
-                    "-c:v",
-                    "mjpeg",
-                    "-q:v",
-                    "5",
-                    "-c:a",
-                    "pcm_s16le",
-                    "-shortest",
-                    str(out_path),
-                ]
-            ):
-                return True
         return False
 
     def _audio_duration_s(self, audio_path: Path) -> float:
@@ -601,11 +615,13 @@ class SessionRecorder:
         video_path: Path,
         audio_path: Optional[Path],
         out_path: Path,
+        *,
+        wall_s: float = 0.0,
+        n_frames: int = 0,
     ) -> tuple[bool, str]:
         """Transcode MJPG temp + WAV → H.264 MP4. Returns (ok, encoder_tag).
 
-        Encoder order: VAAPI (if preferred/available) → libx264 ultrafast → fail.
-        Preserves full audio length (pad video to cover late DrakeVox #23).
+        Retimes video to wall-clock (field-lite 7.5 stamp vs slower real FPS).
         """
         ffmpeg = _find_ffmpeg()
         if not ffmpeg:
@@ -623,9 +639,11 @@ class SessionRecorder:
             and audio_path.is_file()
             and audio_path.stat().st_size > 44
         )
-        pad_s = self._audio_duration_s(audio_path) if has_audio else 0.0
+        true_fps = self._wall_video_fps(wall_s, n_frames)
+        pts_scale = self._pts_scale_for_wall(wall_s, n_frames)
         aac = _ffmpeg_has_encoder(ffmpeg, "aac")
         acodec = "aac" if aac else "pcm_s16le"
+        vfilter_base = f"setpts=PTS*{pts_scale:.6f},fps={true_fps:.4f}"
 
         def _run(cmd: list) -> bool:
             try:
@@ -660,10 +678,7 @@ class SessionRecorder:
                 dev = _vaapi_render_device()
                 if not dev:
                     continue
-                # Decode MJPG in SW → NV12 → VAAPI encode
-                vf = "format=nv12,hwupload"
-                if pad_s > 0.05:
-                    vf = f"tpad=stop_mode=clone:stop_duration={pad_s:.3f},{vf}"
+                vf = f"{vfilter_base},format=nv12,hwupload"
                 cmd: list = [
                     ffmpeg,
                     "-y",
@@ -694,18 +709,11 @@ class SessionRecorder:
                 continue
 
             if which == "libx264":
-                # Soft encode — fine on bench; may be heavy on Atom (opt-in only)
-                vf = (
-                    f"tpad=stop_mode=clone:stop_duration={pad_s:.3f}"
-                    if pad_s > 0.05
-                    else ""
-                )
                 cmd = [ffmpeg, "-y", "-i", str(video_path)]
                 if has_audio:
                     assert audio_path is not None
                     cmd += ["-i", str(audio_path)]
-                if vf:
-                    cmd += ["-vf", vf]
+                cmd += ["-vf", vfilter_base]
                 cmd += [
                     "-c:v",
                     "libx264",
@@ -782,6 +790,7 @@ class SessionRecorder:
             self._path = final
             self._recording = True
             self._fps = float(fps)
+            self._frame_count = 0
             self._record_started = time.time()
             self._record_gen = int(self._record_gen) + 1
             self._tts_clips = []
@@ -799,6 +808,7 @@ class SessionRecorder:
                 "file": final.name,
                 "format": fmt,
                 "encoder": self._h264_encoder if fmt == "mp4" else "mjpg",
+                "nominal_fps": float(fps),
                 "audio": audio_ok,
                 "mic": self._audio_device_name,
             },
@@ -814,6 +824,8 @@ class SessionRecorder:
             return
         try:
             w.write(bgr)
+            with self._lock:
+                self._frame_count = int(self._frame_count) + 1
         except Exception:
             pass
 
@@ -827,6 +839,7 @@ class SessionRecorder:
             n_chunks = len(self._audio_chunks)
             n_pcm = int(getattr(self, "_pcm_samples", 0) or 0)
             n_tts = len(self._tts_clips)
+            n_frames = int(self._frame_count)
             had_tts = n_tts > 0
             had_audio = bool(self._has_audio) or n_pcm > 0 or n_chunks > 0 or had_tts
             via_spectrum = bool(self._via_spectrum)
@@ -841,6 +854,11 @@ class SessionRecorder:
             rec_started = self._record_started
 
         self._stop_audio_capture()
+
+        wall_s = 0.0
+        if rec_started > 0:
+            wall_s = max(0.0, time.time() - float(rec_started))
+        true_fps = self._wall_video_fps(wall_s, n_frames)
 
         final_path = path
         audio_saved = False
@@ -875,6 +893,8 @@ class SessionRecorder:
                     video_tmp,
                     audio_tmp if audio_saved else None,
                     path,
+                    wall_s=wall_s,
+                    n_frames=n_frames,
                 )
                 if mp4_ok:
                     muxed = True
@@ -889,7 +909,13 @@ class SessionRecorder:
                     # Fallback AVI (same take stem)
                     avi_path = path.with_suffix(".avi")
                     if audio_saved and audio_tmp is not None:
-                        muxed = self._mux_av(video_tmp, audio_tmp, avi_path)
+                        muxed = self._mux_av(
+                            video_tmp,
+                            audio_tmp,
+                            avi_path,
+                            wall_s=wall_s,
+                            n_frames=n_frames,
+                        )
                     if muxed:
                         _cleanup_temps()
                         final_path = avi_path
@@ -916,7 +942,13 @@ class SessionRecorder:
                             f"mp4 unavailable — saved {final_path.name} ({elapsed})"
                         )
             elif audio_saved and audio_tmp is not None:
-                muxed = self._mux_av(video_tmp, audio_tmp, path)
+                muxed = self._mux_av(
+                    video_tmp,
+                    audio_tmp,
+                    path,
+                    wall_s=wall_s,
+                    n_frames=n_frames,
+                )
                 if muxed:
                     _cleanup_temps()
                     final_path = path
@@ -966,6 +998,10 @@ class SessionRecorder:
                 "pcm_chunks": n_chunks,
                 "tts_clips": n_tts,
                 "via_spectrum": via_spectrum,
+                "video_frames": n_frames,
+                "wall_s": round(wall_s, 3),
+                "nominal_fps": float(self._fps or 0),
+                "true_fps": round(true_fps, 3),
             },
         )
         self._video_tmp = None
