@@ -1991,8 +1991,8 @@ class SlsMainWindow(QMainWindow):
         """Small load hint on the left of the bar (not video, not button-like)."""
         s = self.pipeline.s
         if s.field_lite:
-            # Quiet lowercase — reads as status meta, not an action
-            text = f"lite {s.target_fps:g}"
+            # Quiet lowercase — reads as status meta, not an action (FPS in tooltip)
+            text = "lite"
             mode = "lite"
             tip = (
                 f"Field lite · {s.target_fps:g} FPS live/record · "
