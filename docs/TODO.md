@@ -47,7 +47,8 @@ policy come later.
 | [#21](https://github.com/tmdrake/sls-camera/issues/21) | Do not burn LITE badge into Record AVI — **open** |
 | [#22](https://github.com/tmdrake/sls-camera/issues/22) | Spectrum strip in Record AVI when ON — **open** |
 | [#23](https://github.com/tmdrake/sls-camera/issues/23) | **DrakeVox TTS missing in AVI** (live OK, file silent) — **open** |
-| [#24](https://github.com/tmdrake/sls-camera/issues/24) | Brightness **5–95% @ 5%** steps (today ±10%, max 100%) — **open** |
+| [#24](https://github.com/tmdrake/sls-camera/issues/24) | Brightness **5–95% @ 5%** steps — **closed** |
+| [#25](https://github.com/tmdrake/sls-camera/issues/25) | Mic does not re-pick **Kinect** after late plug / USB cycle — **open** (still rough after RCA soak) |
 
 Firmware may implement offline mirrors; **product install-path and app-behavior decisions stay tracked here**.
 
@@ -78,7 +79,9 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [x] **`--hide-cursor` / `SLS_HIDE_CURSOR`** · 2026-07-22  
 - [x] **DrakeVox TTS performance (#13)** — async speak, once mixer, pose paused during speak+play, nice try; **use `SLS_FIELD_LITE=1` on Atom**  
 - [x] **RCA DrakeVox panel silence (2026-07-24)** — not VM: PortAudio/live espeak flaky on RT5651; field-lite plays **WAV→PipeWire**; FW OUTVOL mixer — [viewer README](../software/linux/viewer/README.md#drakevox-tts-playback-field--rca-vs-vm)  
-- [ ] **DrakeVox in Record AVI (#23)** — live speech OK on RCA (pin ≥ `061e841`); **AVI missing TTS audio** (inject/mix/mux). Field 2026-07-24 evening. Mic piggyback secondary.  
+- [x] **DrakeVox in Record AVI (#23)** — fixed on pin ≥ `4b3a2a8` / field pin **`c2cf5fb`** (RCA soak 2026-07-24)  
+- [ ] **Kinect mic re-pick (#25)** — still rough after unplug/replug; spectrum OFF→ON or relaunch workaround  
+
 
 - [x] **Field Atom load caps (#14)** — `--field-lite` / `SLS_FIELD_LITE=1` (7.5 FPS, pose every 2, fast scale); **FPS log off by default** (RCA); residual: optional QOpenGL blit  
   - CLI: `--target-fps` `--record-fps` `--pose-every-n` `--show-fps` `--display-fast`  

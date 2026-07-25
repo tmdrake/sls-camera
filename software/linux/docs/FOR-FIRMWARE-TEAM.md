@@ -307,7 +307,8 @@ App feature arc for TTS/record/isolate is largely done. **Firmware owns the next
 | [#15](https://github.com/tmdrake/sls-camera/issues/15) Win98 spectrum | **Closed** — time-domain PCM wave style |
 | [#16](https://github.com/tmdrake/sls-camera/issues/16) Kinect unplug 139 | **Open** — isolate shipped; field soak |
 | [#19](https://github.com/tmdrake/sls-camera/issues/19) Spectrum freeze after reconnect | **Open** |
-| [#23](https://github.com/tmdrake/sls-camera/issues/23) DrakeVox missing in AVI | **Open** — live OK, file silent (primary REC audio report) |
-| [#17](https://github.com/tmdrake/sls-camera/issues/17)–[#22](https://github.com/tmdrake/sls-camera/issues/22) | GUI/record polish — see [docs/TODO.md](../../../docs/TODO.md) |
+| [#23](https://github.com/tmdrake/sls-camera/issues/23) DrakeVox in AVI | **Closed** — field verified RCA |
+| [#25](https://github.com/tmdrake/sls-camera/issues/25) Kinect mic re-pick | **Open** — sticky headset after USB cycle |
+| [#17](https://github.com/tmdrake/sls-camera/issues/17)–[#24](https://github.com/tmdrake/sls-camera/issues/24) | Field polish — mostly closed; see [docs/TODO.md](../../../docs/TODO.md) |
 
 Day logs: [SESSION-2026-07-22.md](SESSION-2026-07-22.md) · [SESSION-2026-07-24.md](SESSION-2026-07-24.md) · App backlog: [docs/TODO.md](../../../docs/TODO.md).

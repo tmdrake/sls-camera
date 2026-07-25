@@ -458,7 +458,7 @@ Equivalent without the wrapper (after venv exists):
 | `--show-fps` | off | Show effective FPS on status bar. Env: `SLS_SHOW_FPS=1` |
 | `--display-fast` | off | Fast Qt scale (less CPU). Implied by field-lite. Env: `SLS_DISPLAY_FAST=1` |
 | `--freenect-inproc` | isolate ON | Load libfreenect in UI process (legacy). Default: **subprocess isolate** so unplug GPF ≠ app death (#16). Env: `SLS_FREENECT_ISOLATE=0` |
-| `--mp4` | **AVI** | Opt-in finalize Record as **H.264 MP4** (share path). Capture still MJPG temp; encode on Stop. Env: `SLS_RECORD_MP4=1`. Falls back to AVI if encode fails. [#20](https://github.com/tmdrake/sls-camera/issues/20) |
+| `--mp4` | **AVI** (dev default) | Finalize Record as **H.264 MP4**. Capture still MJPG temp; encode on Stop. Env: `SLS_RECORD_MP4=1`. Falls back to AVI if encode fails. [#20](https://github.com/tmdrake/sls-camera/issues/20). **Field appliance** sets `SLS_RECORD_MP4=1` by default (pin ≥ `c2cf5fb` / FW launcher) — keep MP4 for that build. |
 | `--hardware-encode` | off | Prefer **VAAPI** H.264 when using `--mp4`. Env: `SLS_HARDWARE_ENCODE=1`. Soft fallback `libx264` ultrafast, then AVI. **H.264 path is probed at app startup** (`record: format=… h264=vaapi|libx264|none` in the log; Settings Load line shows the same). |
 | `--device INDEX` | `0` | Freenect device index |
 
@@ -546,7 +546,8 @@ Use this on a **desktop / VM / tablet without a camera**, or when you want UI wo
 | Record AVI has no sound | Install `ffmpeg` or `imageio-ffmpeg` (in venv); check flash for sidecar WAV; `ffprobe` the file |
 | Soft / loud mic | App does not set gain — use `pavucontrol` or `alsamixer` on the capture source |
 | DrakeVox silent on speakers | App unmutes + max volume each speak; pin ≥ `061e841` (WAV delete-after-play); RCA needs FW OUTVOL / `sls-audio-speakers` |
-| DrakeVox **live OK**, **AVI silent** (word on panel/video, no speech in file) | Inject/mix/mux path — **[#23](https://github.com/tmdrake/sls-camera/issues/23)**; confirm Stop after word finishes; check sidecar WAV |
+| DrakeVox **live OK**, **AVI/MP4 silent** (word on panel/video, no speech in file) | Should be fixed ≥ `4b3a2a8` / field pin `c2cf5fb` ([#23](https://github.com/tmdrake/sls-camera/issues/23)); if regresses check inject + `ffprobe` audio |
+| Spectrum/REC stuck on **headset** after Kinect replug | Re-pick bug — **[#25](https://github.com/tmdrake/sls-camera/issues/25)**; workaround: spectrum OFF→ON or relaunch |
 | DrakeVox lag (live) | Field-lite pose-pause; async speak — [#13](https://github.com/tmdrake/sls-camera/issues/13) |
 | Kinect RECONNECTING | Power brick + USB; **unplug charger** if the 12 V path uses a charge relay that disables the camera; freenect retries automatically |
 | No Kinect / test UI only | `./run.sh --demo` (always synthetic; no freenect) |
