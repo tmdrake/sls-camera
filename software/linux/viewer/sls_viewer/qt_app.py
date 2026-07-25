@@ -1001,16 +1001,20 @@ class SettingsDialog(QDialog):
             )
         # Field load mode (#17) — status bar stays clean; details here
         s = self.pipeline.s
+        rec = (s.record_format or "avi").upper()
+        h264 = (s.h264_encoder or "?").strip() or "?"
         if s.field_lite:
             self.load_label.setText(
                 f"Load: Field lite · {s.target_fps:g} FPS live/record · "
-                f"pose every {s.pose_every_n_frames} · fast display"
+                f"pose every {s.pose_every_n_frames} · fast display · "
+                f"Record {rec} (h264={h264})"
             )
         else:
             self.load_label.setText(
                 f"Load: Normal · {s.target_fps:g} FPS · "
                 f"pose every {s.pose_every_n_frames}"
                 + (" · fast display" if s.display_fast else "")
+                + f" · Record {rec} (h264={h264})"
             )
         if self.pipeline.s.drakevox_enabled:
             hist0 = self.drakevox.history()
@@ -1813,6 +1817,7 @@ class SlsMainWindow(QMainWindow):
                 spectrum=self.spectrum,
                 record_format=self.pipeline.s.record_format,
                 hardware_encode=bool(self.pipeline.s.hardware_encode),
+                h264_encoder=self.pipeline.s.h264_encoder or None,
             )
             if path is not None:
                 self.pipeline.set_recording_led(True)

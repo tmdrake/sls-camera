@@ -730,6 +730,7 @@ class SessionRecorder:
         *,
         record_format: str = "avi",
         hardware_encode: bool = False,
+        h264_encoder: Optional[str] = None,
     ) -> Optional[Path]:
         if self._recording:
             return self._path
@@ -742,6 +743,13 @@ class SessionRecorder:
         fmt = "mp4" if (record_format or "avi").strip().lower() == "mp4" else "avi"
         self._record_format = fmt
         self._prefer_hw_encode = bool(hardware_encode) or fmt == "mp4"
+        # Startup probe result (main.py); only re-probe if missing
+        if h264_encoder:
+            self._h264_encoder = str(h264_encoder)
+        elif self._h264_encoder is None:
+            self._h264_encoder = probe_h264_encoder(
+                prefer_hardware=self._prefer_hw_encode
+            )
         # Capture always MJPG temp AVI (reliable); finalize to AVI or MP4 on stop
         video_tmp = self.captures_dir / f"sls_{ts}_video.avi"
         audio_tmp = self.captures_dir / f"sls_{ts}_audio.wav"
@@ -769,10 +777,6 @@ class SessionRecorder:
 
         enc_note = ""
         if fmt == "mp4":
-            if self._h264_encoder is None:
-                self._h264_encoder = probe_h264_encoder(
-                    prefer_hardware=self._prefer_hw_encode
-                )
             enc_note = f" →{self._h264_encoder or 'none'}"
         if audio_ok:
             self._set_flash(f"recording {final.name} +audio{enc_note}")

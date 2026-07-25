@@ -288,12 +288,31 @@ def main(argv=None):
 
         _os.environ["SLS_FREENECT_ISOLATE"] = "0"
 
+    # Probe H.264 path once at startup (VAAPI / libx264 / none) — not deferred to first REC
+    try:
+        from .session_io import probe_h264_encoder
+
+        # Prefer hardware when user asked for it, or when MP4 is already selected
+        prefer_hw = bool(settings.hardware_encode) or settings.wants_mp4()
+        settings.h264_encoder = probe_h264_encoder(prefer_hardware=prefer_hw)
+        # If VAAPI is present, treat hardware encode as available for MP4 path
+        if settings.h264_encoder == "vaapi":
+            settings.hardware_encode = True
+    except Exception as exc:
+        settings.h264_encoder = "none"
+        print(f"record: h264 probe failed: {exc}", flush=True)
+
     pipeline = FramePipeline(settings)
     pipeline.start()
     print(
         f"UI={args.ui} mirror={settings.mirror} demo={settings.allow_demo_without_kinect} "
         f"led_green={settings.led_green} auto_level={settings.auto_level} "
         f"hide_cursor={settings.hide_cursor} {settings.perf_summary()}",
+        flush=True,
+    )
+    print(
+        f"record: format={settings.record_format} h264={settings.h264_encoder or 'none'} "
+        f"(mp4 opt-in: --mp4 / SLS_RECORD_MP4=1; default remains avi)",
         flush=True,
     )
 

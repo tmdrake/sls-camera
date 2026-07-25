@@ -112,6 +112,8 @@ class Settings:
     record_format: str = "avi"
     # Prefer VAAPI H.264 when recording MP4 (still falls back to libx264 / AVI)
     hardware_encode: bool = False
+    # Filled at startup by probe: "vaapi" | "libx264" | "none" (empty = not probed yet)
+    h264_encoder: str = ""
     # Captures destination: auto = SD/USB if mounted (default); local = viewer/captures only
     captures_target: str = "auto"
 
@@ -221,9 +223,11 @@ class Settings:
         return (self.record_format or "avi").strip().lower() == "mp4"
 
     def perf_summary(self) -> str:
+        h264 = self.h264_encoder or "?"
         return (
             f"target_fps={self.target_fps:g} record_fps={self.record_fps:g} "
-            f"record_format={self.record_format} hw_encode={int(self.hardware_encode)} "
+            f"record_format={self.record_format} h264={h264} "
+            f"hw_encode={int(self.hardware_encode)} "
             f"pose_every={self.pose_every_n_frames} field_lite={self.field_lite} "
             f"display_fast={self.display_fast} show_fps={self.show_fps}"
         )

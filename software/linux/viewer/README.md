@@ -458,7 +458,7 @@ Equivalent without the wrapper (after venv exists):
 | `--display-fast` | off | Fast Qt scale (less CPU). Implied by field-lite. Env: `SLS_DISPLAY_FAST=1` |
 | `--freenect-inproc` | isolate ON | Load libfreenect in UI process (legacy). Default: **subprocess isolate** so unplug GPF ≠ app death (#16). Env: `SLS_FREENECT_ISOLATE=0` |
 | `--mp4` | **AVI** | Opt-in finalize Record as **H.264 MP4** (share path). Capture still MJPG temp; encode on Stop. Env: `SLS_RECORD_MP4=1`. Falls back to AVI if encode fails. [#20](https://github.com/tmdrake/sls-camera/issues/20) |
-| `--hardware-encode` | off | Prefer **VAAPI** H.264 when using `--mp4`. Env: `SLS_HARDWARE_ENCODE=1`. Soft fallback `libx264` ultrafast, then AVI. |
+| `--hardware-encode` | off | Prefer **VAAPI** H.264 when using `--mp4`. Env: `SLS_HARDWARE_ENCODE=1`. Soft fallback `libx264` ultrafast, then AVI. **H.264 path is probed at app startup** (`record: format=… h264=vaapi|libx264|none` in the log; Settings Load line shows the same). |
 | `--device INDEX` | `0` | Freenect device index |
 
 ### Field Atom performance (#14)
