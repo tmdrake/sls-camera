@@ -39,7 +39,7 @@ policy come later.
 | [#13](https://github.com/tmdrake/sls-camera/issues/13) | DrakeVox TTS — **closed** (async, pose-pause on speak; use field-lite on Atom) |
 | [#14](https://github.com/tmdrake/sls-camera/issues/14) | Field Atom — **caps shipped**, FPS log **opt-in**; residual optional GPU blit |
 | [#15](https://github.com/tmdrake/sls-camera/issues/15) | Spectrum **Win98 wave** — **closed** |
-| [#16](https://github.com/tmdrake/sls-camera/issues/16) | Kinect unplug freenect crash — **open** (isolate shipped; field soak) |
+| [#16](https://github.com/tmdrake/sls-camera/issues/16) | Kinect unplug freenect crash — **closed 2026-07-26** (mitigated: isolate + launcher restart; fewer 139s; residual native GPF accepted) |
 | [#17](https://github.com/tmdrake/sls-camera/issues/17) | Drop LITE/NORM from status bar — **open** |
 | [#18](https://github.com/tmdrake/sls-camera/issues/18) | Copy local→media progress bar — **open** |
 | [#19](https://github.com/tmdrake/sls-camera/issues/19) | Spectrum frozen after Kinect reconnect — **open** |

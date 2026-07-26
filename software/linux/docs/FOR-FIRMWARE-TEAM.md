@@ -293,7 +293,7 @@ App feature arc for TTS/record/isolate is largely done. **Firmware owns the next
 |-------|-----------|-------------------------|
 | [#7](https://github.com/tmdrake/sls-camera/issues/7) Settings fit + **hardware matrix** | **Firmware / field ops** | After wipe+install: copy `display: WxH avail=… dpr=… dpi=…` from app log into [HARDWARE-MATRIX.md](HARDWARE-MATRIX.md) (tablet-01 RCA, tablet-02 when wiped). Confirm Settings two-pane + scroll reaches all controls. Optional port photos. App layout (94–96% dialog) already shipped. |
 | [#3](https://github.com/tmdrake/sls-camera/issues/3) apt/Python conflicts | **Firmware installer** | While improving offline install: if a new OR/version fight appears, **comment on #3** + update seed/fetch filters. Do not blanket `dpkg -i vendor/debs/*.deb`. Tracker only unless a new failure shows up. |
-| [#16](https://github.com/tmdrake/sls-camera/issues/16) Unplug 139 | **Hardware retest** | Pin **≥ `e1f3c24`**, confirm `freenect: isolate=1`, unplug mid-stream → UI stays up. |
+| [#16](https://github.com/tmdrake/sls-camera/issues/16) Unplug 139 | **Closed (mitigated)** | Isolate + launcher restart; RCA soak 2026-07-26 — fewer 139s, not blocking ship. |
 
 **App team:** no open code work required for #7/#3 unless hardware testing finds a real clip or a new packaging break.
 
@@ -317,7 +317,7 @@ App feature arc for TTS/record/isolate is largely done. **Firmware owns the next
 | [#13](https://github.com/tmdrake/sls-camera/issues/13) DrakeVox TTS | **Closed** — async/once mixer/pose-pause; use with `SLS_FIELD_LITE=1` on Atom |
 | [#14](https://github.com/tmdrake/sls-camera/issues/14) Field Atom FPS | **Caps shipped**; FPS log **opt-in only**; residual = optional GPU blit |
 | [#15](https://github.com/tmdrake/sls-camera/issues/15) Win98 spectrum | **Closed** — time-domain PCM wave style |
-| [#16](https://github.com/tmdrake/sls-camera/issues/16) Kinect unplug 139 | **Open** — isolate shipped; field soak |
+| [#16](https://github.com/tmdrake/sls-camera/issues/16) Kinect unplug 139 | **Closed** — mitigated (isolate + relaunch); residual GPF accepted |
 | [#19](https://github.com/tmdrake/sls-camera/issues/19) Spectrum freeze after reconnect | **Open** |
 | [#23](https://github.com/tmdrake/sls-camera/issues/23) DrakeVox in AVI | **Closed** — field verified RCA |
 | [#25](https://github.com/tmdrake/sls-camera/issues/25) Kinect mic re-pick | **Open** — sticky headset after USB cycle |
