@@ -83,7 +83,7 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 - [ ] **Kinect mic re-pick (#25)** — still rough after unplug/replug; spectrum OFF→ON or relaunch workaround  
 
 
-- [x] **Field Atom load caps (#14)** — `--field-lite` / `SLS_FIELD_LITE=1` (7.5 FPS, pose every 2, fast scale); **FPS log off by default** (RCA); residual: optional QOpenGL blit  
+- [x] **Field Atom load caps (#14)** — `--field-lite` / `SLS_FIELD_LITE=1` (7.5 FPS, pose every 2, fast scale); **FPS log off by default** (RCA); residual: optional GPU display path later  
   - CLI: `--target-fps` `--record-fps` `--pose-every-n` `--show-fps` `--display-fast`  
 - [x] **Spectrum Win98 wave (#15)** — time-domain PCM oscilloscope (not FFT); Settings cycle **Win98 wave** · 2026-07-24
 - [x] **Quit confirmation** — dialog before exit (stops REC cleanly)
@@ -109,7 +109,7 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 ## Product features (later)
 
 - [x] DrakeVox word panel (5–15 min timer, TTS, auto-snap option; key `O`)
-- [ ] **Branding** — configurable product/overlay names (e.g. replace `***DrakeVox***` title, app chrome) without hardcoding; splash image/text via env (`SLS_PRODUCT_NAME`, etc.). Firmware bootsplash/Plymouth + brand pack layout: [sls-camera-firmware BRANDING.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/BRANDING.md)
+- [ ] **Branding** — configurable product/overlay names (e.g. replace `***DrakeVox***` title, app chrome) without hardcoding; splash image/text via env (`SLS_PRODUCT_NAME`, etc.). Firmware bootsplash/Plymouth + brand pack layout: [sls-camera-firmware BRANDING.md](https://github.com/tmdrake/sls-camera-firmware/blob/main/docs/BRANDING.md). **Kickoff issue:** [firmware #1](https://github.com/tmdrake/sls-camera-firmware/issues/1) (candidate **TM Drake SLS**, asset list, Plymouth notes).
 - [ ] DrakeVox external triggers beyond auto-snap (audio spike / MCU)
 - [ ] Arduino / MCU sensor bridge
 - [ ] Optional RGB view or color swap (Windows parity)
