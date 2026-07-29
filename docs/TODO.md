@@ -85,6 +85,7 @@ Firmware may implement offline mirrors; **product install-path and app-behavior 
 
 - [x] **Field Atom load caps (#14)** — `--field-lite` / `SLS_FIELD_LITE=1` (7.5 FPS, pose every 2, fast scale); **FPS log off by default** (RCA); residual: optional GPU display path later  
   - CLI: `--target-fps` `--record-fps` `--pose-every-n` `--show-fps` `--display-fast`  
+  - **Next (docs 2026-07-29):** harden Lite further — [LITE-MODE.md](../software/linux/docs/LITE-MODE.md) (LUT colorize, half-res MediaPipe, pose_every_n=3, spectrum whitelist, IR PiP throttle)
 - [x] **Spectrum Win98 wave (#15)** — time-domain PCM oscilloscope (not FFT); Settings cycle **Win98 wave** · 2026-07-24
 - [x] **Quit confirmation** — dialog before exit (stops REC cleanly)
 - [x] **Quit → power off (firmware contract)** — env `SLS_QUIT_ACTION=shutdown` (appliance launcher); app dialog + exit **10**; **no** Settings toggle (firmware owns host poweroff). Dev stays exit-only.
