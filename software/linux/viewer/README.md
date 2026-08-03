@@ -23,6 +23,20 @@
 
 Browser UI is optional (`--ui web`).
 
+## Screenshots (current UI)
+
+Fullscreen **`--demo`** (no Kinect) on a desktop session — normal mode (**15 FPS**), quiet **normal** status-bar label, spectrum strip, DrakeVox panel under IR PiP:
+
+![SLS Camera demo — main UI](../docs/images/30-demo-normal-main.png)
+
+Same session, slightly later frame (status / HUD). Settings dialog screenshots and older Phase 1 VM stills: [docs/images/](../docs/images/).
+
+| Asset | Notes |
+|-------|--------|
+| [30-demo-normal-main.png](../docs/images/30-demo-normal-main.png) | Current main UI: `normal` · Demo · 15fps · Settings/Snap/Record/Quit |
+| [31-demo-normal-settings.png](../docs/images/31-demo-normal-settings.png) | Companion capture (same demo session) |
+| Older 01–03 | Phase 1 appliance VM stills (historical) |
+
 ## Quick start
 
 ```bash
